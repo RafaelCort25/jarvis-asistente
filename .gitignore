@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+memory/
+logs/
+models/voices/
+.env
+*.onnx
+*.gguf
+*.wav
+test.wav
+.DS_Store

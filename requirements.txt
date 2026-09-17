@@ -1,0 +1,8 @@
+ollama
+pyyaml
+python-dotenv
+rich
+chromadb
+pyautogui
+psutil
+requests
