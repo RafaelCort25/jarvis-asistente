@@ -62,8 +62,8 @@ class Memory:
 
     # ─── RECUPERAR ──────────────────────────────────────────────────────────
 
-    def search(self, query, n_results=3, exclude_current_session=True):
-        """Busca mensajes relevantes al query."""
+    def search(self, query, n_results=3, exclude_current_session=True, min_similarity=0.5):
+        """Busca mensajes relevantes al query. Filtra por similitud minima."""
         try:
             where = {"session": {"$ne": self.session_id}} if exclude_current_session else None
             results = self.collection.query(
@@ -73,7 +73,13 @@ class Memory:
             )
             docs = results.get("documents", [[]])[0]
             metas = results.get("metadatas", [[]])[0]
-            return list(zip(docs, metas))
+            distances = results.get("distances", [[]])[0]
+            # Filtrar por similitud (distancia coseno < 0.5)
+            filtered = []
+            for doc, meta, dist in zip(docs, metas, distances):
+                if dist < min_similarity:
+                    filtered.append((doc, meta))
+            return filtered
         except Exception as e:
             print(f"[MEMORY SEARCH ERROR] {e}")
             return []
@@ -97,7 +103,10 @@ class Memory:
             parts.append("Cosas que se del usuario:\n" + "\n".join(pref_lines))
 
         # Conversaciones pasadas relevantes
-        memories = self.search(query, n_results=n_results)
+                # Solo inyectar si el query es suficientemente especifico
+        if len(query.strip()) < 4:
+            return ""
+        memories = self.search(query, n_results=n_results, min_similarity=0.5)
         if memories:
             mem_lines = []
             for doc, meta in memories:

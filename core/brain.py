@@ -27,7 +27,11 @@ class Brain:
         self._maybe_save_preference(user_input)
 
         # Construir contexto de memoria
-        context = self.memory.build_context(user_input)
+                # Solo buscar contexto si el mensaje tiene suficiente contenido
+        if len(user_input.strip()) >= 4:
+            context = self.memory.build_context(user_input)
+        else:
+            context = ""
 
         # Sistema con contexto inyectado
         system = self.system_prompt

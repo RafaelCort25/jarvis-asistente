@@ -1,4 +1,4 @@
-jarvis:
+﻿jarvis:
   name: "Jarvis"
   language: "es"
   wake_word: "jarvis"
@@ -6,6 +6,7 @@ jarvis:
 
 models:
   default: "dolphin-directo"
+  intent: "llama3.2:3b"
   coding: "qwen2.5-coder:7b"
   reasoning: "qwen2.5-coder:7b"
 
@@ -20,4 +21,7 @@ skills:
   productivity: true
   system: true
   files: true
+  weather: true
+  translate: true
+  alarm: true
   communications: false

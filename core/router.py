@@ -1,11 +1,15 @@
 ﻿import re
 from core.intent import IntentClassifier
+from core.agent import Agent
 from skills.desktop import DesktopSkill
 from skills.browser import BrowserSkill
 from skills.entertainment import EntertainmentSkill
 from skills.productivity import ProductivitySkill
 from skills.system import SystemSkill
 from skills.files import FilesSkill
+from skills.weather import WeatherSkill
+from skills.translate import TranslateSkill
+from skills.alarm import AlarmSkill
 
 
 NUM_MAP = {
@@ -16,12 +20,13 @@ NUM_MAP = {
     "5": 5, "cinco": 5, "quinto": 5, "la quinta": 5, "el quinto": 5,
 }
 
-CANCEL_WORDS = ["cancela", "cancelar", "olvidalo", "olvidalo", "nada"]
+CANCEL_WORDS = ["cancela", "cancelar", "olvidalo", "nada"]
 
 
 class Router:
     def __init__(self):
         self.classifier = IntentClassifier()
+        self.agent = Agent()
         self.skills = {
             "desktop": DesktopSkill(),
             "browser": BrowserSkill(),
@@ -29,7 +34,12 @@ class Router:
             "productivity": ProductivitySkill(),
             "system": SystemSkill(),
             "files": FilesSkill(),
+            "weather": WeatherSkill(),
+            "translate": TranslateSkill(),
+            "alarm": AlarmSkill(),
         }
+
+    # ─── HELPERS ────────────────────────────────────────────────────────────
 
     def _parse_choice(self, text):
         t = text.lower().strip()
@@ -47,10 +57,54 @@ class Router:
         t = text.lower().strip()
         return any(w in t for w in CANCEL_WORDS)
 
-    def _quick_match(self, text):
-        """Detecta comandos obvios sin llamar al LLM. Devuelve lista de acciones o None."""
+    def _is_complex(self, text):
+        """Detecta si el comando necesita razonamiento del agente."""
         t = text.lower().strip()
-        # Buscar archivo: "busca el archivo X", "busca mi archivo X", "encuentra archivo X"
+
+        complex_keywords = [
+            "el ultimo", "el primero", "el mas", "la mas",
+            "el archivo mas", "el mas reciente", "el mas grande",
+            "cuantos archivos", "cuantas", "que archivos",
+            "hay algun", "hay alguna", "existe algun",
+            "organiza", "ordena", "mueve", "renombra",
+            "busca en la carpeta", "lista la carpeta",
+            "y luego", "despues", "ademas", "tambien",
+            "abre el archivo", "abre el ultimo",
+        ]
+
+        for kw in complex_keywords:
+            if kw in t:
+                return True
+
+        # Si tiene 2 verbos de accion encadenados con "y"
+        if " y " in t:
+            verbs = ["abre", "cierra", "busca", "pon", "lista", "muestra", "guarda", "mueve"]
+            count = sum(1 for v in verbs if v in t)
+            if count >= 2:
+                return True
+
+        return False
+
+    def _quick_match(self, text):
+        """Detecta comandos obvios sin llamar al LLM."""
+        t = text.lower().strip()
+
+        # "pon X" → YouTube (excluye alarmas, volumen, etc.)
+        m = re.search(r'\b(?:pon|pong|ponme|pongme|reproduce|reprodus|ponle|quiero escuchar|quiero oir|escuchar)\s+(.+)$', t)
+        if m:
+            q = m.group(1).strip(" .,!?¡¿")
+            q = re.sub(r'\b(en\s+youtube|en\s+yt|en\s+brave|en\s+chrome|en\s+spotify)\b', '', q).strip()
+            exclude = [
+                "volumen", "brillo", "pantalla", "musica al", "silencio", "mute",
+                "alarma", "alarmas", "temporizador", "timer", "recordatorio",
+                "recordar", "recuerda", "recuérdame", "recuerdame", "aviso",
+                "avisame", "avísame", "minuto", "minutos", "segundo", "segundos",
+                "hora", "horas",
+            ]
+            if q and not any(e in q for e in exclude):
+                return [{"skill": "browser", "action": "search_youtube", "params": {"query": q}}]
+
+        # Buscar archivo
         m = re.search(
             r'\b(?:busca|buscar|encuentra|encontrar|donde esta|donde se encuentra)\s+(?:el|la|mi|los|las)?\s*archivo\s+(.+)$',
             t,
@@ -61,7 +115,7 @@ class Router:
             if name:
                 return [{"skill": "files", "action": "find_file", "params": {"name": name}}]
 
-        # Buscar en google: "busca en google X"
+        # Buscar en google
         m = re.search(r'\b(?:busca|buscar|googlea)\s+en\s+google\s+(.+)$', t)
         if m:
             q = m.group(1).strip(" .,!?¡¿")
@@ -75,12 +129,32 @@ class Router:
             if q:
                 return [{"skill": "browser", "action": "search_youtube", "params": {"query": q}}]
 
-        # Buscar en descargas/documentos/etc
+        # Listar carpeta
         m = re.search(r'\b(?:lista|muestra|que hay en)\s+(?:la\s+)?carpeta\s+(?:de\s+)?(descargas|documentos|escritorio|imagenes|musica|videos)\b', t)
         if m:
             return [{"skill": "files", "action": "list_folder", "params": {"folder": m.group(1)}}]
 
         return None
+
+    def _normalize(self, result):
+        """Convierte string o dict en dict {voice, display, thought}."""
+        if isinstance(result, dict):
+            # Si ya tiene display/voice/thought, usar directo
+            if "voice" in result or "display" in result:
+                return {
+                    "voice": result.get("voice", ""),
+                    "display": result.get("display", ""),
+                    "thought": result.get("thought", ""),
+                }
+            # Si es un resultado crudo del agente, formatearlo
+            return {
+                "voice": result.get("voice", ""),
+                "display": result.get("display", str(result)),
+                "thought": result.get("thought", ""),
+            }
+        return {"voice": str(result), "display": str(result), "thought": ""}
+
+    # ─── ROUTE PRINCIPAL ────────────────────────────────────────────────────
 
     def route(self, text):
         browser = self.skills["browser"]
@@ -89,29 +163,32 @@ class Router:
         if browser.has_pending():
             if self._is_cancel(text):
                 browser.clear_pending()
-                return "Ok, cancelado.", False
-
+                return {"voice": "Cancelado.", "display": "Ok, cancelado.", "thought": ""}, False
             num = self._parse_choice(text)
             if num is not None:
                 result = browser.run("play_pending", {"index": num})
-                return result, False
-
+                return self._normalize(result), False
             browser.clear_pending()
-                    # Frases de memoria: dejar que el Brain las procese (no es skill)
+
+        # 2. Frases de memoria
         t_lower = text.lower().strip()
         if any(t_lower.startswith(p) for p in [
             "recuerda que ", "recuerda esto", "recuerda:",
             "memoriza que ", "memoriza:", "guarda en memoria ",
             "aprende que ", "no olvides que ",
         ]):
-            return None, True  # va a brain.chat(), que guarda la preferencia
+            return None, True
 
-        # 2. Pre-clasificador por regex (rapido y preciso para casos obvios)
+        # 3. Pre-clasificador rapido (regex)
         quick = self._quick_match(text)
         if quick:
             actions = quick
+        # 4. Si es complejo → AGENTE
+        elif self._is_complex(text):
+            agent_result = self.agent.run(text, self.skills)
+            return agent_result, False
+        # 5. LLM clasificador normal
         else:
-            # 3. LLM clasifica el resto
             intent = self.classifier.classify(text)
             actions = intent.get("actions", [])
 
@@ -134,11 +211,18 @@ class Router:
             try:
                 result = skill.run(action, params)
                 if result:
-                    results.append(result)
+                    results.append(self._normalize(result))
             except Exception as e:
-                results.append(f"Error en {skill_name}.{action}: {e}")
+                results.append({"voice": "Error.", "display": f"Error: {e}", "thought": ""})
 
         if not results:
             return None, True
 
-        return "\n".join(results), False
+        if len(results) == 1:
+            return results[0], False
+
+        return {
+            "voice": " ".join(r["voice"] for r in results if r["voice"]),
+            "display": "\n".join(r["display"] for r in results if r["display"]),
+            "thought": " | ".join(r["thought"] for r in results if r["thought"]),
+        }, False

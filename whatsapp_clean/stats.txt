@@ -1,0 +1,11 @@
+Total mensajes: 7331
+Archivos procesados: 6
+Fecha: 2026-09-17T21:17:59.171192
+
+Fuentes:
+  _chat.txt: 3312
+  _chat2.txt: 877
+  _chat3.txt: 143
+  _chat4.txt: 2162
+  _chat5.txt: 601
+  _chat6.txt: 236

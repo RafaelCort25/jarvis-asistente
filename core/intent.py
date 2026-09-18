@@ -42,6 +42,46 @@ Skills disponibles:
 
 6. none
    - Conversacion normal: {"actions": [{"skill": "none", "action": "chat", "params": {}}]}
+7. weather
+   - current (params: {"city": "nombre de ciudad"})
+
+8. translate
+   - text (params: {"text": "texto a traducir", "to": "idioma destino"})
+
+9. alarm
+   - set (params: {"minutes": N, "text": "descripcion"})
+   - list (sin params)
+   - cancel (sin params)
+
+REGLAS ALARMAS:
+- "ponme una alarma", "pon la alarma", "pon alarma", "una alarma en X min" → alarm.set
+- "recuerdame", "recuérdame", "avisame", "avísame" + tiempo → alarm.set
+- Cualquier mencion de "alarma" + tiempo → alarm.set
+- NUNCA mandes "alarma" a YouTube
+
+Usuario: "ponme una alarma en un minuto"
+Respuesta: {"actions": [{"skill": "alarm", "action": "set", "params": {"minutes": 1, "text": "alarma"}}]}
+
+Usuario: "pon la alarma en un minuto"
+Respuesta: {"actions": [{"skill": "alarm", "action": "set", "params": {"minutes": 1, "text": "alarma"}}]}
+
+Usuario: "ponme la alarma en 5 minutos"
+Respuesta: {"actions": [{"skill": "alarm", "action": "set", "params": {"minutes": 5, "text": "alarma"}}]}
+
+Usuario: "pon una alarma en 10 minutos"
+Respuesta: {"actions": [{"skill": "alarm", "action": "set", "params": {"minutes": 10, "text": "alarma"}}]}
+
+Usuario: "avisame en 2 minutos"
+Respuesta: {"actions": [{"skill": "alarm", "action": "set", "params": {"minutes": 2, "text": "aviso"}}]}
+
+Usuario: "recuerdame en 5 minutos tomar agua"
+Respuesta: {"actions": [{"skill": "alarm", "action": "set", "params": {"minutes": 5, "text": "tomar agua"}}]}
+
+Usuario: "que alarmas tengo"
+Respuesta: {"actions": [{"skill": "alarm", "action": "list", "params": {}}]}
+
+Usuario: "cancela las alarmas"
+Respuesta: {"actions": [{"skill": "alarm", "action": "cancel", "params": {}}]}
 
 REGLAS:
 REGLA CRITICA #1 - Diferencia entre "buscar archivo" y "buscar en internet":
@@ -53,6 +93,17 @@ REGLA CRITICA #1 - Diferencia entre "buscar archivo" y "buscar en internet":
   → files.find_file
 - Palabras clave internet: google, internet, web, online, informacion, noticias
   → browser.search_google
+REGLA EXTRAER QUERY MUSICA:
+- Quitar articulos y preposiciones innecesarias:
+  * "la cancion X de Y" → "X Y"
+  * "pon X de Y" → "X Y"
+  * "musica de Y" → "Y"
+  * "ponme X" → "X"
+- NO incluir: "la cancion", "el video", "de", "del", "la", "el", "los", "las"
+- Ejemplos:
+  * "pon si estuviesemos juntos de bad bunny" → query: "si estuviesemos juntos bad bunny"
+  * "pon despacito de luis fonsi" → query: "despacito luis fonsi"
+  * "pon la cancion titi me pregunto" → query: "titi me pregunto"
 
 EJEMPLOS OBLIGATORIOS:
 Usuario: "busca el archivo dni guion ale"
@@ -180,9 +231,10 @@ Responde UNICAMENTE con el JSON. Sin markdown, sin texto extra."""
 
 class IntentClassifier:
     def __init__(self):
-        # Modelo liviano especializado para reducir latencia
-        self.model = "llama3.2:3b"
-        self.cache = {}  # Cache local: texto_normalizado -> dict_resultado
+        # Modelo rapido para clasificar (mas veloz que el 7B)
+        self.model = CONFIG["models"].get("intent", CONFIG["models"]["default"])
+        self.cache = {}
+        print(f"[INTENT] Usando modelo: {self.model}")
 
     def classify(self, user_text):
         key = user_text.lower().strip()

@@ -5,6 +5,7 @@ from scipy.io.wavfile import write
 import tempfile
 import os
 import re
+import time
 
 
 class STT:
@@ -30,7 +31,7 @@ class STT:
         return float(np.sqrt(np.mean(frame.astype(np.float32) ** 2)))
 
     def record_until_silence(self, max_duration=15, start_timeout=6,
-                             silence_ms=700, energy_threshold=350):
+                             silence_ms=600, energy_threshold=350):
         """
         Graba hasta detectar silencio despues de voz.
         - energy_threshold: RMS minimo para considerar voz
@@ -80,13 +81,12 @@ class STT:
 
         return np.concatenate(frames, axis=0), self.samplerate
 
-    def listen_with_interrupt(self, tts, max_duration=15, silence_ms=700,
+    def listen_with_interrupt(self, tts, max_duration=15, silence_ms=600,
                               energy_threshold=350):
         """
         Escucha mientras TTS habla. Si detecta voz, para el TTS.
         Devuelve el texto o None.
         """
-        import time
         interrupted = False
         frames = []
         triggered = False
@@ -129,14 +129,24 @@ class STT:
         return self.transcribe(audio, self.samplerate)
 
     def transcribe(self, audio, samplerate):
+        t0 = time.time()
         peak = int(np.abs(audio).max())
-        if peak < 300:
+        
+        # Si el audio dura menos de 0.5 seg → ruido
+        if len(audio) < samplerate * 0.5:
+            print(f"[STT] audio muy corto ({len(audio)/samplerate:.2f}s), ignorado")
+            return ""
+        if peak < 500:
+            print(f"[STT] peak bajo ({peak}), ignorado")
             return ""
 
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             wav_path = f.name
         try:
             write(wav_path, samplerate, audio)
+            duration = len(audio) / samplerate
+            t1 = time.time()
+            print(f"[STT] audio={duration:.2f}s peak={peak}")
             segments, _ = self.model.transcribe(
                 wav_path,
                 language=self.language,
@@ -148,16 +158,73 @@ class STT:
                 condition_on_previous_text=False,
             )
             text = " ".join(seg.text for seg in segments).strip()
-            return self.clean(text)
+            t2 = time.time()
+            print(f"[STT] whisper={t2-t1:.2f}s raw={text!r}")
+            cleaned = self.clean(text)
+            if cleaned.lower() in ("hasta luego", "gracias", "adios", "ok"):
+                print(f"[STT] filtrado alucinacion: {cleaned!r}")
+                return ""
+            if cleaned:
+                print(f"[STT] limpio={cleaned!r}")
+            return cleaned
         finally:
             if os.path.exists(wav_path):
                 os.remove(wav_path)
 
     def clean(self, text):
         t = text.lower().strip()
+
+        # FILTRO 1: alucinaciones exactas
+        exact_hallucinations = {
+            "hasta luego", "hasta luego.", "hasta luego!",
+            "gracias.", "gracias", "adios.", "adios",
+            "ok.", "ok", "subtitulos", "subtitulos.",
+            "gracias por ver", "gracias por ver el video",
+            "suscribete", "suscribete.", "amara.org",
+            "www.", "valen.", "valen",
+        }
+        if t in exact_hallucinations:
+            return ""
+
+        # FILTRO 2: alucinaciones parciales en textos cortos
+        hallucinations_substr = [
+            "gracias por ver", "subtitulos", "subtítulos",
+            "amara.org", "suscribete", "suscríbete",
+        ]
+        if len(t) < 40 and any(h in t for h in hallucinations_substr):
+            return ""
+
+        # FILTRO 3: limpieza basica
+        t = t.replace(",", " ").replace("  ", " ").strip()
         t = re.sub(r'^[\s,\.\?\!¡¿]+', '', t)
         t = re.sub(r'\bnote ?pad\b', 'notepad', t)
         t = re.sub(r'\b(abri|abrime|abreme|abrino)\b', 'abre', t)
+        t = re.sub(r'\bpong\b', 'pon', t)
+        t = re.sub(r'\bponle\b', 'pon', t)
+
+        corrections = {
+            r'\b(pong\s*,?\s*bat\s*,?\s*boni|pong\s*,?\s*bat\s*,?\s*booni|pong\s*,?\s*bat\s*,?\s*bunny)\b': 'pon bad bunny',
+            r'\b(pombat ?bonnie|bat ?booni|bat ?boni|bat ?bunny|bad ?boni|bat ?buny|bad ?bonni|bat ?boni|bat ?bonni|bat ?buny)\b': 'bad bunny',
+            r'\b(bay ?boni|beibi ?boni)\b': 'bad bunny',
+            r'\b(feo ?de ?verdad|feid)\b': 'feid',
+            r'\b(karol ?g|karolg|carol ?g)\b': 'karol g',
+            r'\b(ozuna|osuna)\b': 'ozuna',
+            r'\b(daddy ?yankee|dadi ?yanki)\b': 'daddy yankee',
+            r'\b(maluma|malumba)\b': 'maluma',
+            r'\b(anuel|manuel ?aa|anuel ?aa)\b': 'anuel aa',
+            r'\b(rauw ?alejandro|rau ?alejandro|rauw)\b': 'rauw alejandro',
+            r'\b(duki|dooky)\b': 'duki',
+            r'\b(mora|moraa)\b': 'mora',
+            r'\b(tiago ?pzk|tiago ?pizc|tiago)\b': 'tiago pzk',
+            r'\b(shakira|chakira)\b': 'shakira',
+            r'\b(michael ?jackson|maicol ?yacson)\b': 'michael jackson',
+            r'\b(luis ?miguel|luis ?migel)\b': 'luis miguel',
+            r'\b(juan ?gabriel|guan ?gabriel)\b': 'juan gabriel',
+        }
+
+        for pattern, replacement in corrections.items():
+            t = re.sub(pattern, replacement, t)
+
         return t.strip()
 
     def listen(self):

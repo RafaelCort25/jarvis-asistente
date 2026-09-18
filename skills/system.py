@@ -74,9 +74,24 @@ class SystemSkill(Skill):
             import mss
             import mss.tools
             with mss.mss() as sct:
-                monitor = sct.monitors[0]  # todas las pantallas
+                monitor = sct.monitors[0]
                 img = sct.grab(monitor)
                 mss.tools.to_png(img.rgb, img.size, output=str(filename))
-            return f"Captura guardada: {filename.name}"
+
+            # Enviar a Telegram (si hay chat_id guardado)
+            try:
+                from integrations.notifier import send_async
+                send_async(
+                    f"📸 Captura de pantalla\n{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                    image_path=str(filename),
+                )
+            except Exception as e:
+                print(f"[SCREENSHOT TELEGRAM] {e}")
+
+            return {
+                "thought": "Captura enviada por Telegram",
+                "display": f"📸 Captura guardada: {filename.name}\n📤 Enviada por Telegram",
+                "voice": "Listo, capture y envie la pantalla."
+            }
         except Exception as e:
             return f"Error al capturar: {e}"

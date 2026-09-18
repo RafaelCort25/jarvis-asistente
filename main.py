@@ -6,6 +6,7 @@ from core.config_loader import CONFIG
 
 console = Console()
 
+
 def init_voice():
     from voice.tts import TTS
     from voice.stt import STT
@@ -14,6 +15,7 @@ def init_voice():
     stt = STT()
     ww = WakeWord(threshold=0.25, device=1)
     return tts, stt, ww
+
 
 def _speak_with_barge_in(tts, stt, text, brain, router):
     """Reproduce texto mientras escucha posible interrupcion."""
@@ -31,6 +33,7 @@ def _speak_with_barge_in(tts, stt, text, brain, router):
         tts.cleanup(wav_path)
     return True
 
+
 def process(user, brain, router, tts=None, stt=None):
     if not user or not user.strip():
         return True
@@ -42,22 +45,29 @@ def process(user, brain, router, tts=None, stt=None):
         console.print("[dim]Memoria reiniciada.[/]")
         return True
 
-    # 1. Clasificar intencion con el LLM
     result, is_chat = router.route(user)
 
     if result:
-        console.print(f"[bold magenta]{CONFIG['jarvis']['name']}:[/] {result}\n")
-        if tts:
+        # Mostrar pensamiento (si hay)
+        if result.get("thought") and CONFIG["jarvis"].get("debug"):
+            console.print(f"[dim]🤔 {result['thought']}[/]")
+
+        # Mostrar en consola el display completo
+        if result.get("display"):
+            console.print(f"[bold magenta]{CONFIG['jarvis']['name']}:[/] {result['display']}\n")
+
+        # Voz: solo el voice
+        if tts and result.get("voice"):
             if stt:
-                return _speak_with_barge_in(tts, stt, result, brain, router)
+                return _speak_with_barge_in(tts, stt, result["voice"], brain, router)
             else:
-                tts.speak(result)
+                tts.speak(result["voice"])
         return True
 
     if not is_chat:
-        return True  # No hay nada que hacer, pero no es conversacion
+        return True
 
-    # 2. Conversacion normal
+    # Conversacion normal
     console.print("[dim]Pensando...[/]")
     reply = brain.chat(user)
     console.print(f"[bold magenta]{CONFIG['jarvis']['name']}:[/] {reply}\n")
@@ -67,6 +77,7 @@ def process(user, brain, router, tts=None, stt=None):
         else:
             tts.speak(reply[:600])
     return True
+
 
 def main():
     mode = "handsfree"
@@ -95,7 +106,7 @@ def main():
         console.print("[green]Modo manos libres. Di 'Hey Yarvis' para activarme.[/]\n")
         tts.speak(f"{CONFIG['jarvis']['name']} listo. Di hey yarvis para activarme.")
         
-        # Cuántas rondas seguidas escucha antes de volver a pedir wake word
+        # Cuantas rondas seguidas escucha antes de volver a pedir wake word
         MAX_CONSECUTIVE = 3
         while True:
             try:
@@ -107,24 +118,21 @@ def main():
                 # 2. Escuchar hasta N comandos seguidos
                 for turno in range(MAX_CONSECUTIVE):
                     text = stt.listen()
-                    if not text:
+                    if not text or len(text.strip()) < 3:
                         console.print("[dim]No detecte nada.[/]")
                         break
                     console.print(f"[green]Dijiste:[/] {text}")
                     
-                    # Palabras para salir del modo conversación
+                    # Palabras para salir del modo conversacion
                     t = text.lower().strip()
-                    if any(w in t for w in ["basta", "callate", "silencio", "gracias", "chau", "adios", "hasta luego"]):
+                    if any(w in t for w in ["basta", "callate", "silencio", "gracias"]):
                         tts.speak("Ok.")
                         break
-                        
                     if not process(text, brain, router, tts, stt):
-                        # Si dijo "adios" o "salir"
                         console.print("[yellow]Hasta luego.[/]")
                         if tts:
                             tts.speak("Hasta luego.")
                         return
-                    
                     if turno == MAX_CONSECUTIVE - 1:
                         tts.speak("Di hey yarvis si necesitas algo mas.")
             except KeyboardInterrupt:
@@ -161,6 +169,7 @@ def main():
     console.print("[yellow]Hasta luego.[/]")
     if tts:
         tts.speak("Hasta luego.")
+
 
 if __name__ == "__main__":
     main()
