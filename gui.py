@@ -80,7 +80,11 @@ header[data-testid="stHeader"] {
     height: 0 !important;
 }
 
-#MainMenu, footer, .stDeployButton {
+#MainMenu, footer,
+.stDeployButton,
+[data-testid="stDeployButton"],
+[data-testid="stAppDeployButton"],
+[data-testid="stToolbarActions"] button[kind="header"] {
     display: none !important;
 }
 
@@ -612,6 +616,12 @@ with col_mic1:
                 if text:
                     st.session_state.pending_input = text
                     st.rerun()
+                else:
+                    st.warning(
+                        "No se detectó voz en la grabación. Revisa que el "
+                        "micrófono correcto esté seleccionado en el navegador "
+                        "y que le hayas dado permiso, y vuelve a intentar."
+                    )
     except ImportError:
         st.caption("Instala streamlit-mic-recorder")
 
@@ -628,23 +638,22 @@ if "pending_input" in st.session_state and st.session_state.pending_input:
 # ─── PROCESAR INPUT ─────────────────────────────────────────────────────────
 
 if user_input:
-    with st.chat_message("user", avatar="🧑"):
-        st.markdown(user_input)
-
     st.session_state.messages.append({"role": "user", "content": user_input})
     save_history()
 
-    with st.chat_message("assistant", avatar="🤖"):
-        with st.spinner("Pensando..."):
-            result, is_chat = router.route(user_input)
+    with st.spinner("Pensando..."):
+        result, is_chat = router.route(user_input)
 
-            if result:
-                thought = result.get("thought", "")
-                display = result.get("display", "")
-                voice = result.get("voice", "")
+        if result:
+            thought = result.get("thought", "")
+            display = result.get("display", "")
+            voice = result.get("voice", "")
+            response_text = display or voice or "Listo."
 
-                response_text = display or voice or "Listo."
-
+            # El detalle de "pensamiento" solo se guarda/muestra en modo debug,
+            # para no filtrar ruido interno al chat del usuario final.
+            meta = ""
+            if CONFIG["jarvis"].get("debug"):
                 meta_parts = []
                 if thought:
                     meta_parts.append(f"🤔 {thought}")
@@ -652,49 +661,33 @@ if user_input:
                     meta_parts.append(f"🔊 {voice}")
                 meta = " | ".join(meta_parts) if meta_parts else ""
 
-                st.markdown(response_text)
-                if meta:
-                    st.markdown(
-                        f"<small>{meta}</small>",
-                        unsafe_allow_html=True,
-                    )
+            st.session_state.messages.append(
+                {"role": "assistant", "content": response_text, "meta": meta}
+            )
+            save_history()
 
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": response_text,
-                        "meta": meta,
-                    }
-                )
-                save_history()
+            if voice_on and st.session_state.get("tts") and voice:
+                st.session_state.tts.speak(voice)
 
-                if voice_on and st.session_state.get("tts") and voice:
-                    st.session_state.tts.speak(voice)
+        elif is_chat:
+            reply = brain.chat(user_input)
+            st.session_state.messages.append({"role": "assistant", "content": reply})
+            save_history()
 
-            elif is_chat:
-                reply = brain.chat(user_input)
-                st.markdown(reply)
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": reply,
-                    }
-                )
-                save_history()
+            if voice_on and st.session_state.get("tts"):
+                st.session_state.tts.speak(reply[:600])
 
-                if voice_on and st.session_state.get("tts"):
-                    st.session_state.tts.speak(reply[:600])
+        else:
+            msg = "No entendí el comando."
+            st.session_state.messages.append({"role": "assistant", "content": msg})
+            save_history()
 
-            else:
-                msg = "No entendí el comando."
-                st.markdown(msg)
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": msg,
-                    }
-                )
-                save_history()
+    # Fuerza un rerender completo de arriba hacia abajo: así el turno nuevo
+    # aparece en su lugar correcto (dentro del bucle de HISTORIAL, al final
+    # de la conversación) en vez de dibujarse aparte, entre el bloque del
+    # micrófono y los botones rápidos — que es lo que causaba que el texto
+    # "saliera del medio para abajo" y la interfaz pareciera no actualizarse.
+    st.rerun()
 
 
 # ─── BOTONES RAPIDOS ────────────────────────────────────────────────────────

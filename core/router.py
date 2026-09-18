@@ -1,4 +1,5 @@
 ﻿import re
+import unicodedata
 from core.intent import IntentClassifier
 from core.agent import Agent
 from skills.desktop import DesktopSkill
@@ -10,6 +11,7 @@ from skills.files import FilesSkill
 from skills.weather import WeatherSkill
 from skills.translate import TranslateSkill
 from skills.alarm import AlarmSkill
+from skills.dev import DevSkill
 
 
 NUM_MAP = {
@@ -37,6 +39,7 @@ class Router:
             "weather": WeatherSkill(),
             "translate": TranslateSkill(),
             "alarm": AlarmSkill(),
+            "dev": DevSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -60,26 +63,51 @@ class Router:
     def _is_complex(self, text):
         """Detecta si el comando necesita razonamiento del agente."""
         t = text.lower().strip()
+        t = unicodedata.normalize("NFD", t)
+        t = "".join(c for c in t if unicodedata.category(c) != "Mn")
+
+        # Si es un comando simple conocido, NO es complejo
+        simple_patterns = [
+            "abre ", "abrir ", "cierra ", "cerrar ",
+            "sube ", "baja ", "silencia",
+            "pausa", "play", "siguiente", "anterior",
+            "pon ", "ponme ", "reproduce ",
+            "guarda nota", "lee mis notas", "mis notas",
+            "captura", "bloquea",
+            "que clima", "clima en", "traduce",
+            "alarma", "recuerdame", "avisame",
+            "busca en google", "busca en youtube",
+        ]
+
+        for p in simple_patterns:
+            if t.startswith(p) or f" {p}" in t:
+                # Pero si tiene multiples acciones o "el mas/el ultimo" → complejo
+                if " y " not in t and "el mas" not in t and "el ultimo" not in t and "la mas" not in t:
+                    return False
 
         complex_keywords = [
-            "el ultimo", "el primero", "el mas", "la mas",
-            "el archivo mas", "el mas reciente", "el mas grande",
-            "cuantos archivos", "cuantas", "que archivos",
+            "el ultimo", "la ultima", "los ultimos", "las ultimas",
+            "el primero de los archivos",
+            "el mas ", "la mas ",
+            "mas reciente", "mas grande", "mas pequeno", "mas antiguo",
+            "cuantos archivos", "cuantas archivos", "cuantos pdf",
+            "cuantas fotos", "cuantos videos", "cuantos mp4",
+            "que archivos", "que documentos",
             "hay algun", "hay alguna", "existe algun",
-            "organiza", "ordena", "mueve", "renombra",
-            "busca en la carpeta", "lista la carpeta",
-            "y luego", "despues", "ademas", "tambien",
-            "abre el archivo", "abre el ultimo",
+            "organiza", "ordena", "renombra",
+            "y luego", "despues de eso",
+            "abre el archivo", "abre el ultimo archivo",
+            "cual es el archivo", "cual es la carpeta",
         ]
 
         for kw in complex_keywords:
             if kw in t:
                 return True
 
-        # Si tiene 2 verbos de accion encadenados con "y"
+        # Multiples verbos con "y"
         if " y " in t:
             verbs = ["abre", "cierra", "busca", "pon", "lista", "muestra", "guarda", "mueve"]
-            count = sum(1 for v in verbs if v in t)
+            count = sum(1 for v in verbs if f" {v} " in f" {t} ")
             if count >= 2:
                 return True
 
@@ -139,14 +167,12 @@ class Router:
     def _normalize(self, result):
         """Convierte string o dict en dict {voice, display, thought}."""
         if isinstance(result, dict):
-            # Si ya tiene display/voice/thought, usar directo
             if "voice" in result or "display" in result:
                 return {
                     "voice": result.get("voice", ""),
                     "display": result.get("display", ""),
                     "thought": result.get("thought", ""),
                 }
-            # Si es un resultado crudo del agente, formatearlo
             return {
                 "voice": result.get("voice", ""),
                 "display": result.get("display", str(result)),

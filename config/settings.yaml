@@ -25,3 +25,5 @@ skills:
   translate: true
   alarm: true
   communications: false
+  dev: true
+  vision: false

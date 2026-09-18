@@ -42,6 +42,46 @@ Skills disponibles:
 
 6. none
    - Conversacion normal: {"actions": [{"skill": "none", "action": "chat", "params": {}}]}
+7. dev
+   - review_file (params: {"path": "..."}) — cuando dice "revisa", "chequea", "esta bien?", "corrige"
+   - review_project (params: {"path": "..."}) — "revisa el proyecto", "analiza esta carpeta"
+   - explain (params: {"path": "..."}) — cuando dice "explica", "como funciona", "que hace", "ensename"
+   - find_issues (params: {"path": "..."}) — "busca errores", "encuentra bugs", "hay problemas"
+   - generate_code (params: {"description": "...", "language": "..."}) — "genera", "escribe", "crea funcion"
+
+REGLA CLAVE dev:
+- "revisa X" o "chequea X" → review_file
+- "explica X" o "que hace X" o "como funciona X" → explain
+- "busca errores en X" o "hay bugs en X" → find_issues
+- "revisa el proyecto X" o "analiza la carpeta X" → review_project
+- "genera/escribe/crea una funcion X" → generate_code
+- LA DIFERENCIA ENTRE review_file Y explain:
+  * review_file = "esta bien el codigo?" (analisis tecnico)
+  * explain = "que hace este codigo?" (explicacion didactica)
+
+Usuario: "revisa el archivo main.py"
+Respuesta: {"actions": [{"skill": "dev", "action": "review_file", "params": {"path": "main.py"}}]}
+
+Usuario: "chequea si esta bien el gui.py"
+Respuesta: {"actions": [{"skill": "dev", "action": "review_file", "params": {"path": "gui.py"}}]}
+
+Usuario: "explica el archivo router.py"
+Respuesta: {"actions": [{"skill": "dev", "action": "explain", "params": {"path": "router.py"}}]}
+
+Usuario: "que hace core/brain.py"
+Respuesta: {"actions": [{"skill": "dev", "action": "explain", "params": {"path": "core/brain.py"}}]}
+
+Usuario: "como funciona el stt.py"
+Respuesta: {"actions": [{"skill": "dev", "action": "explain", "params": {"path": "stt.py"}}]}
+
+Usuario: "busca errores en C:/JARVIS/gui.py"
+Respuesta: {"actions": [{"skill": "dev", "action": "find_issues", "params": {"path": "C:/JARVIS/gui.py"}}]}
+
+Usuario: "revisa el proyecto C:/proyectos/miapp"
+Respuesta: {"actions": [{"skill": "dev", "action": "review_project", "params": {"path": "C:/proyectos/miapp"}}]}
+
+Usuario: "genera una funcion que ordene una lista en python"
+Respuesta: {"actions": [{"skill": "dev", "action": "generate_code", "params": {"description": "una funcion que ordene una lista", "language": "python"}}]}
 7. weather
    - current (params: {"city": "nombre de ciudad"})
 
