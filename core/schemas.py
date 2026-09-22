@@ -65,6 +65,11 @@ SKILLS_VALIDAS = {
             "path": {"type": "string"},
         },
         "read_xlsx": {"path": {"type": "string"}},
+                "create_ppt": {
+            "description": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "read_ppt": {"path": {"type": "string"}},
     },
     "vision": {
         "describe_screen": {},

@@ -84,6 +84,9 @@ REGLAS DOCS (importante, revisar antes de dev):
   - OFFICE EXCEL:
   - "hazme un excel/hoja de calculo sobre X" -> office.create_xlsx (description = X, path = "")
   - "lee el excel X.xlsx" -> office.read_xlsx (path = X.xlsx)
+  - OFFICE POWERPOINT:
+  - "hazme una presentacion/powerpoint sobre X" -> office.create_ppt (description = X, path = "")
+  - "lee la presentacion X.pptx" -> office.read_ppt (path = X.pptx)
 
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google

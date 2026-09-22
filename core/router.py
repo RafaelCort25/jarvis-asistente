@@ -334,6 +334,33 @@ class Router:
                 "action": "read_xlsx",
                 "params": {"path": m.group(1).strip()},
             }]
+                # Office PowerPoint: crear presentacion
+        m = re.search(
+            r'\b(?:hazme|crea|genera)\s+(?:una\s+|un\s+)?(?:presentacion|powerpoint|ppt|diapositivas)\s+(?:sobre|de|acerca\s+de|para)\s+(.+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            desc = m.group(1).strip(" .,!?¡¿")
+            if desc:
+                return [{
+                    "skill": "office",
+                    "action": "create_ppt",
+                    "params": {"description": desc, "path": ""},
+                }]
+
+        # Office PowerPoint: leer
+        m = re.search(
+            r'\b(?:lee|leeme|abre)\s+(?:la\s+)?(?:presentacion|powerpoint|pptx)\s+(.+\.pptx)\b',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            return [{
+                "skill": "office",
+                "action": "read_ppt",
+                "params": {"path": m.group(1).strip()},
+            }]
 
         # Dev: crear y probar (ciclo completo)
                 # Dev: crear y probar (ciclo completo)

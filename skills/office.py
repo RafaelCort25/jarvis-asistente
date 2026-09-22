@@ -8,6 +8,9 @@ from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
+from pptx import Presentation
+from pptx.util import Inches, Pt as PptxPt
+from pptx.dml.color import RGBColor as PptxRGB
 
 from skills.base import Skill
 from core.config_loader import CONFIG
@@ -41,6 +44,13 @@ class OfficeSkill(Skill):
             )
         if action == "read_xlsx":
             return self._read_xlsx(params.get("path", ""))
+        if action == "create_ppt":
+            return self._create_ppt(
+                params.get("description", ""),
+                params.get("path", ""),
+            )
+        if action == "read_ppt":
+            return self._read_ppt(params.get("path", ""))
         return f"Accion desconocida en office: {action}"
 
     # ─── HELPERS ─────────────────────────────────────────────────────────
@@ -416,4 +426,182 @@ Naranja|2.00|80"""
             "thought": f"Leyendo Excel {path.name}",
             "display": f"Contenido de {path.name}:\n{''.join(lines)}",
             "voice": f"El Excel {path.name} tiene {len(sheet_names)} hojas.",
+            
+        }
+        # ─── CREATE PPTX ─────────────────────────────────────────────────────
+
+    def _resolve_pptx_path(self, path_str, description=""):
+        if path_str:
+            raw = path_str.strip().strip('"').strip("'")
+            p = Path(raw)
+            if not p.is_absolute():
+                p = ROOT / p
+            if p.suffix.lower() != ".pptx":
+                p = p.with_suffix(".pptx")
+        else:
+            slug = re.sub(r'[^a-z0-9]+', '_', description.lower())[:60].strip("_")
+            if not slug:
+                slug = f"presentacion_{int(datetime.now().timestamp())}"
+            p = DEFAULT_DIR / f"{slug}.pptx"
+        return p
+
+    def _ask_llm_slides(self, description):
+        prompt = f"""Genera la estructura de una presentacion sobre:
+
+{description}
+
+Formato OBLIGATORIO (una linea por elemento):
+TITULO: <titulo de la portada>
+SLIDE: <titulo de diapositiva>
+- <bullet 1>
+- <bullet 2>
+- <bullet 3>
+SLIDE: <siguiente titulo>
+- <bullet 1>
+- <bullet 2>
+
+Reglas:
+- Entre 5 y 10 diapositivas
+- Cada diapositiva: 3-5 bullets maximo
+- Bullets cortos (max 12 palabras cada uno)
+- NO incluyas explicaciones fuera de esta estructura
+- Empieza directamente con TITULO:
+- NO uses markdown, NO uses #, solo el formato indicado"""
+
+        return self._ask_llm(prompt, system="Eres un disenador de presentaciones. Estructuras contenido claro y visual.")
+
+    def _parse_slides(self, raw):
+        slides = []
+        current = None
+        title_overall = None
+
+        for line in raw.split("\n"):
+            line = line.rstrip()
+            if not line.strip():
+                continue
+
+            if line.startswith("TITULO:"):
+                title_overall = line[7:].strip()
+            elif line.startswith("SLIDE:"):
+                if current:
+                    slides.append(current)
+                current = {"title": line[6:].strip(), "bullets": []}
+            elif line.startswith("- ") and current:
+                current["bullets"].append(line[2:].strip())
+
+        if current:
+            slides.append(current)
+
+        return title_overall, slides
+
+    def _create_ppt(self, description, path_str):
+        description = (description or "").strip()
+        if not description:
+            return "Dime sobre que quieres la presentacion."
+
+        print(f"[OFFICE] Generando presentacion con {self.model}...")
+        raw = self._ask_llm_slides(description)
+        if not raw or raw.startswith("[ERROR LLM]"):
+            return f"Error generando contenido: {raw}"
+
+        title_overall, slides = self._parse_slides(raw)
+        if not title_overall:
+            title_overall = description[:80]
+        if not slides:
+            return "El modelo no genero diapositivas validas."
+
+        path = self._resolve_pptx_path(path_str, description)
+        try:
+            path.relative_to(ROOT)
+        except ValueError:
+            return f"Ruta fuera del proyecto, bloqueado: {path}"
+
+        preview_lines = [f"Titulo: {title_overall}", f"Diapositivas: {len(slides)}", ""]
+        for i, s in enumerate(slides[:5], 1):
+            preview_lines.append(f"{i}. {s['title']}")
+            for b in s["bullets"][:3]:
+                preview_lines.append(f"   - {b}")
+        if len(slides) > 5:
+            preview_lines.append(f"... (+{len(slides)-5} slides mas)")
+        print("\n[OFFICE] Presentacion propuesta:\n")
+        print("\n".join(preview_lines))
+        print()
+
+        summary = f"Crear PowerPoint en {path.name} con {len(slides)+1} diapositivas"
+        if not confirmation.require("office", "create_ppt", summary):
+            return "Cancelado."
+
+        try:
+            prs = Presentation()
+            prs.slide_width = Inches(13.333)
+            prs.slide_height = Inches(7.5)
+
+            slide = prs.slides.add_slide(prs.slide_layouts[0])
+            slide.shapes.title.text = title_overall
+            if len(slide.placeholders) > 1:
+                slide.placeholders[1].text = "Generado por Nitro"
+
+            for s in slides:
+                slide = prs.slides.add_slide(prs.slide_layouts[1])
+                slide.shapes.title.text = s["title"]
+                body = slide.placeholders[1]
+                tf = body.text_frame
+                if s["bullets"]:
+                    tf.text = s["bullets"][0]
+                    for b in s["bullets"][1:]:
+                        p = tf.add_paragraph()
+                        p.text = b
+
+            path.parent.mkdir(parents=True, exist_ok=True)
+            prs.save(str(path))
+        except Exception as e:
+            return f"Error creando PPTX: {e}"
+
+        print(f"[OFFICE] Presentacion guardada: {path}")
+
+        return {
+            "thought": f"Presentacion creada con {len(slides)+1} slides",
+            "display": f"Presentacion creada: {path}\n({len(slides)+1} diapositivas, {path.stat().st_size} bytes)",
+            "voice": f"Listo. Presentacion guardada en {path.name} con {len(slides)+1} diapositivas.",
+        }
+
+    # ─── READ PPTX ───────────────────────────────────────────────────────
+
+    def _read_ppt(self, path_str):
+        if not path_str:
+            return "Necesito el path de la presentacion."
+
+        raw = path_str.strip().strip('"').strip("'")
+        path = Path(raw)
+        if not path.is_absolute():
+            path = ROOT / path
+
+        if not path.exists():
+            return f"No encontre la presentacion: {path}"
+        if path.suffix.lower() != ".pptx":
+            return f"No es un PPTX: {path}"
+
+        try:
+            prs = Presentation(str(path))
+        except Exception as e:
+            return f"Error leyendo PPTX: {e}"
+
+        lines = []
+        n_slides = len(prs.slides)
+        for i, slide in enumerate(prs.slides, 1):
+            lines.append(f"\n--- Slide {i} ---")
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    for para in shape.text_frame.paragraphs:
+                        txt = para.text.strip()
+                        if txt:
+                            lines.append(txt)
+            if len(lines) > 40:
+                lines.append("... (presentacion truncada)")
+                break
+
+        return {
+            "thought": f"Leyendo PPTX {path.name}",
+            "display": f"Contenido de {path.name}:\n{''.join(lines)}",
+            "voice": f"La presentacion {path.name} tiene {n_slides} diapositivas.",
         }
