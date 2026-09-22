@@ -6,6 +6,7 @@ import tempfile
 import os
 import re
 import time
+from voice import audio_state
 
 
 class STT:
@@ -82,7 +83,7 @@ class STT:
         return np.concatenate(frames, axis=0), self.samplerate
 
     def listen_with_interrupt(self, tts, max_duration=15, silence_ms=600,
-                              energy_threshold=350):
+                              energy_threshold=900):
         """
         Escucha mientras TTS habla. Si detecta voz, para el TTS.
         Devuelve el texto o None.
@@ -103,6 +104,11 @@ class STT:
         ) as stream:
             while True:
                 frame, _ = stream.read(self.frame_size)
+
+                # Ignorar cualquier audio mientras Jarvis sigue hablando
+                if audio_state.is_speaking():
+                    continue
+
                 rms = self._rms(frame)
 
                 if rms > energy_threshold:

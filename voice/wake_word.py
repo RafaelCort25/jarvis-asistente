@@ -1,6 +1,8 @@
 ﻿import numpy as np
 import sounddevice as sd
 from openwakeword.model import Model
+from voice import audio_state
+
 
 class WakeWord:
     def __init__(self, wakeword="hey_jarvis", device=1, threshold=0.25):
@@ -22,6 +24,11 @@ class WakeWord:
         ) as stream:
             while True:
                 audio, _ = stream.read(self.chunk_size)
+
+                # Ignorar audio mientras Jarvis habla o está en cooldown
+                if audio_state.in_cooldown():
+                    continue
+
                 prediction = self.model.predict(audio.flatten())
                 for ww, score in prediction.items():
                     if score > self.threshold:
