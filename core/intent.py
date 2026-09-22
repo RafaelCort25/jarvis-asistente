@@ -56,6 +56,14 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "sube los cambios", "git push" → git.push
   - "baja los cambios", "git pull" → git.pull
   - NUNCA envies "añade todo al staging", "commit", "git add" a docs.* ni a files.*
+  - SPOTIFY (importante: revisar ANTES que browser):
+  - "pon X en spotify", "reproduce X en spotify" → spotify.play (query = X)
+  - "pausa la musica", "pausa spotify", "pausa" → spotify.pause
+  - "siguiente cancion", "salta esta", "pasa a la siguiente" → spotify.next
+  - "cancion anterior", "vuelve a la anterior" → spotify.previous
+  - "que esta sonando", "que cancion es" → spotify.current
+  - "volumen de spotify al N" → spotify.volume (percent = N)
+  - NUNCA envies "pon X en spotify" a browser.search_youtube
 
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google

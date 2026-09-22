@@ -71,6 +71,23 @@ SKILLS_VALIDAS = {
         "run": {"command": {"type": "string"}},
         "suggest": {"goal": {"type": "string"}},
     },
+    "git": {
+        "status": {},
+        "diff": {},
+        "log": {"n": {"type": "integer", "minimum": 1}},
+        "add": {"paths": {"type": "string"}},
+        "commit": {"message": {"type": "string"}},
+        "push": {},
+        "pull": {},
+    },
+    "spotify": {
+        "play": {"query": {"type": "string"}},
+        "pause": {},
+        "next": {},
+        "previous": {},
+        "current": {},
+        "volume": {"percent": {"type": "integer", "minimum": 0, "maximum": 100}},
+    },
     "docs": {
         "index_file": {"path": {"type": "string"}},
         "index_folder": {"path": {"type": "string"}},

@@ -18,6 +18,7 @@ from skills.clipboard import ClipboardSkill
 from skills.scheduler import SchedulerSkill
 from skills.terminal import TerminalSkill
 from skills.git import GitSkill
+from skills.spotify import SpotifySkill
 
 NUM_MAP = {
     "1": 1, "uno": 1, "primero": 1, "primer": 1, "la primera": 1, "el primero": 1,
@@ -51,6 +52,7 @@ class Router:
             "scheduler": SchedulerSkill(),
             "terminal": TerminalSkill(),
             "git": GitSkill(),
+            "spotify": SpotifySkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -206,6 +208,26 @@ class Router:
             if path:
                 action = "index_folder" if "carpeta" in t else "index_file"
                 return [{"skill": "docs", "action": action, "params": {"path": path}}]
+
+        # Spotify (tiene que ir antes del "pon X" general)
+        m = re.search(r'\b(?:pon|ponme|reproduce|quiero\s+escuchar)\s+(.+?)\s+en\s+spotify\b', t)
+        if m:
+            return [{"skill": "spotify", "action": "play", "params": {"query": m.group(1).strip()}}]
+
+        # Controles rapidos de Spotify (frases inequivocas)
+        if "en spotify" in t or "de spotify" in t or "spotify" in t:
+            if any(p in t for p in ["pausa", "pausar"]):
+                return [{"skill": "spotify", "action": "pause", "params": {}}]
+            if any(p in t for p in ["siguiente", "salta", "avanza"]):
+                return [{"skill": "spotify", "action": "next", "params": {}}]
+            if any(p in t for p in ["anterior", "vuelve atras", "regresa"]):
+                return [{"skill": "spotify", "action": "previous", "params": {}}]
+            if any(p in t for p in ["que esta sonando", "que suena", "que cancion"]):
+                return [{"skill": "spotify", "action": "current", "params": {}}]
+
+        # "pausa la musica" sin mencionar spotify (asumimos spotify)
+        if any(p in t for p in ["pausa la musica", "pausa la cancion", "para la musica"]):
+            return [{"skill": "spotify", "action": "pause", "params": {}}]
 
         # "pon X" → YouTube (excluye alarmas, volumen, etc.)
         m = re.search(r'\b(?:pon|pong|ponme|pongme|reproduce|reprodus|ponle|quiero escuchar|quiero oir|escuchar)\s+(.+)$', t)

@@ -28,6 +28,8 @@ class STT:
             "git add, git commit, git push, git pull, staging, "
             "haz un commit, añade todo al staging, sube los cambios, "
             "baja los cambios, que cambios tengo, ultimos commits."
+            " pon X en spotify, pausa la musica, siguiente cancion, "
+            "cancion anterior, que esta sonando, volumen de spotify."
         )
         print(f"[STT] Modelo listo.")
 
@@ -249,6 +251,13 @@ class STT:
             r'\bpañade\b': 'añade',
             r'\bpanade\b': 'añade',
             r'\bagnade\b': 'añade',
+                        # Spotify
+            r'\bespoti?fai?\b': 'spotify',
+            r'\bespotify\b': 'spotify',
+            r'\bsiguente\b': 'siguiente',
+            r'\bsiguient\b': 'siguiente',
+            r'\bcanción\b': 'cancion',
+            r'\bcanció?n\b': 'cancion',
         }
 
         for pattern, replacement in corrections.items():

@@ -85,6 +85,13 @@ RISK_LEVELS = {
     ("git", "commit"): "medium",
     ("git", "push"): "high",
     ("git", "pull"): "medium",
+        # Spotify (todo low)
+    ("spotify", "play"): "low",
+    ("spotify", "pause"): "low",
+    ("spotify", "next"): "low",
+    ("spotify", "previous"): "low",
+    ("spotify", "current"): "low",
+    ("spotify", "volume"): "low",
 
     # Correo (futuro)
     ("email", "send"): "high",

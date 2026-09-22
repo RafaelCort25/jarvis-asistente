@@ -95,6 +95,23 @@ class SpotifySkill(Skill):
         if not query:
             return "Dime que quieres reproducir."
 
+        # 1. Obtener device activo
+        r = requests.get(f"{API}/me/player/devices", headers=self._headers(), timeout=10)
+        if r.status_code != 200:
+            return f"Error consultando dispositivos: {r.status_code}"
+        devices = r.json().get("devices", [])
+        if not devices:
+            return "Abre Spotify primero en algun dispositivo."
+
+        device_id = None
+        for d in devices:
+            if d.get("is_active"):
+                device_id = d["id"]
+                break
+        if not device_id:
+            device_id = devices[0]["id"]
+
+        # 2. Buscar el track
         r = requests.get(
             f"{API}/search",
             headers=self._headers(),
@@ -103,29 +120,46 @@ class SpotifySkill(Skill):
         )
         if r.status_code != 200:
             return f"Error buscando: {r.status_code}"
-
         items = r.json().get("tracks", {}).get("items", [])
         if not items:
             return f"No encontre '{query}' en Spotify."
 
         track = items[0]
-        uri = track["uri"]
+        track_uri = track["uri"]
+        album_uri = track["album"]["uri"]
         name = track["name"]
         artist = track["artists"][0]["name"]
 
-        device = self._active_device()
-        body = {"uris": [uri]}
-        url = f"{API}/me/player/play"
-        if device:
-            url += f"?device_id={device}"
+        # 3. Play con context_uri (album) + offset (track)
+        #    Arregla el bug donde uris devuelve 204 pero no reproduce
+        body = {
+            "context_uri": album_uri,
+            "offset": {"uri": track_uri},
+            "position_ms": 0,
+        }
 
-        r = requests.put(url, headers=self._headers(), json=body, timeout=10)
-        if r.status_code == 404:
-            return "Abre Spotify primero en algun dispositivo."
+        r = requests.put(
+            f"{API}/me/player/play?device_id={device_id}",
+            headers=self._headers(),
+            json=body,
+            timeout=10,
+        )
         if r.status_code not in (200, 204):
             return f"Error reproduciendo: {r.status_code} {r.text[:200]}"
 
-        return f"Reproduciendo: {name} - {artist}"
+        # 4. Verificar que realmente arranco
+        time.sleep(2)
+        check = requests.get(f"{API}/me/player", headers=self._headers(), timeout=10)
+        if check.status_code == 200:
+            data = check.json()
+            if data.get("is_playing"):
+                actual_uri = data.get("item", {}).get("uri") if data.get("item") else None
+                actual_name = data.get("item", {}).get("name", "?") if data.get("item") else "?"
+                if actual_uri == track_uri:
+                    return f"Reproduciendo: {name} - {artist}"
+                return f"Reproduciendo: {actual_name} (mismo album que {name})"
+
+        return f"Play enviado pero no arranco. Reinicia Spotify desktop. (track: {name})"
 
     def _pause(self):
         device = self._active_device()
