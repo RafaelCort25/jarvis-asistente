@@ -9,7 +9,7 @@ models:
   intent: "llama3.2:3b"
   coding: "qwen2.5-coder:7b"
   reasoning: "qwen2.5-coder:7b"
-  vision: "llava-phi3"
+  vision: "qwen2.5vl:7b"
 
 ollama:
   host: "http://localhost:11434"

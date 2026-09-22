@@ -6,18 +6,21 @@ from skills.base import Skill
 from core.config_loader import CONFIG
 
 VISION_PROMPT = (
-    "Describe lo que ves en esta captura de pantalla en espanol. "
-    "Se especifico: menciona la aplicacion o ventana activa, "
-    "el contenido principal, textos visibles importantes, "
-    "y cualquier error o elemento relevante. "
-    "Maximo 120 palabras. No inventes nada que no veas."
+    "Describe esta captura de pantalla en espanol. "
+    "Se breve y concreto. Menciona: nombre exacto de la aplicacion si lo puedes leer, "
+    "que tipo de contenido se ve, y 2-3 elementos especificos que observes. "
+    "Si no puedes leer un texto, di 'no legible' en vez de adivinar. "
+    "NO inventes elementos que no esten claramente visibles. Maximo 80 palabras."
 )
 
 VISION_PROMPT_CODE = (
-    "Analiza esta captura de pantalla que muestra codigo en un editor. "
-    "En espanol, describe: 1) que archivo o lenguaje se ve, "
-    "2) que hace el codigo, 3) si detectas errores, warnings o algo raro. "
-    "Maximo 150 palabras. No inventes lineas que no veas."
+    "En esta captura hay codigo en un editor. Responde en espanol: "
+    "1) Nombre del archivo si es legible, o 'no legible'. "
+    "2) Lenguaje de programacion. "
+    "3) Que hace el codigo segun lo que ves. "
+    "4) Errores o warnings visibles. Si no ves ninguno, di 'ninguno visible'. "
+    "Se estricto: si no puedes leer algo con claridad, di 'no legible'. "
+    "NO inventes nombres, funciones ni errores. Maximo 120 palabras."
 )
 
 
