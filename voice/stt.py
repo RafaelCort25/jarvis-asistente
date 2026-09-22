@@ -300,13 +300,21 @@ class STT:
             # Extensiones cortadas por Whisper
             r'\.p\b': '.py',
             r'\.j\b': '.js',
+                        # Whisper y los underscores
+            r'\byonbajo\b': '_',
+            r'\byonbajo\s+': '_',
+            r'\byonbajo': '_',
+            r'\bbajo\s+guion\b': '_',
+            r'\bguion\s+bajo\b': '_',
+            r'\bunderscore\b': '_',
         }
 
         for pattern, replacement in corrections.items():
             t = re.sub(pattern, replacement, t)
 
+        # Limpiar espacios dobles
+        t = re.sub(r'\s+', ' ', t)
         return t.strip()
-
     def listen(self):
         """Devuelve texto o None si no se detecto voz."""
         result = self.record_until_silence()

@@ -77,14 +77,14 @@ class Router:
     def _is_complex(self, text):
         """Detecta si el comando necesita razonamiento del agente."""
         t = text.lower().strip()
-        
+
         # Filtro de seguridad: textos muy cortos nunca son complejos
         palabras = t.split()
         if len(palabras) < 3:
             return False
         if len(t) < 10:
             return False
-        
+
         t = unicodedata.normalize("NFD", t)
         t = "".join(c for c in t if unicodedata.category(c) != "Mn")
 
@@ -103,7 +103,6 @@ class Router:
 
         for p in simple_patterns:
             if t.startswith(p) or f" {p}" in t:
-                # Pero si tiene multiples acciones o "el mas/el ultimo" → complejo
                 if " y " not in t and "el mas" not in t and "el ultimo" not in t and "la mas" not in t:
                     return False
 
@@ -157,7 +156,6 @@ class Router:
         m = re.search(r'\b(?:ejecuta|corre|lanza|haz)\s+(?:el\s+comando\s+|en\s+terminal\s+)?(.+)$', t)
         if m:
             cmd = m.group(1).strip(" .,!?¡¿")
-            # Solo si empieza con algo que parece comando real
             if cmd and any(cmd.startswith(p) for p in [
                 "git ", "pip ", "python ", "npm ", "node ", "dir", "ls",
                 "where ", "echo ", "ping ", "curl ",
@@ -187,8 +185,7 @@ class Router:
             if msg:
                 return [{"skill": "git", "action": "commit", "params": {"message": msg}}]
 
-        # Documentos indexados (RAG)
-        # Listar documentos indexados
+        # Documentos indexados (RAG) - listar
         if any(p in t for p in [
             "que documentos tienes", "que documentos hay", "lista mis documentos",
             "que has indexado", "documentos indexados",
@@ -207,7 +204,6 @@ class Router:
             "en mis apuntes", "en mis pdfs", "en mis documentos",
         ]
         if any(p in t for p in docs_ask_triggers):
-            # Solo si ya hay algo indexado (el RAG responde que no hay docs si vacío)
             return [{"skill": "docs", "action": "ask", "params": {"query": text}}]
 
         # Indexar archivo/carpeta (con ruta explicita)
@@ -238,7 +234,7 @@ class Router:
         if any(p in t for p in ["pausa la musica", "pausa la cancion", "para la musica"]):
             return [{"skill": "spotify", "action": "pause", "params": {}}]
 
-        # "pon X" → YouTube (excluye alarmas, volumen, etc.)
+        # "pon X" -> YouTube (excluye alarmas, volumen, etc.)
         m = re.search(r'\b(?:pon|pong|ponme|pongme|reproduce|reprodus|ponle|quiero escuchar|quiero oir|escuchar)\s+(.+)$', t)
         if m:
             q = m.group(1).strip(" .,!?¡¿")
@@ -246,7 +242,7 @@ class Router:
             exclude = [
                 "volumen", "brillo", "pantalla", "musica al", "silencio", "mute",
                 "alarma", "alarmas", "temporizador", "timer", "recordatorio",
-                "recordar", "recuerda", "recuérdame", "recuerdame", "aviso",
+                "recordar", "recuerda", "recuerdame", "recuérdame", "aviso",
                 "avisame", "avísame", "minuto", "minutos", "segundo", "segundos",
                 "hora", "horas",
             ]
@@ -285,35 +281,49 @@ class Router:
 
         # Dev: crear y probar (ciclo completo)
                 # Dev: crear y probar (ciclo completo)
-        # Acepta "en sandbox/foo.py", "en sandbox/foo" (asume .py), "en foo.py"
-                # Dev: crear y probar (ciclo completo)
         m = re.search(
-            r'\b(?:crea|genera|escribe)\s+(?:un\s+|una\s+)?(?:archivo|script|programa|funcion)?\s*(.+?)\s+(?:en|como)\s+(\S+)\b',
+            r'\b(?:crea|genera|escribe)\s+(?:un\s+|una\s+)?(?:archivo|script|programa|funcion)?\s*(.+?)\s+(?:en|como)\s+(.+)\b',
             t,
+            re.IGNORECASE,
         )
         if m:
             desc = m.group(1).strip()
-            path = m.group(2).strip().strip(".,!?¡¿")
+            path = m.group(2).strip()
 
-            # Normalizar separadores pegados que se hayan colado
+            # Normalizar separadores dictados
             path = path.replace("barra", "/").replace("slash", "/")
 
-            # Normalizar extensiones cortas
+            # Normalizar extensiones dictadas ("punto py" -> ".py")
+                        # Normalizar extensiones dictadas ("punto py" -> ".py")
+            path = re.sub(r'\bpunto\s+py\b', '.py', path)
+            path = re.sub(r'\bpunto\s+js\b', '.js', path)
+            path = re.sub(r'\bpunto\s+java\b', '.java', path)
+
+            # Quitar puntuacion y colapsar espacios
+            path = re.sub(r'[,;]', '', path)
+            path = re.sub(r'\s+', ' ', path).strip()
+            path = path.strip(".,!?¡¿ ")
+
+            # Colapsar espacios alrededor de separadores     <-- AQUI
+            path = re.sub(r'\s*/\s*', '/', path)              # <-- AÑADIR
+            path = re.sub(r'\s*\.\s*', '.', path)             # <-- AÑADIR
+
+            # Si todavia tiene espacios ("sandbox division.py"), asumir "sandbox/division.py"
+            if " " in path:
+                partes = path.split()
+                path = partes[0] + "/" + "".join(partes[1:])
+
+            # Corregir extensiones incompletas
             if path.endswith(".p"):
                 path = path[:-2] + ".py"
             elif path.endswith(".j"):
                 path = path[:-2] + ".js"
 
-            # Verificar extension conocida
             ext = ""
             if "." in path.split("/")[-1]:
                 ext = path.rsplit(".", 1)[-1].lower()
 
-            if ext not in ("py", "js", "java"):
-                # Extension no valida -> no capturar, dejar que el LLM lo procese
-                pass
-            else:
-                # Si no tiene separador, forzar sandbox/ por seguridad
+            if ext in ("py", "js", "java"):
                 if "/" not in path and "\\" not in path:
                     path = "sandbox/" + path
                 lang = {"py": "python", "js": "javascript", "java": "java"}[ext]
@@ -345,7 +355,7 @@ class Router:
 
     def route(self, text):
         browser = self.skills["browser"]
-        
+
         # Rechazar palabras sueltas que no son comandos validos
         t_stripped = text.lower().strip().strip(".,!?¡¿ ")
         if t_stripped in ("no", "si", "sí", "ok", "ya", "aha", "aja", "eh", "mmm"):
@@ -375,7 +385,7 @@ class Router:
         quick = self._quick_match(text)
         if quick:
             actions = quick
-        # 4. Si es complejo → AGENTE
+        # 4. Si es complejo -> AGENTE
         elif self._is_complex(text):
             agent_result = self.agent.run(text, self.skills)
             return agent_result, False
