@@ -79,6 +79,14 @@ SKILLS_VALIDAS = {
         "commit": {"message": {"type": "string"}},
         "push": {},
         "pull": {},
+    "spotify": {
+        "play": {"query": {"type": "string"}},
+        "pause": {},
+        "next": {},
+        "previous": {},
+        "current": {},
+        "volume": {"percent": {"type": "integer", "minimum": 0, "maximum": 100}},
+    },
     },
     "spotify": {
         "play": {"query": {"type": "string"}},

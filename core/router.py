@@ -20,6 +20,7 @@ from skills.terminal import TerminalSkill
 from skills.git import GitSkill
 from skills.spotify import SpotifySkill
 
+
 NUM_MAP = {
     "1": 1, "uno": 1, "primero": 1, "primer": 1, "la primera": 1, "el primero": 1,
     "2": 2, "dos": 2, "segundo": 2, "la segunda": 2, "el segundo": 2,
@@ -214,8 +215,8 @@ class Router:
         if m:
             return [{"skill": "spotify", "action": "play", "params": {"query": m.group(1).strip()}}]
 
-        # Controles rapidos de Spotify (frases inequivocas)
-        if "en spotify" in t or "de spotify" in t or "spotify" in t:
+        # Controles Spotify (frases explicitas)
+        if "spotify" in t:
             if any(p in t for p in ["pausa", "pausar"]):
                 return [{"skill": "spotify", "action": "pause", "params": {}}]
             if any(p in t for p in ["siguiente", "salta", "avanza"]):
@@ -225,7 +226,7 @@ class Router:
             if any(p in t for p in ["que esta sonando", "que suena", "que cancion"]):
                 return [{"skill": "spotify", "action": "current", "params": {}}]
 
-        # "pausa la musica" sin mencionar spotify (asumimos spotify)
+        # "pausa la musica" sin mencionar spotify
         if any(p in t for p in ["pausa la musica", "pausa la cancion", "para la musica"]):
             return [{"skill": "spotify", "action": "pause", "params": {}}]
 
