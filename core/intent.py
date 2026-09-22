@@ -87,7 +87,10 @@ REGLAS DOCS (importante, revisar antes de dev):
   - OFFICE POWERPOINT:
   - "hazme una presentacion/powerpoint sobre X" -> office.create_ppt (description = X, path = "")
   - "lee la presentacion X.pptx" -> office.read_ppt (path = X.pptx)
-
+- IMAGENES (generacion):
+  - "genera/crea/hazme/dibuja una imagen de X" -> image.generate (prompt = X, width = 1024, height = 1024)
+  - "que imagenes tengo", "lista mis imagenes" -> image.list
+  - NUNCA envies "genera una imagen" a dev.create_and_test
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google
 - "busca en youtube X", "pon X", "reproduce X" → browser.search_youtube

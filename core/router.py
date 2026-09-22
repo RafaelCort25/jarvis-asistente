@@ -20,6 +20,7 @@ from skills.terminal import TerminalSkill
 from skills.git import GitSkill
 from skills.spotify import SpotifySkill
 from skills.office import OfficeSkill
+from skills.image import ImageSkill
 
 
 NUM_MAP = {
@@ -56,6 +57,7 @@ class Router:
             "git": GitSkill(),
             "spotify": SpotifySkill(),
             "office": OfficeSkill(),
+            "image": ImageSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -294,6 +296,27 @@ class Router:
                     "action": "create_doc",
                     "params": {"description": desc, "path": "", "title": ""},
                 }]
+                    # Imagenes: generar
+        m = re.search(
+            r'\b(?:genera|crea|hazme|dibuja|imagina)\s+(?:una\s+|un\s+)?(?:imagen|foto|dibujo|ilustracion)\s+(?:de|sobre|con)\s+(.+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            prompt = m.group(1).strip(" .,!?¡¿")
+            if prompt:
+                return [{
+                    "skill": "image",
+                    "action": "generate",
+                    "params": {"prompt": prompt, "width": 1024, "height": 1024},
+                }]
+
+        # Imagenes: listar
+        if any(p in t for p in [
+            "que imagenes tengo", "lista mis imagenes", "muestra mis imagenes",
+            "imagenes generadas",
+        ]):
+            return [{"skill": "image", "action": "list", "params": {}}]
 
         # Office Word: leer documento
         m = re.search(

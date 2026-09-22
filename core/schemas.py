@@ -70,6 +70,15 @@ SKILLS_VALIDAS = {
             "path": {"type": "string"},
         },
         "read_ppt": {"path": {"type": "string"}},
+        
+    },
+    "image": {
+        "generate": {
+            "prompt": {"type": "string"},
+            "width": {"type": "integer", "minimum": 256, "maximum": 2048},
+            "height": {"type": "integer", "minimum": 256, "maximum": 2048},
+        },
+        "list": {},
     },
     "vision": {
         "describe_screen": {},

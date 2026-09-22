@@ -61,6 +61,9 @@ RISK_LEVELS = {
     ("office", "read_xlsx"): "low",
     ("office", "create_ppt"): "medium",
     ("office", "read_ppt"): "low",
+        # Imagenes
+    ("image", "generate"): "low",
+    ("image", "list"): "low",
 
     # Docs / RAG
     ("docs", "ask"): "low",
