@@ -3,13 +3,12 @@ import re
 import shutil
 import subprocess
 import ollama
-from datetime import datetime
 from pathlib import Path
 from skills.base import Skill
 from core.config_loader import CONFIG
 from core import confirmation
 
-# Extensiones de código soportadas
+# Extensiones de codigo soportadas
 CODE_EXTS = {
     ".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".c", ".cpp", ".h", ".hpp",
     ".cs", ".go", ".rs", ".rb", ".php", ".swift", ".kt", ".scala",
@@ -35,6 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 class DevSkill(Skill):
     name = "dev"
     description = "Revisa codigo, explica archivos, genera codigo, escribe y prueba"
+    MAX_FIX_ATTEMPTS = 3
 
     def __init__(self):
         self.model = CONFIG["models"].get("coding", "qwen2.5-coder:7b")
@@ -110,13 +110,19 @@ class DevSkill(Skill):
             return f"[ERROR LLM] {e}"
 
     def _clean_code_block(self, text):
-        """Quita ```language ... ``` que el LLM suele añadir."""
-        # Bloque con backticks
+        """Quita ```language ... ``` que el LLM suele anadir."""
         m = re.search(r"```[a-zA-Z0-9_+-]*\n?(.*?)```", text, re.DOTALL)
         if m:
             return m.group(1).strip()
-        # Si no hay bloque, devolver tal cual (limpiando backticks sueltos)
         return text.replace("```", "").strip()
+
+    def _es_dentro_del_proyecto(self, path):
+        """Devuelve True si el path esta dentro de C:\\JARVIS."""
+        try:
+            path.relative_to(ROOT)
+            return True
+        except ValueError:
+            return False
 
     # ─── REVIEW FILE ─────────────────────────────────────────────────────
 
@@ -155,7 +161,7 @@ Se conciso. Si no ves bugs, di "Sin bugs evidentes"."""
 
         return {
             "thought": f"Revisando {path.name} con {self.model}",
-            "display": f"📝 Revision de {path.name}:\n\n{result}{note}",
+            "display": f"Revision de {path.name}:\n\n{result}{note}",
             "voice": f"Revise {path.name}. {result[:200]}",
         }
 
@@ -214,7 +220,7 @@ Maximo 200 palabras."""
         result = self._ask_llm(prompt, system="Eres arquitecto de software. Hablas espanol, eres conciso.")
         return {
             "thought": f"Analizando proyecto {path.name} ({len(files)} archivos)",
-            "display": f"📁 Revision de proyecto: {path.name}\n\n{result}",
+            "display": f"Revision de proyecto: {path.name}\n\n{result}",
             "voice": f"Analice el proyecto {path.name}. Tiene {len(files)} archivos de codigo.",
         }
 
@@ -247,7 +253,7 @@ Se claro y didactico. Maximo 300 palabras."""
         result = self._ask_llm(prompt, system="Eres un profesor de programacion. Explicas simple y claro en espanol.")
         return {
             "thought": f"Explicando {path.name}",
-            "display": f"📖 Explicacion de {path.name}:\n\n{result}",
+            "display": f"Explicacion de {path.name}:\n\n{result}",
             "voice": f"Te explico {path.name}.",
         }
 
@@ -279,7 +285,7 @@ Busca especificamente:
 
 Formato:
 [SEVERIDAD] Linea XX: Descripcion del problema
-→ Sugerencia: como arreglarlo
+-> Sugerencia: como arreglarlo
 
 Si no hay problemas, di "Sin problemas evidentes".
 Se directo y conciso."""
@@ -287,7 +293,7 @@ Se directo y conciso."""
         result = self._ask_llm(prompt, system="Eres auditor de seguridad y code reviewer. Encuentras bugs que otros no ven. Hablas espanol.")
         return {
             "thought": f"Buscando bugs en {path.name}",
-            "display": f"🐛 Bugs encontrados en {path.name}:\n\n{result}",
+            "display": f"Bugs encontrados en {path.name}:\n\n{result}",
             "voice": f"Encontre algunos problemas en {path.name}.",
         }
 
@@ -316,9 +322,33 @@ Reglas:
         codigo = self._generate_code_raw(description, language)
         return {
             "thought": f"Generando {language}",
-            "display": f"💻 Codigo generado:\n\n```{language}\n{codigo}\n```",
+            "display": f"Codigo generado:\n\n```{language}\n{codigo}\n```",
             "voice": "Listo, aqui esta el codigo.",
         }
+
+    def _fix_code(self, codigo_actual, error_output, description, language):
+        """Pide al LLM que corrija el codigo basandose en el error."""
+        prompt = f"""El siguiente codigo {language} tiene un error al ejecutarse.
+
+DESCRIPCION ORIGINAL:
+{description}
+
+CODIGO ACTUAL:
+{codigo_actual}
+
+ERROR OBTENIDO AL EJECUTAR:
+{error_output}
+
+Corrige el codigo para que funcione. Reglas:
+- Devuelve UNICAMENTE el codigo corregido, sin explicaciones.
+- Manten la funcionalidad original descrita.
+- No uses input() ni lecturas interactivas.
+- Si el error fue de sintaxis, corrige la linea exacta.
+- Si el error fue logico (variables, tipos), ajusta la logica.
+- Si el error fue de importacion, quita o reemplaza el import problematico."""
+
+        raw = self._ask_llm(prompt, system="Eres un programador experto. Corriges bugs en codigo.")
+        return self._clean_code_block(raw)
 
     # ─── WRITE FILE (con confirmacion) ───────────────────────────────────
 
@@ -329,35 +359,15 @@ Reglas:
         if not content or not content.strip():
             return "No hay contenido para escribir."
 
-        # Detectar si sobrescribe
-        existe = path.exists()
-        accion = "sobrescribir" if existe else "crear"
-
-        # Si está fuera de ROOT, avisar
-        fuera_de_root = False
-        try:
-            path.relative_to(ROOT)
-        except ValueError:
-            fuera_de_root = True
-
-        aviso = ""
-        if existe:
-            aviso = f" (el archivo ya existe, se hara backup .bak)"
-        if fuera_de_root:
-            aviso += " [ATENCION: fuera del proyecto C:\\JARVIS]"
-                    # Validacion de seguridad: si el archivo esta fuera de C:\JARVIS
-        # y no esta en sandbox, pedir doble confirmacion
-        dentro_de_proyecto = False
-        try:
-            path.relative_to(ROOT)
-            dentro_de_proyecto = True
-        except ValueError:
-            pass
-        if not dentro_de_proyecto:
+        # Validacion de seguridad: bloquear escrituras fuera del proyecto
+        if not self._es_dentro_del_proyecto(path):
             return f"Ruta fuera del proyecto, bloqueado por seguridad: {path}"
 
-        summary = f"{accion} archivo: {path}{aviso}"
+        existe = path.exists()
+        accion = "sobrescribir" if existe else "crear"
+        aviso = " (el archivo ya existe, se hara backup .bak)" if existe else ""
 
+        summary = f"{accion} archivo: {path}{aviso}"
         if not confirmation.require("dev", "write_file", summary):
             return "Cancelado."
 
@@ -385,7 +395,6 @@ Reglas:
         elif ext == ".js":
             cmd = ["node", str(path)]
         elif ext == ".java":
-            # Compilar y ejecutar
             cmd = ["java", str(path)]
         elif ext in (".sh", ".bash"):
             cmd = ["bash", str(path)]
@@ -431,60 +440,10 @@ Reglas:
 
         return "\n".join(parts)
 
-    # ─── CREATE AND TEST (ciclo completo) ────────────────────────────────
-
-    def _create_and_test(self, description, language, path_str):
-        if not description:
-            return "No me dijiste que crear."
-        if not path_str:
-            return "Necesito un path donde guardar el archivo."
-
-        path = self._resolve_path(path_str, must_exist=False)
-        if not path:
-            return f"Ruta invalida: {path_str}"
-
-        # 1. Generar codigo
-        print(f"[DEV] Generando {language} con {self.model}...")
-        codigo = self._generate_code_raw(description, language)
-        if not codigo or codigo.startswith("[ERROR LLM]"):
-            return f"Error generando codigo: {codigo}"
-
-        # 2. Mostrar y confirmar escritura
-        preview = codigo if len(codigo) <= 1500 else codigo[:1500] + "\n... (recortado)"
-        print(f"\n[DEV] Codigo propuesto ({len(codigo)} chars):\n")
-        print(preview)
-        print()
-
-        summary = f"Escribir {language} en {path} ({len(codigo)} chars)"
-        if not confirmation.require("dev", "create_and_test", summary):
-            return "Cancelado por el usuario."
-
-        # 3. Escribir
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            if path.exists():
-                backup = path.with_suffix(path.suffix + ".bak")
-                shutil.copy2(path, backup)
-            path.write_text(codigo, encoding="utf-8")
-        except Exception as e:
-            return f"Error escribiendo: {e}"
-
-        print(f"[DEV] Archivo escrito: {path}")
-
-        # 4. Confirmar ejecucion (si es ejecutable)
-        ext = path.suffix.lower()
-        if ext not in (".py", ".js", ".java", ".sh", ".ps1"):
-            return f"Codigo guardado en {path}. (Formato no ejecutable, no se corre test.)"
-
-        if not confirmation.require("dev", "run_file", f"Ejecutar {path.name} como test"):
-            return f"Codigo guardado en {path}. Test omitido por el usuario."
-
-        # 5. Ejecutar
-        run_result = self._run_file_internal(path)
-        return f"Codigo guardado en {path}.\n\nResultado del test:\n{run_result}"
+    # ─── HELPERS INTERNOS DEL CICLO ──────────────────────────────────────
 
     def _run_file_internal(self, path):
-        """Ejecuta un archivo SIN pedir confirmacion (asumimos que ya se pidio)."""
+        """Ejecuta un archivo SIN pedir confirmacion (ya se pidio antes)."""
         ext = path.suffix.lower()
         if ext == ".py":
             cmd = ["python", str(path)]
@@ -524,3 +483,111 @@ Reglas:
             parts.append(f"[stderr]\n{stderr[:800]}")
         parts.append(f"[exit code: {result.returncode}]")
         return "\n".join(parts)
+
+    def _preview_code(self, codigo, iteracion=1):
+        """Muestra el codigo propuesto por consola."""
+        preview = codigo if len(codigo) <= 1500 else codigo[:1500] + "\n... (recortado)"
+        print(f"\n[DEV] Codigo propuesto (intento {iteracion}, {len(codigo)} chars):\n")
+        print(preview)
+        print()
+
+    def _write_code_to_disk(self, path, codigo):
+        """Escribe el codigo en disco, con backup .bak si existe."""
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if path.exists():
+                backup = path.with_suffix(path.suffix + ".bak")
+                shutil.copy2(path, backup)
+            path.write_text(codigo, encoding="utf-8")
+            return True
+        except Exception as e:
+            print(f"[DEV] Error escribiendo: {e}")
+            return False
+
+    # ─── CREATE AND TEST (ciclo completo con correccion) ─────────────────
+
+    def _create_and_test(self, description, language, path_str):
+        if not description:
+            return "No me dijiste que crear."
+        if not path_str:
+            return "Necesito un path donde guardar el archivo."
+
+        path = self._resolve_path(path_str, must_exist=False)
+        if not path:
+            return f"Ruta invalida: {path_str}"
+
+        # Validacion de seguridad
+        if not self._es_dentro_del_proyecto(path):
+            return f"Ruta fuera del proyecto, bloqueado por seguridad: {path}"
+
+        ext = path.suffix.lower()
+        ejecutable = ext in (".py", ".js", ".java", ".sh", ".ps1")
+
+        # 1. Generar codigo inicial
+        print(f"[DEV] Generando {language} con {self.model}...")
+        codigo = self._generate_code_raw(description, language)
+        if not codigo or codigo.startswith("[ERROR LLM]"):
+            return f"Error generando codigo: {codigo}"
+
+        self._preview_code(codigo, iteracion=1)
+        summary = f"Escribir {language} en {path} ({len(codigo)} chars)"
+        if not confirmation.require("dev", "create_and_test", summary):
+            return "Cancelado por el usuario."
+
+        if not self._write_code_to_disk(path, codigo):
+            return f"Error escribiendo {path}"
+
+        print(f"[DEV] Archivo escrito: {path}")
+
+        if not ejecutable:
+            return f"Codigo guardado en {path}. (Formato no ejecutable, no se corre test.)"
+
+        # 2. Ciclo: test + correccion
+        for intento in range(1, self.MAX_FIX_ATTEMPTS + 1):
+            if not confirmation.require(
+                "dev", "run_file", f"Ejecutar {path.name} (intento {intento})"
+            ):
+                return f"Codigo guardado en {path}. Test cancelado en intento {intento}."
+
+            resultado = self._run_file_internal(path)
+            print(f"[DEV] Intento {intento} resultado:\n{resultado}\n")
+
+            # Exito
+            if "[exit code: 0]" in resultado:
+                if intento == 1:
+                    return f"Codigo guardado en {path}.\n\nTest exitoso:\n{resultado}"
+                return (
+                    f"Codigo guardado en {path}.\n\n"
+                    f"Test exitoso tras {intento} intentos:\n{resultado}"
+                )
+
+            # Ultimo intento agotado
+            if intento == self.MAX_FIX_ATTEMPTS:
+                return (
+                    f"Codigo guardado en {path}, pero sigue fallando tras "
+                    f"{self.MAX_FIX_ATTEMPTS} intentos.\n\nUltimo resultado:\n{resultado}"
+                )
+
+            # 3. Pedir correccion al LLM
+            print("[DEV] Error detectado. Pidiendo correccion al modelo...")
+            codigo_corregido = self._fix_code(codigo, resultado, description, language)
+            if not codigo_corregido or codigo_corregido.startswith("[ERROR LLM]"):
+                return f"Error pidiendo correccion: {codigo_corregido}"
+
+            if codigo_corregido.strip() == codigo.strip():
+                return (
+                    f"El modelo no encontro cambios que hacer. "
+                    f"El test sigue fallando:\n{resultado}"
+                )
+
+            self._preview_code(codigo_corregido, iteracion=intento + 1)
+            summary = f"Reescribir {path} con correccion {intento + 1}/{self.MAX_FIX_ATTEMPTS}"
+            if not confirmation.require("dev", "write_file", summary):
+                return f"Correccion rechazada. Se queda el codigo del intento {intento}."
+
+            if not self._write_code_to_disk(path, codigo_corregido):
+                return f"Error reescribiendo {path}"
+
+            codigo = codigo_corregido
+
+        return "Ciclo terminado sin exito."
