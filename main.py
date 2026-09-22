@@ -15,6 +15,8 @@ def init_voice():
     stt = STT()
     ww = WakeWord(threshold=0.25, device=1)
     return tts, stt, ww
+
+
 def _make_voice_confirmation(tts, stt):
     """Devuelve un handler que pregunta por voz y espera si/no."""
     import time as _time
@@ -67,11 +69,9 @@ def _speak_with_barge_in(tts, stt, text, brain, router):
     if not wav_path:
         return True
     try:
-        # Escuchar mientras habla con duracion maxima y filtro de longitud de texto
         interrupt_text = stt.listen_with_interrupt(tts, max_duration=8)
         if interrupt_text and interrupt_text.strip() and len(interrupt_text.strip()) > 2:
             console.print(f"[green]Interrumpiste:[/] {interrupt_text}")
-            # Procesar la interrupcion
             return process(interrupt_text, brain, router, tts, stt)
     finally:
         tts.cleanup(wav_path)
@@ -92,15 +92,12 @@ def process(user, brain, router, tts=None, stt=None):
     result, is_chat = router.route(user)
 
     if result:
-        # Mostrar pensamiento (si hay)
         if result.get("thought") and CONFIG["jarvis"].get("debug"):
             console.print(f"[dim]🤔 {result['thought']}[/]")
 
-        # Mostrar en consola el display completo
         if result.get("display"):
             console.print(f"[bold magenta]{CONFIG['jarvis']['name']}:[/] {result['display']}\n")
 
-        # Voz: solo el voice
         if tts and result.get("voice"):
             if stt:
                 return _speak_with_barge_in(tts, stt, result["voice"], brain, router)
@@ -111,7 +108,6 @@ def process(user, brain, router, tts=None, stt=None):
     if not is_chat:
         return True
 
-    # Conversacion normal
     console.print("[dim]Pensando...[/]")
     reply = brain.chat(user)
     console.print(f"[bold magenta]{CONFIG['jarvis']['name']}:[/] {reply}\n")
@@ -134,27 +130,12 @@ def main():
     console.print(f"[bold cyan]{CONFIG['jarvis']['name']}[/] iniciando modo [yellow]{mode}[/].\n")
     console.print("[dim]Memoria activa. Di 'recuerda que...' para guardar algo.[/]\n")
 
-    brain = Brain()
-    router = Router()
-    tts = stt = ww = None
+    # 1. Nucleo
     brain = Brain()
     router = Router()
 
-    # Iniciar scheduler
-    from scheduler.scheduler import get_scheduler
-    scheduler = get_scheduler()
-    scheduler.set_router(router)
-    scheduler.start()
-        # Iniciar vigilante proactivo
-    from core.watcher import get_watcher
-    watcher = get_watcher()
-    watcher.start()
-        # Configurar capa de confirmacion
-    from core import confirmation
-    if tts and stt:
-        confirmation.set_handler(_make_voice_confirmation(tts, stt))
-    else:
-        confirmation.set_handler(_make_text_confirmation())
+    # 2. Voz (tts, stt, ww)
+    tts = stt = ww = None
     if mode in ("voice", "handsfree"):
         try:
             tts, stt, ww = init_voice()
@@ -163,28 +144,43 @@ def main():
             console.print("[yellow]Cambiando a modo texto.[/]")
             mode = "text"
 
+    # 3. Capa de confirmacion (ya con tts/stt listos)
+    from core import confirmation
+    if tts and stt:
+        confirmation.set_handler(_make_voice_confirmation(tts, stt))
+    else:
+        confirmation.set_handler(_make_text_confirmation())
+
+    # 4. Scheduler
+    from scheduler.scheduler import get_scheduler
+    scheduler = get_scheduler()
+    scheduler.set_router(router)
+    scheduler.start()
+
+    # 5. Vigilante proactivo
+    from core.watcher import get_watcher
+    watcher = get_watcher()
+    watcher.start()
+
+    # 6. Loop principal
     if mode == "handsfree":
         console.print("[green]Modo manos libres. Di 'Hey Yarvis' para activarme.[/]\n")
         tts.speak(f"{CONFIG['jarvis']['name']} listo. Di hey yarvis para activarme.")
-        
-        # Cuantas rondas seguidas escucha antes de volver a pedir wake word
+
         MAX_CONSECUTIVE = 3
         while True:
             try:
-                # 1. Esperar wake word
                 ww.wait_for_wake()
                 console.print("[cyan]>> Wake word detectada[/]")
                 tts.speak("Te escucho.")
-                
-                # 2. Escuchar hasta N comandos seguidos
+
                 for turno in range(MAX_CONSECUTIVE):
                     text = stt.listen()
                     if not text or len(text.strip()) < 3:
                         console.print("[dim]No detecte nada.[/]")
                         break
                     console.print(f"[green]Dijiste:[/] {text}")
-                    
-                    # Palabras para salir del modo conversacion
+
                     t = text.lower().strip()
                     if any(w in t for w in ["basta", "callate", "silencio", "gracias"]):
                         tts.speak("Ok.")

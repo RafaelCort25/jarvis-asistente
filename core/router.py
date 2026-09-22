@@ -16,6 +16,7 @@ from skills.vision import VisionSkill
 from skills.docs import DocsSkill
 from skills.clipboard import ClipboardSkill
 from skills.scheduler import SchedulerSkill
+from skills.terminal import TerminalSkill
 
 NUM_MAP = {
     "1": 1, "uno": 1, "primero": 1, "primer": 1, "la primera": 1, "el primero": 1,
@@ -47,6 +48,8 @@ class Router:
             "docs": DocsSkill(),
             "clipboard": ClipboardSkill(),
             "scheduler": SchedulerSkill(),
+            "terminal": TerminalSkill(),
+            
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -138,6 +141,17 @@ class Router:
             if text:
                 return [{"skill": "clipboard", "action": "write", "params": {"text": text}}]
 
+        # Terminal: comando explicito con "ejecuta" + prefijos conocidos
+        m = re.search(r'\b(?:ejecuta|corre|lanza|haz)\s+(?:el\s+comando\s+|en\s+terminal\s+)?(.+)$', t)
+        if m:
+            cmd = m.group(1).strip(" .,!?¡¿")
+            # Solo si empieza con algo que parece comando real
+            if cmd and any(cmd.startswith(p) for p in [
+                "git ", "pip ", "python ", "npm ", "node ", "dir", "ls",
+                "where ", "echo ", "ping ", "curl ",
+            ]):
+                return [{"skill": "terminal", "action": "run", "params": {"command": cmd}}]
+
         # Documentos indexados (RAG)
         # Listar documentos indexados
         if any(p in t for p in [
@@ -215,7 +229,6 @@ class Router:
             return [{"skill": "files", "action": "list_folder", "params": {"folder": m.group(1)}}]
 
         return None
-
     def _normalize(self, result):
         """Convierte string o dict en dict {voice, display, thought}."""
         if isinstance(result, dict):

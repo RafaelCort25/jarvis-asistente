@@ -10,3 +10,4 @@ models/voices/
 *.wav
 test.wav
 .DS_Store
+probar_confirmacion.py

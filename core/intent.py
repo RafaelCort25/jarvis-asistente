@@ -43,6 +43,9 @@ REGLAS DOCS (importante, revisar antes de dev):
 - "cada N minutos haz/recuérdame X" → scheduler.add_interval (every_minutes = N, message = X)
 - "qué tareas tengo", "lista mis recordatorios", "mis alarmas" → scheduler.list
 - "cancela el recordatorio N", "elimina la tarea N" → scheduler.cancel (identifier = N)
+- "ejecuta X", "corre X", "lanza X" (comando de shell) → terminal.run (command = X)
+- "haz git status", "muestrame git status", "corre git status" → terminal.run (command = "git status")
+- "instala las dependencias", "corre los tests", "haz un commit" → terminal.suggest (goal = frase completa)  ← el usuario tendra que confirmar despues
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google
 - "busca en youtube X", "pon X", "reproduce X" → browser.search_youtube

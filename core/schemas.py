@@ -67,6 +67,10 @@ SKILLS_VALIDAS = {
         "list": {},
         "cancel": {"identifier": {"type": "string"}},
     },
+    "terminal": {
+        "run": {"command": {"type": "string"}},
+        "suggest": {"goal": {"type": "string"}},
+    },
     "docs": {
         "index_file": {"path": {"type": "string"}},
         "index_folder": {"path": {"type": "string"}},
