@@ -101,6 +101,10 @@ def main():
     scheduler = get_scheduler()
     scheduler.set_router(router)
     scheduler.start()
+        # Iniciar vigilante proactivo
+    from core.watcher import get_watcher
+    watcher = get_watcher()
+    watcher.start()
     if mode in ("voice", "handsfree"):
         try:
             tts, stt, ww = init_voice()
