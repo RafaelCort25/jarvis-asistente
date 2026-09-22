@@ -12,6 +12,7 @@ from skills.weather import WeatherSkill
 from skills.translate import TranslateSkill
 from skills.alarm import AlarmSkill
 from skills.dev import DevSkill
+from skills.vision import VisionSkill
 
 
 NUM_MAP = {
@@ -40,6 +41,7 @@ class Router:
             "translate": TranslateSkill(),
             "alarm": AlarmSkill(),
             "dev": DevSkill(),
+            "vision": VisionSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────

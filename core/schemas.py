@@ -43,6 +43,10 @@ SKILLS_VALIDAS = {
             "language": {"type": "string", "enum": ["python", "javascript", "java", "c", "cpp", "csharp", "go", "rust", "ruby", "php"]},
         },
     },
+    "vision": {
+        "describe_screen": {},
+        "explain_screen_code": {},
+    },
     "files": {
         "find_file": {"name": {"type": "string"}},
     },

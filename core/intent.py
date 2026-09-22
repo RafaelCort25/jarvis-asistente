@@ -22,6 +22,9 @@ REGLAS DE DESAMBIGUACIÓN:
 - "busca errores en X", "hay bugs en X" → dev.find_issues
 - "revisa el proyecto X", "analiza la carpeta X" → dev.review_project
 - "genera/escribe/crea una función X" → dev.generate_code
+- "qué ves en mi pantalla", "describe mi pantalla", "mira mi pantalla", "qué hay en mi pantalla" → vision.describe_screen
+- "qué ves en mi pantalla y explica el código", "mira el código en pantalla", "analiza el código que se ve", "revisa el código de la pantalla" → vision.explain_screen_code
+- IMPORTANTE: si la frase menciona "pantalla" + "código", SIEMPRE es vision.explain_screen_code, NUNCA dev.*
 
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google
