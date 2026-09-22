@@ -17,6 +17,7 @@ from skills.docs import DocsSkill
 from skills.clipboard import ClipboardSkill
 from skills.scheduler import SchedulerSkill
 from skills.terminal import TerminalSkill
+from skills.git import GitSkill
 
 NUM_MAP = {
     "1": 1, "uno": 1, "primero": 1, "primer": 1, "la primera": 1, "el primero": 1,
@@ -49,7 +50,7 @@ class Router:
             "clipboard": ClipboardSkill(),
             "scheduler": SchedulerSkill(),
             "terminal": TerminalSkill(),
-            
+            "git": GitSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -137,9 +138,9 @@ class Router:
         # Portapapeles: escribir
         m = re.search(r'\b(?:copia|copiar|guarda en el portapapeles)\s+(?:esto:?\s*)?(.+)$', t)
         if m and "portapapeles" not in m.group(1).lower()[:20]:
-            text = m.group(1).strip(" .,!?¡¿")
-            if text:
-                return [{"skill": "clipboard", "action": "write", "params": {"text": text}}]
+            text_to_copy = m.group(1).strip(" .,!?¡¿")
+            if text_to_copy:
+                return [{"skill": "clipboard", "action": "write", "params": {"text": text_to_copy}}]
 
         # Terminal: comando explicito con "ejecuta" + prefijos conocidos
         m = re.search(r'\b(?:ejecuta|corre|lanza|haz)\s+(?:el\s+comando\s+|en\s+terminal\s+)?(.+)$', t)
@@ -151,6 +152,29 @@ class Router:
                 "where ", "echo ", "ping ", "curl ",
             ]):
                 return [{"skill": "terminal", "action": "run", "params": {"command": cmd}}]
+
+        # Git rapido (frases muy comunes, tolerante a variaciones)
+        git_quick = [
+            (["git status", "estado del repo", "que cambios tengo", "que hay sin commitear", "estado de git"], "status", {}),
+            (["git diff", "muestrame los cambios", "que modifique", "que cambie"], "diff", {}),
+            (["git log", "ultimos commits", "historial de commits", "ultimos comits"], "log", {"n": 5}),
+            (["añade todo al staging", "anade todo al staging", "agrega todo al staging", "git add"], "add", {"paths": "."}),
+            (["sube los cambios", "sube al remoto", "git push"], "push", {}),
+            (["baja los cambios", "actualiza del remoto", "git pull"], "pull", {}),
+        ]
+        for frases, action, params in git_quick:
+            if any(f in t for f in frases):
+                return [{"skill": "git", "action": action, "params": params}]
+
+        # Commit con mensaje dictado: variantes
+        m = re.search(
+            r'\b(?:haz\s+un\s+)?commit\s+(?:con\s+mensaje|diciendo|que\s+diga|dice)\s*:?\s*(.+)$',
+            t,
+        )
+        if m:
+            msg = m.group(1).strip(" .,!?¡¿")
+            if msg:
+                return [{"skill": "git", "action": "commit", "params": {"message": msg}}]
 
         # Documentos indexados (RAG)
         # Listar documentos indexados
@@ -229,6 +253,7 @@ class Router:
             return [{"skill": "files", "action": "list_folder", "params": {"folder": m.group(1)}}]
 
         return None
+
     def _normalize(self, result):
         """Convierte string o dict en dict {voice, display, thought}."""
         if isinstance(result, dict):

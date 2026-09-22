@@ -23,7 +23,11 @@ class STT:
             "abre youtube, pon musica, sube el volumen, el primero, "
             "el segundo, busca en google, abre la carpeta de descargas, "
             "busca el archivo, encuentra el archivo, guarda nota, "
-            "toma una captura, bloquea la pantalla, siguiente cancion."
+            "toma una captura, bloquea la pantalla, siguiente cancion. "
+            "Comandos de desarrollo: git status, git diff, git log, "
+            "git add, git commit, git push, git pull, staging, "
+            "haz un commit, añade todo al staging, sube los cambios, "
+            "baja los cambios, que cambios tengo, ultimos commits."
         )
         print(f"[STT] Modelo listo.")
 
@@ -226,6 +230,25 @@ class STT:
             r'\b(michael ?jackson|maicol ?yacson)\b': 'michael jackson',
             r'\b(luis ?miguel|luis ?migel)\b': 'luis miguel',
             r'\b(juan ?gabriel|guan ?gabriel)\b': 'juan gabriel',
+                        # Dev / git
+            r'\bcomits?\b': 'commits',
+            r'\bcomit\b': 'commit',
+            r'\best[aá]jien\b': 'staging',
+            r'\bestaging\b': 'staging',
+            r'\binstagram\b': 'staging',
+            r'\binsta\b': 'staging',
+            r'\besta?yin\b': 'staging',
+            r'\bgit\s+estatus\b': 'git status',
+            r'\bgrid\s+status\b': 'git status',
+            r'\bgit\s+estado\b': 'git status',
+            r'\bgit\s+adb\b': 'git add',
+            r'\bgit\s+comi\b': 'git commit',
+            r'\bgit\s+comit\b': 'git commit',
+            r'\bgit\s+pus\b': 'git push',
+            r'\bgit\s+pul\b': 'git pull',
+            r'\bpañade\b': 'añade',
+            r'\bpanade\b': 'añade',
+            r'\bagnade\b': 'añade',
         }
 
         for pattern, replacement in corrections.items():

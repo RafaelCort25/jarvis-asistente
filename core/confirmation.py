@@ -77,6 +77,15 @@ RISK_LEVELS = {
     # Terminal (futuro)
     ("terminal", "run"): "high",
 
+    # Git
+    ("git", "status"): "low",
+    ("git", "diff"): "low",
+    ("git", "log"): "low",
+    ("git", "add"): "medium",
+    ("git", "commit"): "medium",
+    ("git", "push"): "high",
+    ("git", "pull"): "medium",
+
     # Correo (futuro)
     ("email", "send"): "high",
     ("email", "read"): "low",
@@ -86,7 +95,6 @@ RISK_LEVELS = {
     ("github", "push"): "high",
     ("github", "list_issues"): "low",
 }
-
 
 def set_handler(fn):
     """

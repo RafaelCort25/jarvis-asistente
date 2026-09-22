@@ -46,6 +46,17 @@ REGLAS DOCS (importante, revisar antes de dev):
 - "ejecuta X", "corre X", "lanza X" (comando de shell) → terminal.run (command = X)
 - "haz git status", "muestrame git status", "corre git status" → terminal.run (command = "git status")
 - "instala las dependencias", "corre los tests", "haz un commit" → terminal.suggest (goal = frase completa)  ← el usuario tendra que confirmar despues
+
+- GIT (importante):
+  - "que cambios tengo", "git status", "estado del repo" → git.status
+  - "muestrame los cambios", "git diff" → git.diff
+  - "ultimos commits", "git log", "historial" → git.log
+  - "añade todo al staging", "git add", "prepara los cambios" → git.add (paths = ".")
+  - "haz un commit con mensaje: X" → git.commit (message = X literal)
+  - "sube los cambios", "git push" → git.push
+  - "baja los cambios", "git pull" → git.pull
+  - NUNCA envies "añade todo al staging", "commit", "git add" a docs.* ni a files.*
+
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google
 - "busca en youtube X", "pon X", "reproduce X" → browser.search_youtube
@@ -56,7 +67,6 @@ REGLAS DOCS (importante, revisar antes de dev):
 No inventes parámetros que no estén en el schema.
 No devuelvas texto fuera del JSON.
 """
-
 class IntentClassifier:
     def __init__(self):
         self.model = CONFIG["models"].get("intent", CONFIG["models"]["default"])
