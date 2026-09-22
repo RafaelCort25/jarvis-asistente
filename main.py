@@ -93,7 +93,14 @@ def main():
     brain = Brain()
     router = Router()
     tts = stt = ww = None
+    brain = Brain()
+    router = Router()
 
+    # Iniciar scheduler
+    from scheduler.scheduler import get_scheduler
+    scheduler = get_scheduler()
+    scheduler.set_router(router)
+    scheduler.start()
     if mode in ("voice", "handsfree"):
         try:
             tts, stt, ww = init_voice()

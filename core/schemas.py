@@ -47,11 +47,27 @@ SKILLS_VALIDAS = {
         "describe_screen": {},
         "explain_screen_code": {},
     },
-    "docs": {
-        "clipboard": {
+    "clipboard": {
         "read": {},
         "write": {"text": {"type": "string"}},
     },
+    "scheduler": {
+        "add_once": {
+            "seconds": {"type": "integer", "minimum": 10},
+            "message": {"type": "string"},
+        },
+        "add_daily": {
+            "time": {"type": "string"},
+            "message": {"type": "string"},
+        },
+        "add_interval": {
+            "every_minutes": {"type": "integer", "minimum": 1},
+            "message": {"type": "string"},
+        },
+        "list": {},
+        "cancel": {"identifier": {"type": "string"}},
+    },
+    "docs": {
         "index_file": {"path": {"type": "string"}},
         "index_folder": {"path": {"type": "string"}},
         "ask": {"query": {"type": "string"}},

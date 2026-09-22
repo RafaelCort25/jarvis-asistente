@@ -15,6 +15,7 @@ from skills.dev import DevSkill
 from skills.vision import VisionSkill
 from skills.docs import DocsSkill
 from skills.clipboard import ClipboardSkill
+from skills.scheduler import SchedulerSkill
 
 NUM_MAP = {
     "1": 1, "uno": 1, "primero": 1, "primer": 1, "la primera": 1, "el primero": 1,
@@ -45,6 +46,7 @@ class Router:
             "vision": VisionSkill(),
             "docs": DocsSkill(),
             "clipboard": ClipboardSkill(),
+            "scheduler": SchedulerSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────

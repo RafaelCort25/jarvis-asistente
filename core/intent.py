@@ -37,7 +37,12 @@ REGLAS DOCS (importante, revisar antes de dev):
 - "olvida el documento X", "borra X de documentos" → docs.delete
 - "que tengo copiado", "lee el portapapeles", "que hay en el portapapeles" → clipboard.read
 - "copia esto", "copia al portapapeles", "guarda en el portapapeles" → clipboard.write (usa el texto completo como text)
-
+- "recuérdame X en N minutos/horas" → scheduler.add_once (seconds = N*60 o N*3600, message = X)
+- "recuérdame X en N segundos" → scheduler.add_once (seconds = N, message = X)
+- "todos los días a las HHHH envíame/recuérdame X" → scheduler.add_daily (time = "HH:MM", message = X)
+- "cada N minutos haz/recuérdame X" → scheduler.add_interval (every_minutes = N, message = X)
+- "qué tareas tengo", "lista mis recordatorios", "mis alarmas" → scheduler.list
+- "cancela el recordatorio N", "elimina la tarea N" → scheduler.cancel (identifier = N)
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google
 - "busca en youtube X", "pon X", "reproduce X" → browser.search_youtube
