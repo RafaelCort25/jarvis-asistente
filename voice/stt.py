@@ -19,17 +19,11 @@ class STT:
         self.frame_ms = 30
         self.frame_size = int(self.samplerate * self.frame_ms / 1000)
         self.initial_prompt = (
-            "Comandos para un asistente de PC: abre notepad, abre brave, "
-            "abre youtube, pon musica, sube el volumen, el primero, "
-            "el segundo, busca en google, abre la carpeta de descargas, "
-            "busca el archivo, encuentra el archivo, guarda nota, "
-            "toma una captura, bloquea la pantalla, siguiente cancion. "
-            "Comandos de desarrollo: git status, git diff, git log, "
-            "git add, git commit, git push, git pull, staging, "
-            "haz un commit, añade todo al staging, sube los cambios, "
-            "baja los cambios, que cambios tengo, ultimos commits."
-            " pon X en spotify, pausa la musica, siguiente cancion, "
-            "cancion anterior, que esta sonando, volumen de spotify."
+            "Comandos: abre notepad, abre brave, abre youtube, "
+            "sube el volumen, busca en google, "
+            "guarda nota, toma una captura, bloquea la pantalla, "
+            "git status, git log, pausa la musica, siguiente cancion, "
+            "que esta sonando, pon bad bunny en spotify."
         )
         print(f"[STT] Modelo listo.")
 
@@ -185,6 +179,31 @@ class STT:
 
     def clean(self, text):
         t = text.lower().strip()
+
+        # FILTRO 0: Whisper a veces alucina el initial_prompt
+        prompt_phrases = [
+            "pon x en spotify",
+            "pausa la musica",
+            "siguiente cancion",
+            "cancion anterior",
+            "que esta sonando",
+            "volumen de spotify",
+            "abre notepad",
+            "abre brave",
+            "abre youtube",
+            "sube el volumen",
+            "busca en google",
+            "guarda nota",
+            "toma una captura",
+            "bloquea la pantalla",
+        ]
+        matches = sum(1 for p in prompt_phrases if p in t)
+        if matches >= 3:
+            print(f"[STT] filtrado eco del prompt ({matches} coincidencias)")
+            return ""
+        if "pon x en spotify" in t:
+            print("[STT] filtrado alucinacion literal 'pon x en spotify'")
+            return ""
 
         # FILTRO 1: alucinaciones exactas
         exact_hallucinations = {

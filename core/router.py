@@ -77,7 +77,16 @@ class Router:
     def _is_complex(self, text):
         """Detecta si el comando necesita razonamiento del agente."""
         t = text.lower().strip()
+        
+        # Filtro de seguridad: textos muy cortos nunca son complejos
+        palabras = t.split()
+        if len(palabras) < 3:
+            return False
+        if len(t) < 10:
+            return False
+        
         t = unicodedata.normalize("NFD", t)
+        ...
         t = "".join(c for c in t if unicodedata.category(c) != "Mn")
 
         # Si es un comando simple conocido, NO es complejo
@@ -297,6 +306,11 @@ class Router:
 
     def route(self, text):
         browser = self.skills["browser"]
+        
+                # Rechazar palabras sueltas que no son comandos validos
+        t_stripped = text.lower().strip().strip(".,!?¡¿ ")
+        if t_stripped in ("no", "si", "sí", "ok", "ya", "aha", "aja", "eh", "mmm"):
+            return {"voice": "", "display": "", "thought": ""}, False
 
         # 1. Videos pendientes
         if browser.has_pending():
