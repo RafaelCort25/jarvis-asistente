@@ -119,6 +119,20 @@ class Router:
     def _quick_match(self, text):
         """Detecta comandos obvios sin llamar al LLM."""
         t = text.lower().strip()
+                # Documentos indexados (RAG)
+        if any(p in t for p in [
+            "que documentos tienes", "que documentos hay", "lista mis documentos",
+            "que has indexado", "documentos indexados", "mis documentos",
+        ]):
+            return [{"skill": "docs", "action": "list", "params": {}}]
+
+        # Indexar archivo/carpeta (con ruta explicita)
+        m = re.search(r'\b(?:indexa|aprende|procesa|lee|guarda)\s+(?:el\s+)?(?:archivo|pdf|documento|carpeta)\s+(.+)$', t)
+        if m:
+            path = m.group(1).strip(" .,!?¡¿")
+            if path:
+                action = "index_folder" if "carpeta" in t else "index_file"
+                return [{"skill": "docs", "action": action, "params": {"path": path}}]
 
         # "pon X" → YouTube (excluye alarmas, volumen, etc.)
         m = re.search(r'\b(?:pon|pong|ponme|pongme|reproduce|reprodus|ponle|quiero escuchar|quiero oir|escuchar)\s+(.+)$', t)
@@ -237,6 +251,11 @@ class Router:
                 continue
             action = act.get("action", "")
             params = act.get("params", {})
+
+            # Fix: docs.ask siempre usa el texto original del usuario como query.
+            if skill_name == "docs" and action == "ask":
+                params = {"query": text}
+
             try:
                 result = skill.run(action, params)
                 if result:
