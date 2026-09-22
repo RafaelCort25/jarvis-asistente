@@ -86,7 +86,6 @@ class Router:
             return False
         
         t = unicodedata.normalize("NFD", t)
-        ...
         t = "".join(c for c in t if unicodedata.category(c) != "Mn")
 
         # Si es un comando simple conocido, NO es complejo
@@ -284,6 +283,29 @@ class Router:
         if m:
             return [{"skill": "files", "action": "list_folder", "params": {"folder": m.group(1)}}]
 
+        # Dev: crear y probar (ciclo completo)
+        m = re.search(
+            r'\b(?:crea|genera|escribe)\s+(?:un\s+|una\s+)?(?:archivo|script|programa|funcion)?\s*(.+?)\s+(?:en|como)\s+(\S+\.(?:py|js|java))\b',
+            t,
+        )
+        if m:
+            desc = m.group(1).strip()
+            path = m.group(2).strip()
+            # Detectar lenguaje por extension
+            if path.endswith(".py"):
+                lang = "python"
+            elif path.endswith(".js"):
+                lang = "javascript"
+            elif path.endswith(".java"):
+                lang = "java"
+            else:
+                lang = "python"
+            return [{
+                "skill": "dev",
+                "action": "create_and_test",
+                "params": {"description": desc, "language": lang, "path": path},
+            }]
+
         return None
 
     def _normalize(self, result):
@@ -307,7 +329,7 @@ class Router:
     def route(self, text):
         browser = self.skills["browser"]
         
-                # Rechazar palabras sueltas que no son comandos validos
+        # Rechazar palabras sueltas que no son comandos validos
         t_stripped = text.lower().strip().strip(".,!?¡¿ ")
         if t_stripped in ("no", "si", "sí", "ok", "ya", "aha", "aja", "eh", "mmm"):
             return {"voice": "", "display": "", "thought": ""}, False

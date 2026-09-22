@@ -11,3 +11,4 @@ models/voices/
 test.wav
 .DS_Store
 probar_confirmacion.py
+sandbox/

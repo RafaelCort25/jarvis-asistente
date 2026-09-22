@@ -50,7 +50,10 @@ RISK_LEVELS = {
     ("dev", "explain"): "low",
     ("dev", "find_issues"): "low",
     ("dev", "generate_code"): "low",
-    ("dev", "write_file"): "medium",
+        # Dev write/run
+    ("dev", "write_file"): "high",
+    ("dev", "run_file"): "high",
+    ("dev", "create_and_test"): "high",
 
     # Docs / RAG
     ("docs", "ask"): "low",

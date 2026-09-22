@@ -1,9 +1,13 @@
 import os
 import re
+import shutil
+import subprocess
 import ollama
+from datetime import datetime
 from pathlib import Path
 from skills.base import Skill
 from core.config_loader import CONFIG
+from core import confirmation
 
 # Extensiones de código soportadas
 CODE_EXTS = {
@@ -15,21 +19,22 @@ CODE_EXTS = {
     ".md", ".txt",
 }
 
-# Carpetas a ignorar
 IGNORE_DIRS = {
     "venv", "node_modules", "__pycache__", ".git", "dist", "build",
     ".venv", "env", ".idea", ".vscode", "target", "Library",
     ".next", ".nuxt", "coverage",
 }
 
-# Tamaño máximo del archivo a analizar (para no saturar al LLM)
 MAX_FILE_CHARS = 8000
 MAX_PROJECT_FILES = 15
+RUN_TIMEOUT = 30
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 class DevSkill(Skill):
     name = "dev"
-    description = "Revisa codigo, encuentra bugs, explica archivos, genera codigo"
+    description = "Revisa codigo, explica archivos, genera codigo, escribe y prueba"
 
     def __init__(self):
         self.model = CONFIG["models"].get("coding", "qwen2.5-coder:7b")
@@ -48,25 +53,36 @@ class DevSkill(Skill):
                 params.get("description", ""),
                 params.get("language", "python"),
             )
+        if action == "write_file":
+            return self._write_file(
+                params.get("path", ""),
+                params.get("content", ""),
+            )
+        if action == "run_file":
+            return self._run_file(params.get("path", ""))
+        if action == "create_and_test":
+            return self._create_and_test(
+                params.get("description", ""),
+                params.get("language", "python"),
+                params.get("path", ""),
+            )
         return f"Accion desconocida: {action}"
 
     # ─── HELPERS ─────────────────────────────────────────────────────────
 
-    def _resolve_path(self, path_str):
-        """Convierte string a Path, resolviendo alias comunes."""
+    def _resolve_path(self, path_str, must_exist=True):
+        """Convierte string a Path. Si must_exist=False, permite rutas nuevas."""
         if not path_str:
             return None
-        p = Path(path_str.strip().strip('"').strip("'"))
-        if p.exists():
-            return p
-        # Probar con HOME
-        home_path = Path.home() / path_str
-        if home_path.exists():
-            return home_path
-        return None
+        raw = path_str.strip().strip('"').strip("'")
+        p = Path(raw)
+        if not p.is_absolute():
+            p = ROOT / p
+        if must_exist and not p.exists():
+            return None
+        return p
 
     def _read_file(self, path):
-        """Lee un archivo con encoding robusto."""
         try:
             content = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
@@ -79,7 +95,6 @@ class DevSkill(Skill):
         return content, None
 
     def _ask_llm(self, prompt, system=None):
-        """Llama a qwen2.5-coder via Ollama."""
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -94,6 +109,15 @@ class DevSkill(Skill):
         except Exception as e:
             return f"[ERROR LLM] {e}"
 
+    def _clean_code_block(self, text):
+        """Quita ```language ... ``` que el LLM suele añadir."""
+        # Bloque con backticks
+        m = re.search(r"```[a-zA-Z0-9_+-]*\n?(.*?)```", text, re.DOTALL)
+        if m:
+            return m.group(1).strip()
+        # Si no hay bloque, devolver tal cual (limpiando backticks sueltos)
+        return text.replace("```", "").strip()
+
     # ─── REVIEW FILE ─────────────────────────────────────────────────────
 
     def _review_file(self, path_str):
@@ -107,7 +131,6 @@ class DevSkill(Skill):
         if err:
             return err
 
-        # Si es muy grande, truncar
         truncated = False
         if len(content) > MAX_FILE_CHARS:
             content = content[:MAX_FILE_CHARS]
@@ -145,10 +168,8 @@ Se conciso. Si no ves bugs, di "Sin bugs evidentes"."""
         if not path.is_dir():
             return f"No es una carpeta: {path}"
 
-        # Escanear archivos de código
         files = []
         for root, dirs, filenames in os.walk(path):
-            # Excluir carpetas
             dirs[:] = [d for d in dirs if d not in IGNORE_DIRS and not d.startswith(".")]
             for f in filenames:
                 ext = Path(f).suffix.lower()
@@ -165,11 +186,9 @@ Se conciso. Si no ves bugs, di "Sin bugs evidentes"."""
         if not files:
             return f"No encontre archivos de codigo en {path}"
 
-        # Ordenar por tamaño (los más relevantes primero)
         files.sort(key=lambda x: x[1], reverse=True)
         top_files = files[:MAX_PROJECT_FILES]
 
-        # Construir resumen del proyecto
         summary_lines = [
             f"Proyecto: {path.name}",
             f"Total archivos de codigo: {len(files)}",
@@ -274,10 +293,8 @@ Se directo y conciso."""
 
     # ─── GENERATE CODE ───────────────────────────────────────────────────
 
-    def _generate_code(self, description, language):
-        if not description:
-            return "No me dijiste que generar."
-
+    def _generate_code_raw(self, description, language):
+        """Devuelve solo el texto del codigo, sin envolver en dict."""
         prompt = f"""Genera codigo en {language} que haga lo siguiente:
 {description}
 
@@ -285,11 +302,212 @@ Reglas:
 - Devuelve UNICAMENTE el codigo, sin explicaciones.
 - Incluye comentarios utiles.
 - Usa buenas practicas.
-- Si es funcion, incluye docstring."""
+- Si es funcion, incluye docstring.
+- Si es un script ejecutable, incluye un bloque main de ejemplo."""
 
-        result = self._ask_llm(prompt, system="Eres un programador experto. Generas codigo limpio y funcional.")
+        raw = self._ask_llm(prompt, system="Eres un programador experto. Generas codigo limpio y funcional.")
+        return self._clean_code_block(raw)
+
+    def _generate_code(self, description, language):
+        if not description:
+            return "No me dijiste que generar."
+
+        codigo = self._generate_code_raw(description, language)
         return {
             "thought": f"Generando {language}",
-            "display": f"💻 Codigo generado:\n\n{result}",
+            "display": f"💻 Codigo generado:\n\n```{language}\n{codigo}\n```",
             "voice": "Listo, aqui esta el codigo.",
         }
+
+    # ─── WRITE FILE (con confirmacion) ───────────────────────────────────
+
+    def _write_file(self, path_str, content):
+        path = self._resolve_path(path_str, must_exist=False)
+        if not path:
+            return f"Ruta invalida: {path_str}"
+        if not content or not content.strip():
+            return "No hay contenido para escribir."
+
+        # Detectar si sobrescribe
+        existe = path.exists()
+        accion = "sobrescribir" if existe else "crear"
+
+        # Si está fuera de ROOT, avisar
+        fuera_de_root = False
+        try:
+            path.relative_to(ROOT)
+        except ValueError:
+            fuera_de_root = True
+
+        aviso = ""
+        if existe:
+            aviso = f" (el archivo ya existe, se hara backup .bak)"
+        if fuera_de_root:
+            aviso += " [ATENCION: fuera del proyecto C:\\JARVIS]"
+
+        summary = f"{accion} archivo: {path}{aviso}"
+
+        if not confirmation.require("dev", "write_file", summary):
+            return "Cancelado."
+
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if existe:
+                backup = path.with_suffix(path.suffix + ".bak")
+                shutil.copy2(path, backup)
+            path.write_text(content, encoding="utf-8")
+        except Exception as e:
+            return f"Error escribiendo: {e}"
+
+        return f"Archivo {'sobrescrito' if existe else 'creado'}: {path}"
+
+    # ─── RUN FILE (con confirmacion) ─────────────────────────────────────
+
+    def _run_file(self, path_str):
+        path = self._resolve_path(path_str)
+        if not path or not path.is_file():
+            return f"No encontre el archivo: {path_str}"
+
+        ext = path.suffix.lower()
+        if ext == ".py":
+            cmd = ["python", str(path)]
+        elif ext == ".js":
+            cmd = ["node", str(path)]
+        elif ext == ".java":
+            # Compilar y ejecutar
+            cmd = ["java", str(path)]
+        elif ext in (".sh", ".bash"):
+            cmd = ["bash", str(path)]
+        elif ext == ".ps1":
+            cmd = ["powershell", "-File", str(path)]
+        else:
+            return f"No se ejecutar {ext}. Solo .py, .js, .java, .sh, .ps1"
+
+        summary = f"Ejecutar {path.name}: {' '.join(cmd)}"
+        if not confirmation.require("dev", "run_file", summary):
+            return "Cancelado."
+
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=str(path.parent),
+                capture_output=True,
+                text=True,
+                timeout=RUN_TIMEOUT,
+                encoding="utf-8",
+                errors="replace",
+            )
+        except subprocess.TimeoutExpired:
+            return f"Timeout: el archivo tardo mas de {RUN_TIMEOUT}s."
+        except FileNotFoundError as e:
+            return f"No encontre el interprete: {e}"
+        except Exception as e:
+            return f"Error ejecutando: {e}"
+
+        stdout = (result.stdout or "").strip()
+        stderr = (result.stderr or "").strip()
+
+        def clip(s, n=1500):
+            return s if len(s) <= n else s[:n] + f"\n... (recortado, {len(s)-n} mas)"
+
+        parts = [f"$ {' '.join(cmd)}", ""]
+        if stdout:
+            parts.append(f"[stdout]\n{clip(stdout)}")
+        if stderr:
+            parts.append(f"[stderr]\n{clip(stderr)}")
+        parts.append(f"[exit code: {result.returncode}]")
+
+        return "\n".join(parts)
+
+    # ─── CREATE AND TEST (ciclo completo) ────────────────────────────────
+
+    def _create_and_test(self, description, language, path_str):
+        if not description:
+            return "No me dijiste que crear."
+        if not path_str:
+            return "Necesito un path donde guardar el archivo."
+
+        path = self._resolve_path(path_str, must_exist=False)
+        if not path:
+            return f"Ruta invalida: {path_str}"
+
+        # 1. Generar codigo
+        print(f"[DEV] Generando {language} con {self.model}...")
+        codigo = self._generate_code_raw(description, language)
+        if not codigo or codigo.startswith("[ERROR LLM]"):
+            return f"Error generando codigo: {codigo}"
+
+        # 2. Mostrar y confirmar escritura
+        preview = codigo if len(codigo) <= 1500 else codigo[:1500] + "\n... (recortado)"
+        print(f"\n[DEV] Codigo propuesto ({len(codigo)} chars):\n")
+        print(preview)
+        print()
+
+        summary = f"Escribir {language} en {path} ({len(codigo)} chars)"
+        if not confirmation.require("dev", "create_and_test", summary):
+            return "Cancelado por el usuario."
+
+        # 3. Escribir
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if path.exists():
+                backup = path.with_suffix(path.suffix + ".bak")
+                shutil.copy2(path, backup)
+            path.write_text(codigo, encoding="utf-8")
+        except Exception as e:
+            return f"Error escribiendo: {e}"
+
+        print(f"[DEV] Archivo escrito: {path}")
+
+        # 4. Confirmar ejecucion (si es ejecutable)
+        ext = path.suffix.lower()
+        if ext not in (".py", ".js", ".java", ".sh", ".ps1"):
+            return f"Codigo guardado en {path}. (Formato no ejecutable, no se corre test.)"
+
+        if not confirmation.require("dev", "run_file", f"Ejecutar {path.name} como test"):
+            return f"Codigo guardado en {path}. Test omitido por el usuario."
+
+        # 5. Ejecutar
+        run_result = self._run_file_internal(path)
+        return f"Codigo guardado en {path}.\n\nResultado del test:\n{run_result}"
+
+    def _run_file_internal(self, path):
+        """Ejecuta un archivo SIN pedir confirmacion (asumimos que ya se pidio)."""
+        ext = path.suffix.lower()
+        if ext == ".py":
+            cmd = ["python", str(path)]
+        elif ext == ".js":
+            cmd = ["node", str(path)]
+        elif ext == ".java":
+            cmd = ["java", str(path)]
+        elif ext in (".sh", ".bash"):
+            cmd = ["bash", str(path)]
+        elif ext == ".ps1":
+            cmd = ["powershell", "-File", str(path)]
+        else:
+            return f"(Formato {ext} no ejecutable.)"
+
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=str(path.parent),
+                capture_output=True,
+                text=True,
+                timeout=RUN_TIMEOUT,
+                encoding="utf-8",
+                errors="replace",
+            )
+        except subprocess.TimeoutExpired:
+            return f"Timeout ({RUN_TIMEOUT}s)."
+        except Exception as e:
+            return f"Error ejecutando: {e}"
+
+        stdout = (result.stdout or "").strip()
+        stderr = (result.stderr or "").strip()
+        parts = []
+        if stdout:
+            parts.append(stdout[:1200])
+        if stderr:
+            parts.append(f"[stderr]\n{stderr[:800]}")
+        parts.append(f"[exit code: {result.returncode}]")
+        return "\n".join(parts)

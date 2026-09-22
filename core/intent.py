@@ -72,6 +72,11 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "que esta sonando", "que cancion es" → spotify.current
   - "volumen de spotify al N" → spotify.volume (percent = N)
   - NUNCA envies "pon X en spotify" a browser.search_youtube
+  - DEV WRITE/RUN (importante, revisar ANTES que dev.generate_code):
+  - "crea un archivo X en Y.py", "escribe un programa que haga X en Y.py" → dev.create_and_test (description = X, language = lenguaje segun extension, path = Y.py)
+  - "escribe esto en el archivo X" → dev.write_file (path = X, content = el texto previo)
+  - "corre el archivo X", "ejecuta X.py" → dev.run_file (path = X)
+  - NUNCA uses dev.create_and_test sin un path explicito. Si no hay path, usa dev.generate_code.
 
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google

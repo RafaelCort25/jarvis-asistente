@@ -42,6 +42,16 @@ SKILLS_VALIDAS = {
             "description": {"type": "string"},
             "language": {"type": "string", "enum": ["python", "javascript", "java", "c", "cpp", "csharp", "go", "rust", "ruby", "php"]},
         },
+        "write_file": {
+            "path": {"type": "string"},
+            "content": {"type": "string"},
+        },
+        "run_file": {"path": {"type": "string"}},
+        "create_and_test": {
+            "description": {"type": "string"},
+            "language": {"type": "string", "enum": ["python", "javascript", "java"]},
+            "path": {"type": "string"},
+        },
     },
     "vision": {
         "describe_screen": {},
