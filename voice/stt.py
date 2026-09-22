@@ -12,7 +12,7 @@ from voice import audio_state
 class STT:
     def __init__(self, model_size="small", language="es", device=1):
         print(f"[STT] Cargando modelo Whisper '{model_size}'...")
-        self.model = WhisperModel(model_size, device="cpu", compute_type="int8")
+        self.model = WhisperModel(model_size, device="cuda", compute_type="float16")
         self.language = language
         self.device = device
         self.samplerate = 16000
