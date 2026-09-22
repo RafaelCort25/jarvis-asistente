@@ -47,6 +47,13 @@ SKILLS_VALIDAS = {
         "describe_screen": {},
         "explain_screen_code": {},
     },
+    "docs": {
+        "index_file": {"path": {"type": "string"}},
+        "index_folder": {"path": {"type": "string"}},
+        "ask": {"query": {"type": "string"}},
+        "list": {},
+        "delete": {"name": {"type": "string"}},
+    },
     "files": {
         "find_file": {"name": {"type": "string"}},
     },

@@ -13,7 +13,7 @@ from skills.translate import TranslateSkill
 from skills.alarm import AlarmSkill
 from skills.dev import DevSkill
 from skills.vision import VisionSkill
-
+from skills.docs import DocsSkill
 
 NUM_MAP = {
     "1": 1, "uno": 1, "primero": 1, "primer": 1, "la primera": 1, "el primero": 1,
@@ -42,6 +42,7 @@ class Router:
             "alarm": AlarmSkill(),
             "dev": DevSkill(),
             "vision": VisionSkill(),
+            "docs": DocsSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
