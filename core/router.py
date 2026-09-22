@@ -120,11 +120,27 @@ class Router:
         """Detecta comandos obvios sin llamar al LLM."""
         t = text.lower().strip()
                 # Documentos indexados (RAG)
+                # Listar documentos indexados
         if any(p in t for p in [
             "que documentos tienes", "que documentos hay", "lista mis documentos",
-            "que has indexado", "documentos indexados", "mis documentos",
+            "que has indexado", "documentos indexados",
         ]):
             return [{"skill": "docs", "action": "list", "params": {}}]
+
+        # Preguntas sobre contenido de documentos (currículum, apuntes, PDFs, etc.)
+        docs_ask_triggers = [
+            "que dice mi", "que dice el", "que dice la",
+            "segun mi", "segun el", "segun la",
+            "de que trata mi", "de que trata el",
+            "que sabes sobre mi", "que sabes de mi",
+            "que habilidades", "que experiencia",
+            "busca en mi", "busca en mis",
+            "en mi curriculum", "en mi cv", "mi curriculum", "mi cv",
+            "en mis apuntes", "en mis pdfs", "en mis documentos",
+        ]
+        if any(p in t for p in docs_ask_triggers):
+            # Solo si ya hay algo indexado (el RAG responde que no hay docs si vacío)
+            return [{"skill": "docs", "action": "ask", "params": {"query": text}}]
 
         # Indexar archivo/carpeta (con ruta explicita)
         m = re.search(r'\b(?:indexa|aprende|procesa|lee|guarda)\s+(?:el\s+)?(?:archivo|pdf|documento|carpeta)\s+(.+)$', t)

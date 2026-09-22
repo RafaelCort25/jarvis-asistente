@@ -26,11 +26,15 @@ REGLAS DE DESAMBIGUACIÓN:
 - "qué ves en mi pantalla y explica el código", "mira el código en pantalla", "analiza el código que se ve", "revisa el código de la pantalla" → vision.explain_screen_code
 - IMPORTANTE: si la frase menciona "pantalla" + "código", SIEMPRE es vision.explain_screen_code, NUNCA dev.*
 
-- Frases con "indexa/guarda/aprende/procesa/lee" + "archivo/pdf/documento" → docs.index_file
-- Frases con "indexa/procesa/aprende" + "carpeta" → docs.index_folder
-- Preguntas sobre CONTENIDO de documentos ("que dice", "que sabes sobre", "segun mis apuntes", "en mis PDFs", "de que trata") → docs.ask
+REGLAS DOCS (importante, revisar antes de dev):
+- Preguntas sobre MI información personal o mis documentos (curriculum, cv, apuntes, pdfs, notas) → docs.ask
+- Palabras clave: "que dice mi", "segun mi", "de que trata mi", "mi curriculum", "mi cv", "mis apuntes", "mis pdfs", "que habilidades tengo", "que experiencia tengo"
+- docs.ask SIEMPRE usa la frase completa como query.
+- NUNCA envies frases con "curriculum", "cv", "mis apuntes", "mis pdfs", "mi" + pregunta → a dev.* ni a files.*
+- "indexa X", "aprende X", "guarda X en conocimiento", "procesa el archivo X", "lee el pdf X" → docs.index_file
+- "indexa la carpeta X", "procesa la carpeta X", "aprende todo lo de X" → docs.index_folder
 - "que documentos tienes", "lista mis documentos", "que has indexado" → docs.list
-- "olvida el documento", "borra de documentos" → docs.delete
+- "olvida el documento X", "borra X de documentos" → docs.delete
 
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google
