@@ -48,6 +48,10 @@ SKILLS_VALIDAS = {
         "explain_screen_code": {},
     },
     "docs": {
+        "clipboard": {
+        "read": {},
+        "write": {"text": {"type": "string"}},
+    },
         "index_file": {"path": {"type": "string"}},
         "index_folder": {"path": {"type": "string"}},
         "ask": {"query": {"type": "string"}},

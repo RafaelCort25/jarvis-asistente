@@ -35,6 +35,8 @@ REGLAS DOCS (importante, revisar antes de dev):
 - "indexa la carpeta X", "procesa la carpeta X", "aprende todo lo de X" → docs.index_folder
 - "que documentos tienes", "lista mis documentos", "que has indexado" → docs.list
 - "olvida el documento X", "borra X de documentos" → docs.delete
+- "que tengo copiado", "lee el portapapeles", "que hay en el portapapeles" → clipboard.read
+- "copia esto", "copia al portapapeles", "guarda en el portapapeles" → clipboard.write (usa el texto completo como text)
 
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google

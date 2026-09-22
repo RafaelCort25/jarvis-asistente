@@ -14,6 +14,7 @@ from skills.alarm import AlarmSkill
 from skills.dev import DevSkill
 from skills.vision import VisionSkill
 from skills.docs import DocsSkill
+from skills.clipboard import ClipboardSkill
 
 NUM_MAP = {
     "1": 1, "uno": 1, "primero": 1, "primer": 1, "la primera": 1, "el primero": 1,
@@ -43,6 +44,7 @@ class Router:
             "dev": DevSkill(),
             "vision": VisionSkill(),
             "docs": DocsSkill(),
+            "clipboard": ClipboardSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -119,8 +121,23 @@ class Router:
     def _quick_match(self, text):
         """Detecta comandos obvios sin llamar al LLM."""
         t = text.lower().strip()
-                # Documentos indexados (RAG)
-                # Listar documentos indexados
+
+        # Portapapeles: leer
+        if any(p in t for p in [
+            "que tengo copiado", "que hay en el portapapeles",
+            "lee el portapapeles", "leer el portapapeles", "muestra el portapapeles",
+        ]):
+            return [{"skill": "clipboard", "action": "read", "params": {}}]
+
+        # Portapapeles: escribir
+        m = re.search(r'\b(?:copia|copiar|guarda en el portapapeles)\s+(?:esto:?\s*)?(.+)$', t)
+        if m and "portapapeles" not in m.group(1).lower()[:20]:
+            text = m.group(1).strip(" .,!?¡¿")
+            if text:
+                return [{"skill": "clipboard", "action": "write", "params": {"text": text}}]
+
+        # Documentos indexados (RAG)
+        # Listar documentos indexados
         if any(p in t for p in [
             "que documentos tienes", "que documentos hay", "lista mis documentos",
             "que has indexado", "documentos indexados",
