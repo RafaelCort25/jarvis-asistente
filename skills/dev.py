@@ -303,7 +303,8 @@ Reglas:
 - Incluye comentarios utiles.
 - Usa buenas practicas.
 - Si es funcion, incluye docstring.
-- Si es un script ejecutable, incluye un bloque main de ejemplo."""
+- Si es un script ejecutable, incluye un bloque main que NO use input(). Usa valores de ejemplo hardcodeados para poder ejecutarlo sin interaccion.
+- NUNCA uses input() ni reads interactivos."""
 
         raw = self._ask_llm(prompt, system="Eres un programador experto. Generas codigo limpio y funcional.")
         return self._clean_code_block(raw)
@@ -344,6 +345,16 @@ Reglas:
             aviso = f" (el archivo ya existe, se hara backup .bak)"
         if fuera_de_root:
             aviso += " [ATENCION: fuera del proyecto C:\\JARVIS]"
+                    # Validacion de seguridad: si el archivo esta fuera de C:\JARVIS
+        # y no esta en sandbox, pedir doble confirmacion
+        dentro_de_proyecto = False
+        try:
+            path.relative_to(ROOT)
+            dentro_de_proyecto = True
+        except ValueError:
+            pass
+        if not dentro_de_proyecto:
+            return f"Ruta fuera del proyecto, bloqueado por seguridad: {path}"
 
         summary = f"{accion} archivo: {path}{aviso}"
 
@@ -392,6 +403,7 @@ Reglas:
                 cmd,
                 cwd=str(path.parent),
                 capture_output=True,
+                stdin=subprocess.DEVNULL,
                 text=True,
                 timeout=RUN_TIMEOUT,
                 encoding="utf-8",
@@ -492,6 +504,7 @@ Reglas:
                 cmd,
                 cwd=str(path.parent),
                 capture_output=True,
+                stdin=subprocess.DEVNULL,
                 text=True,
                 timeout=RUN_TIMEOUT,
                 encoding="utf-8",

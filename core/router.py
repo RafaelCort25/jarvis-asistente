@@ -284,27 +284,44 @@ class Router:
             return [{"skill": "files", "action": "list_folder", "params": {"folder": m.group(1)}}]
 
         # Dev: crear y probar (ciclo completo)
+                # Dev: crear y probar (ciclo completo)
+        # Acepta "en sandbox/foo.py", "en sandbox/foo" (asume .py), "en foo.py"
+                # Dev: crear y probar (ciclo completo)
         m = re.search(
-            r'\b(?:crea|genera|escribe)\s+(?:un\s+|una\s+)?(?:archivo|script|programa|funcion)?\s*(.+?)\s+(?:en|como)\s+(\S+\.(?:py|js|java))\b',
+            r'\b(?:crea|genera|escribe)\s+(?:un\s+|una\s+)?(?:archivo|script|programa|funcion)?\s*(.+?)\s+(?:en|como)\s+(\S+)\b',
             t,
         )
         if m:
             desc = m.group(1).strip()
-            path = m.group(2).strip()
-            # Detectar lenguaje por extension
-            if path.endswith(".py"):
-                lang = "python"
-            elif path.endswith(".js"):
-                lang = "javascript"
-            elif path.endswith(".java"):
-                lang = "java"
+            path = m.group(2).strip().strip(".,!?¡¿")
+
+            # Normalizar separadores pegados que se hayan colado
+            path = path.replace("barra", "/").replace("slash", "/")
+
+            # Normalizar extensiones cortas
+            if path.endswith(".p"):
+                path = path[:-2] + ".py"
+            elif path.endswith(".j"):
+                path = path[:-2] + ".js"
+
+            # Verificar extension conocida
+            ext = ""
+            if "." in path.split("/")[-1]:
+                ext = path.rsplit(".", 1)[-1].lower()
+
+            if ext not in ("py", "js", "java"):
+                # Extension no valida -> no capturar, dejar que el LLM lo procese
+                pass
             else:
-                lang = "python"
-            return [{
-                "skill": "dev",
-                "action": "create_and_test",
-                "params": {"description": desc, "language": lang, "path": path},
-            }]
+                # Si no tiene separador, forzar sandbox/ por seguridad
+                if "/" not in path and "\\" not in path:
+                    path = "sandbox/" + path
+                lang = {"py": "python", "js": "javascript", "java": "java"}[ext]
+                return [{
+                    "skill": "dev",
+                    "action": "create_and_test",
+                    "params": {"description": desc, "language": lang, "path": path},
+                }]
 
         return None
 

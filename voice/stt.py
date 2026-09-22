@@ -277,6 +277,29 @@ class STT:
             r'\bsiguient\b': 'siguiente',
             r'\bcanción\b': 'cancion',
             r'\bcanció?n\b': 'cancion',
+                        # Dev / matematicas
+            r'\bsube\s+dos\s+numeros?\b': 'sume dos numeros',
+            r'\bsuma\s+dos\s+numeros?\b': 'sume dos numeros',
+            r'\bresta\s+dos\s+numeros?\b': 'reste dos numeros',
+            r'\bmultipli(?:ca|que)\s+dos\s+numeros?\b': 'multiplique dos numeros',
+                        # Separadores y puntuacion dictada
+            r'\bslash\b': '/',
+            r'\bbarra\b': '/',
+            r'\bpunto\s+py\b': '.py',
+            r'\bpunto\s+js\b': '.js',
+            r'\bpunto\s+java\b': '.java',
+            r'\bpunto\s+json\b': '.json',
+            r'\bpunto\s+txt\b': '.txt',
+                        # Separadores pegados a palabras (Whisper a veces une todo)
+            r'sandboxbarra': 'sandbox/',
+            r'sandboxslash': 'sandbox/',
+            r'(?<=\w)barra(?=\w)': '/',
+            r'(?<=\w)slash(?=\w)': '/',
+            r'sandboxzuma': 'sandbox/suma',
+            r'sandboxsuma': 'sandbox/suma',
+            # Extensiones cortadas por Whisper
+            r'\.p\b': '.py',
+            r'\.j\b': '.js',
         }
 
         for pattern, replacement in corrections.items():
