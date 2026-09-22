@@ -1,4 +1,5 @@
-"""Skill de generacion de imagenes con Pollinations AI (gratis, sin API key)."""
+"""Skill de generacion de imagenes con Pollinations AI (con API key personal)."""
+import os
 import re
 import time
 from datetime import datetime
@@ -6,12 +7,16 @@ from pathlib import Path
 from urllib.parse import quote
 
 import requests
+from dotenv import load_dotenv
 
 from skills.base import Skill
 from core import confirmation
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGES_DIR = ROOT / "sandbox" / "images"
+
+load_dotenv(ROOT / ".env")
+POLLINATIONS_API_KEY = os.getenv("POLLINATIONS_API_KEY")
 
 # Tamano por defecto (cuadrado, tipo Instagram post)
 DEFAULT_WIDTH = 1024
@@ -41,7 +46,6 @@ class ImageSkill(Skill):
     def _slug(self, text, maxlen=50):
         """Convierte un texto en un nombre de archivo seguro."""
         s = text.lower()
-        # Quitar acentos
         replacements = {
             "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",
             "ñ": "n", "ü": "u",
@@ -52,13 +56,13 @@ class ImageSkill(Skill):
         return s or "imagen"
 
     def _build_url(self, prompt, width, height, seed=None):
-        """Construye la URL de Pollinations."""
+        """Construye la URL del endpoint nuevo gen.pollinations.ai."""
         encoded = quote(prompt, safe="")
-        url = f"https://image.pollinations.ai/prompt/{encoded}"
+        url = f"https://gen.pollinations.ai/image/{encoded}"
         params = {
             "width": int(width),
             "height": int(height),
-            "nologo": "true",
+            "model": "flux",
         }
         if seed is not None:
             params["seed"] = seed
@@ -89,9 +93,14 @@ class ImageSkill(Skill):
         url = self._build_url(prompt, width, height)
         print(f"[IMAGE] Generando con Pollinations: {prompt[:60]}...")
 
+        # API key va en header Authorization (no en query param)
+        headers = {}
+        if POLLINATIONS_API_KEY:
+            headers["Authorization"] = f"Bearer {POLLINATIONS_API_KEY}"
+
         try:
             t0 = time.time()
-            r = requests.get(url, timeout=TIMEOUT)
+            r = requests.get(url, headers=headers, timeout=TIMEOUT)
             elapsed = time.time() - t0
         except requests.Timeout:
             return f"Timeout: Pollinations tardo mas de {TIMEOUT}s."
