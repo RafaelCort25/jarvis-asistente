@@ -15,6 +15,50 @@ def init_voice():
     stt = STT()
     ww = WakeWord(threshold=0.25, device=1)
     return tts, stt, ww
+def _make_voice_confirmation(tts, stt):
+    """Devuelve un handler que pregunta por voz y espera si/no."""
+    import time as _time
+
+    def handler(skill, action, summary, level, timeout=30):
+        prefix = "Atencion. " if level == "high" else ""
+        tts.speak(f"{prefix}{summary}")
+        _time.sleep(0.4)
+
+        attempts = 0
+        start = _time.time()
+
+        while attempts < 3 and (_time.time() - start) < timeout:
+            tts.speak("Confirmas?")
+            text = stt.listen()
+            attempts += 1
+
+            if not text:
+                continue
+
+            t = text.lower().strip()
+            if any(w in t for w in ["si", "confirmo", "dale", "hazlo", "adelante", "vale", "ok"]):
+                tts.speak("Confirmado.")
+                return True
+            if any(w in t for w in ["no", "cancela", "cancelar", "espera", "para", "stop"]):
+                tts.speak("Cancelado.")
+                return False
+
+        tts.speak("Cancelado por falta de respuesta.")
+        return False
+
+    return handler
+
+
+def _make_text_confirmation():
+    """Fallback para modo texto: pide confirmacion por consola."""
+    def handler(skill, action, summary, level, timeout=30):
+        print(f"\n[CONFIRMACION {level.upper()}] {summary}")
+        try:
+            resp = input("Confirmas? (s/n): ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            return False
+        return resp in ("s", "si", "y", "yes")
+    return handler
 
 
 def _speak_with_barge_in(tts, stt, text, brain, router):
@@ -105,6 +149,12 @@ def main():
     from core.watcher import get_watcher
     watcher = get_watcher()
     watcher.start()
+        # Configurar capa de confirmacion
+    from core import confirmation
+    if tts and stt:
+        confirmation.set_handler(_make_voice_confirmation(tts, stt))
+    else:
+        confirmation.set_handler(_make_text_confirmation())
     if mode in ("voice", "handsfree"):
         try:
             tts, stt, ww = init_voice()
