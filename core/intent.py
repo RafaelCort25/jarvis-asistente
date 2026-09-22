@@ -77,6 +77,10 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "escribe esto en el archivo X" → dev.write_file (path = X, content = el texto previo)
   - "corre el archivo X", "ejecuta X.py" → dev.run_file (path = X)
   - NUNCA uses dev.create_and_test sin un path explicito. Si no hay path, usa dev.generate_code.
+  - OFFICE WORD:
+  - "hazme un documento/informe/reporte/ensayo sobre X" -> office.create_doc (description = X, path = "", title = "")
+  - "lee el documento X.docx", "abre el word X.docx" -> office.read_doc (path = X.docx)
+  - NUNCA envies "hazme un documento sobre X" a dev.create_and_test
 
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google

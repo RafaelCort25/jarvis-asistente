@@ -54,6 +54,9 @@ RISK_LEVELS = {
     ("dev", "write_file"): "high",
     ("dev", "run_file"): "high",
     ("dev", "create_and_test"): "high",
+        # Office
+    ("office", "create_doc"): "medium",
+    ("office", "read_doc"): "low",
 
     # Docs / RAG
     ("docs", "ask"): "low",

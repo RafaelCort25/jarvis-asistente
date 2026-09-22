@@ -53,6 +53,14 @@ SKILLS_VALIDAS = {
             "path": {"type": "string"},
         },
     },
+    "office": {
+        "create_doc": {
+            "description": {"type": "string"},
+            "path": {"type": "string"},
+            "title": {"type": "string"},
+        },
+        "read_doc": {"path": {"type": "string"}},
+    },
     "vision": {
         "describe_screen": {},
         "explain_screen_code": {},

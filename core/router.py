@@ -19,6 +19,7 @@ from skills.scheduler import SchedulerSkill
 from skills.terminal import TerminalSkill
 from skills.git import GitSkill
 from skills.spotify import SpotifySkill
+from skills.office import OfficeSkill
 
 
 NUM_MAP = {
@@ -54,6 +55,7 @@ class Router:
             "terminal": TerminalSkill(),
             "git": GitSkill(),
             "spotify": SpotifySkill(),
+            "office": OfficeSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -278,6 +280,33 @@ class Router:
         m = re.search(r'\b(?:lista|muestra|que hay en)\s+(?:la\s+)?carpeta\s+(?:de\s+)?(descargas|documentos|escritorio|imagenes|musica|videos)\b', t)
         if m:
             return [{"skill": "files", "action": "list_folder", "params": {"folder": m.group(1)}}]
+                # Office Word: crear documento
+        m = re.search(
+            r'\b(?:hazme|crea|genera|escribe)\s+(?:un\s+|una\s+)?(?:documento|informe|reporte|ensayo|word)\s+(?:sobre|de|acerca\s+de)\s+(.+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            desc = m.group(1).strip(" .,!?¡¿")
+            if desc:
+                return [{
+                    "skill": "office",
+                    "action": "create_doc",
+                    "params": {"description": desc, "path": "", "title": ""},
+                }]
+
+        # Office Word: leer documento
+        m = re.search(
+            r'\b(?:lee|leeme|abre)\s+(?:el\s+)?(?:documento|word|docx)\s+(.+\.docx)\b',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            return [{
+                "skill": "office",
+                "action": "read_doc",
+                "params": {"path": m.group(1).strip()},
+            }]
 
         # Dev: crear y probar (ciclo completo)
                 # Dev: crear y probar (ciclo completo)
