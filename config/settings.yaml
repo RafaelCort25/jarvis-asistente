@@ -9,6 +9,7 @@ models:
   intent: "llama3.2:3b"
   coding: "qwen2.5-coder:7b"
   reasoning: "qwen2.5-coder:7b"
+  vision: "llava-phi3"
 
 ollama:
   host: "http://localhost:11434"
@@ -26,4 +27,4 @@ skills:
   alarm: true
   communications: false
   dev: true
-  vision: false
+  vision: true
