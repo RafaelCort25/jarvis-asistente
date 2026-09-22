@@ -12,3 +12,6 @@ test.wav
 .DS_Store
 probar_confirmacion.py
 sandbox/
+probar_rag.py
+test_agent.py
+test.wav
