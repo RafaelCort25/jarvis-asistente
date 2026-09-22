@@ -6,6 +6,8 @@ from datetime import datetime
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font, PatternFill, Alignment
 
 from skills.base import Skill
 from core.config_loader import CONFIG
@@ -32,6 +34,13 @@ class OfficeSkill(Skill):
             )
         if action == "read_doc":
             return self._read_doc(params.get("path", ""))
+        if action == "create_xlsx":
+            return self._create_xlsx(
+                params.get("description", ""),
+                params.get("path", ""),
+            )
+        if action == "read_xlsx":
+            return self._read_xlsx(params.get("path", ""))
         return f"Accion desconocida en office: {action}"
 
     # ─── HELPERS ─────────────────────────────────────────────────────────
@@ -227,4 +236,184 @@ NO uses bloques de codigo ni backticks."""
             "thought": f"Leyendo {path.name}",
             "display": f"Contenido de {path.name}:\n\n{preview}",
             "voice": f"El documento {path.name} tiene {len(paragraphs)} parrafos.",
+        }
+        # ─── CREATE XLSX ─────────────────────────────────────────────────────
+
+    def _resolve_xlsx_path(self, path_str, description=""):
+        if path_str:
+            raw = path_str.strip().strip('"').strip("'")
+            p = Path(raw)
+            if not p.is_absolute():
+                p = ROOT / p
+            if p.suffix.lower() != ".xlsx":
+                p = p.with_suffix(".xlsx")
+        else:
+            slug = re.sub(r'[^a-z0-9]+', '_', description.lower())[:60].strip("_")
+            if not slug:
+                slug = f"hoja_{int(datetime.now().timestamp())}"
+            p = DEFAULT_DIR / f"{slug}.xlsx"
+        return p
+
+    def _create_xlsx(self, description, path_str):
+        description = (description or "").strip()
+        if not description:
+            return "Dime que datos quieres en el Excel."
+
+        print(f"[OFFICE] Generando hoja de calculo con {self.model}...")
+        prompt = f"""Genera una hoja de calculo para lo siguiente:
+
+{description}
+
+Formato de respuesta OBLIGATORIO:
+- Primera linea: nombres de columnas separados por "|"
+- Siguientes lineas: filas de datos separadas por "|"
+- NO uses comas como separador, usa "|"
+- NO incluyas encabezados, ni markdown, ni explicaciones
+- Solo la tabla cruda
+- Maximo 30 filas de datos
+
+Ejemplo:
+Producto|Precio|Cantidad
+Manzana|1.50|100
+Naranja|2.00|80"""
+
+        raw = self._ask_llm(prompt, system="Eres un experto en hojas de calculo. Devuelves solo tablas en formato pipe-separated.")
+        if not raw or raw.startswith("[ERROR LLM]"):
+            return f"Error generando datos: {raw}"
+
+        lines = [l.strip() for l in raw.split("\n") if l.strip() and "|" in l]
+        if len(lines) < 2:
+            return "El modelo no genero una tabla valida."
+
+        rows = []
+        for line in lines:
+            line = re.sub(r'^\|', '', line)
+            line = re.sub(r'\|$', '', line)
+            cells = [c.strip().strip("`*") for c in line.split("|")]
+
+            # Filtrar lineas separadoras de markdown (--- | --- | ---)
+            if all(re.fullmatch(r'-{2,}', c) or c == "" for c in cells):
+                continue
+
+            rows.append(cells)
+
+        if len(rows) < 2:
+            return "Solo hay encabezado, sin datos."
+
+        header = rows[0]
+        data_rows = rows[1:31]
+
+        path = self._resolve_xlsx_path(path_str, description)
+        try:
+            path.relative_to(ROOT)
+        except ValueError:
+            return f"Ruta fuera del proyecto, bloqueado: {path}"
+
+        preview_lines = [f"Columnas: {' | '.join(header)}"]
+        preview_lines.append(f"Filas: {len(data_rows)}")
+        preview_lines.append("")
+        preview_lines.append("Primeras filas:")
+        for r in data_rows[:5]:
+            preview_lines.append("  " + " | ".join(r))
+        if len(data_rows) > 5:
+            preview_lines.append(f"  ... (+{len(data_rows)-5} filas)")
+        print(f"\n[OFFICE] Hoja propuesta:\n")
+        print("\n".join(preview_lines))
+        print()
+
+        summary = f"Crear Excel en {path.name} con {len(data_rows)} filas y {len(header)} columnas"
+        if not confirmation.require("office", "create_xlsx", summary):
+            return "Cancelado."
+
+        try:
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Datos"
+
+            ws.append(header)
+            header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+            header_font = Font(bold=True, color="FFFFFF")
+            for cell in ws[1]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal="center")
+
+            for row in data_rows:
+                converted = []
+                for c in row:
+                    try:
+                        if "." in c:
+                            converted.append(float(c))
+                        else:
+                            converted.append(int(c))
+                    except (ValueError, TypeError):
+                        converted.append(c)
+                ws.append(converted)
+
+            for i, col in enumerate(ws.columns, 1):
+                max_len = 0
+                for cell in col:
+                    if cell.value is not None:
+                        max_len = max(max_len, len(str(cell.value)))
+                ws.column_dimensions[chr(64 + i)].width = min(max_len + 3, 40)
+
+            path.parent.mkdir(parents=True, exist_ok=True)
+            wb.save(str(path))
+        except Exception as e:
+            return f"Error creando Excel: {e}"
+
+        print(f"[OFFICE] Excel guardado: {path}")
+
+        return {
+            "thought": f"Excel creado con {len(data_rows)} filas",
+            "display": f"Excel creado: {path}\n({len(data_rows)} filas, {len(header)} columnas, {path.stat().st_size} bytes)",
+            "voice": f"Listo. Excel guardado en {path.name} con {len(data_rows)} filas.",
+        }
+
+    # ─── READ XLSX ───────────────────────────────────────────────────────
+
+    def _read_xlsx(self, path_str):
+        if not path_str:
+            return "Necesito el path del Excel."
+
+        raw = path_str.strip().strip('"').strip("'")
+        path = Path(raw)
+        if not path.is_absolute():
+            path = ROOT / path
+
+        if not path.exists():
+            return f"No encontre el Excel: {path}"
+        if path.suffix.lower() not in (".xlsx", ".xlsm"):
+            return f"No es un Excel: {path}"
+
+        try:
+            wb = load_workbook(str(path), read_only=True, data_only=True)
+        except Exception as e:
+            return f"Error leyendo Excel: {e}"
+
+        lines = []
+        sheet_names = list(wb.sheetnames)
+        for sheet_name in sheet_names[:3]:
+            ws = wb[sheet_name]
+            lines.append(f"\n=== Hoja: {sheet_name} ===")
+            rows_read = 0
+            for row in ws.iter_rows(values_only=True):
+                if all(c is None for c in row):
+                    continue
+                cells = [str(c) if c is not None else "" for c in row]
+                lines.append(" | ".join(cells))
+                rows_read += 1
+                if rows_read >= 20:
+                    lines.append("... (hoja truncada a 20 filas)")
+                    break
+
+        wb.close()
+
+        if not lines:
+            return f"El Excel {path.name} esta vacio."
+
+        return {
+            "thought": f"Leyendo Excel {path.name}",
+            "display": f"Contenido de {path.name}:\n{''.join(lines)}",
+            "voice": f"El Excel {path.name} tiene {len(sheet_names)} hojas.",
         }

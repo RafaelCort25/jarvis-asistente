@@ -81,6 +81,9 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "hazme un documento/informe/reporte/ensayo sobre X" -> office.create_doc (description = X, path = "", title = "")
   - "lee el documento X.docx", "abre el word X.docx" -> office.read_doc (path = X.docx)
   - NUNCA envies "hazme un documento sobre X" a dev.create_and_test
+  - OFFICE EXCEL:
+  - "hazme un excel/hoja de calculo sobre X" -> office.create_xlsx (description = X, path = "")
+  - "lee el excel X.xlsx" -> office.read_xlsx (path = X.xlsx)
 
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google

@@ -60,6 +60,11 @@ SKILLS_VALIDAS = {
             "title": {"type": "string"},
         },
         "read_doc": {"path": {"type": "string"}},
+        "create_xlsx": {
+            "description": {"type": "string"},
+            "path": {"type": "string"},
+        },
+        "read_xlsx": {"path": {"type": "string"}},
     },
     "vision": {
         "describe_screen": {},

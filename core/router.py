@@ -307,6 +307,33 @@ class Router:
                 "action": "read_doc",
                 "params": {"path": m.group(1).strip()},
             }]
+                # Office Excel: crear hoja de calculo
+        m = re.search(
+            r'\b(?:hazme|crea|genera)\s+(?:un\s+|una\s+)?(?:excel|hoja\s+de\s+calculo|spreadsheet)\s+(?:sobre|de|con|para)\s+(.+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            desc = m.group(1).strip(" .,!?¡¿")
+            if desc:
+                return [{
+                    "skill": "office",
+                    "action": "create_xlsx",
+                    "params": {"description": desc, "path": ""},
+                }]
+
+        # Office Excel: leer
+        m = re.search(
+            r'\b(?:lee|leeme|abre)\s+(?:el\s+)?(?:excel|xlsx)\s+(.+\.xlsx)\b',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            return [{
+                "skill": "office",
+                "action": "read_xlsx",
+                "params": {"path": m.group(1).strip()},
+            }]
 
         # Dev: crear y probar (ciclo completo)
                 # Dev: crear y probar (ciclo completo)
