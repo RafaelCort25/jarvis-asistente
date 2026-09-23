@@ -607,9 +607,25 @@ Corrige el codigo para que funcione. Reglas:
         from openpyxl import Workbook
         from openpyxl.styles import Font, PatternFill, Alignment
 
-        path = self._resolve_path(path_str)
-        if not path or not path.is_file():
-            return f"No encontre el archivo: {path_str}"
+                # Si no hay path explicito, usar el ultimo archivo de uploads
+        if not path_str:
+            uploads_dir = ROOT / "sandbox" / "uploads"
+            if uploads_dir.exists():
+                candidatos = [
+                    f for f in uploads_dir.iterdir()
+                    if f.is_file() and f.suffix.lower() in (".py", ".js", ".java", ".txt", ".md", ".ts", ".go", ".rb")
+                ]
+                if candidatos:
+                    path = max(candidatos, key=lambda p: p.stat().st_mtime)
+                    print(f"[DEV] Usando el ultimo archivo de uploads: {path.name}")
+                else:
+                    return "No hay archivos de codigo en uploads/ para revisar."
+            else:
+                return "No hay carpeta uploads/ y no diste un path."
+        else:
+            path = self._resolve_path(path_str)
+            if not path or not path.is_file():
+                return f"No encontre el archivo: {path_str}"
 
         # 1. Leer el archivo de verdad
         content, err = self._read_file(path)
@@ -791,9 +807,24 @@ Reglas:
         from docx import Document
         from docx.shared import Pt
 
-        path = self._resolve_path(path_str)
-        if not path or not path.is_file():
-            return f"No encontre el archivo: {path_str}"
+        if not path_str:
+            uploads_dir = ROOT / "sandbox" / "uploads"
+            if uploads_dir.exists():
+                candidatos = [
+                    f for f in uploads_dir.iterdir()
+                    if f.is_file() and f.suffix.lower() in (".py", ".js", ".java", ".txt", ".md", ".ts", ".go", ".rb")
+                ]
+                if candidatos:
+                    path = max(candidatos, key=lambda p: p.stat().st_mtime)
+                    print(f"[DEV] Usando el ultimo archivo de uploads: {path.name}")
+                else:
+                    return "No hay archivos de codigo en uploads/ para revisar."
+            else:
+                return "No hay carpeta uploads/ y no diste un path."
+        else:
+            path = self._resolve_path(path_str)
+            if not path or not path.is_file():
+                return f"No encontre el archivo: {path_str}"
 
         content, err = self._read_file(path)
         if err:

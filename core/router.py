@@ -166,7 +166,50 @@ class Router:
     def _quick_match(self, text):
         """Detecta comandos obvios sin llamar al LLM."""
         t = text.lower().strip()
-                # ═══════════════════════════════════════════════════════════════════
+
+        # ═══════════════════════════════════════════════════════════════════
+        # COMBOS DEV (deben ir PRIMERO, antes de office para evitar intersecciones)
+        # ═══════════════════════════════════════════════════════════════════
+
+        # Combo: revisar codigo -> Excel con bugs
+        palabras_excel = ["excel", "xlsx", "hoja"]
+        palabras_revisar = ["revisa", "revisar", "audita", "analiza", "encuentra", "busca"]
+        palabras_bugs = ["bug", "bugs", "error", "errores", "problema", "problemas"]
+        tiene_excel = any(p in t for p in palabras_excel)
+        tiene_revisar = any(p in t for p in palabras_revisar)
+        tiene_bugs = any(p in t for p in palabras_bugs)
+        if tiene_excel and tiene_revisar and tiene_bugs:
+            m_path = re.search(
+                r'([A-Za-z]:\\[^\s]+\.\w{2,5}|[^\s]+\.(?:py|js|java|txt|md|ts|go|rb|cpp|cs))',
+                t,
+            )
+            path = m_path.group(1) if m_path else ""
+            return [{
+                "skill": "dev",
+                "action": "review_to_excel",
+                "params": {"path": path, "output": ""},
+            }]
+
+        # Combo: revisar codigo -> Word con analisis
+        palabras_word = ["word", "docx", "informe", "reporte"]
+        tiene_word = any(p in t for p in palabras_word)
+        menciona_codigo = any(p in t for p in [
+            "codigo", "código", ".py", ".js", ".java", "archivo.py",
+            "este archivo", "ese archivo", "el archivo",
+        ])
+        if tiene_word and tiene_revisar and menciona_codigo:
+            m_path = re.search(
+                r'([A-Za-z]:\\[^\s]+\.\w{2,5}|[^\s]+\.(?:py|js|java|txt|md|ts|go|rb|cpp|cs))',
+                t,
+            )
+            path = m_path.group(1) if m_path else ""
+            return [{
+                "skill": "dev",
+                "action": "review_to_word",
+                "params": {"path": path, "output": ""},
+            }]
+
+        # ═══════════════════════════════════════════════════════════════════
         # PRIORIDAD MAXIMA: si la frase EMPIEZA con verbo de edicion, es edit.
         # Esto evita que "modifica el titulo para que no diga Convertir a PDF"
         # se confunda con la skill de PDF.
@@ -322,7 +365,6 @@ class Router:
             "que has indexado", "documentos indexados",
         ]):
             return [{"skill": "docs", "action": "list", "params": {}}]
-
         # 4. DOCS.ASK: preguntas sobre contenido
         docs_ask_triggers = [
             "que dice mi", "que dice el", "que dice la",
@@ -586,6 +628,7 @@ class Router:
         ]):
             return [{"skill": "edit", "action": "list_uploads", "params": {}}]
 
+                      
         # Dev: crear y probar (ciclo completo)
         m = re.search(
             r'\b(?:crea|genera|escribe)\s+(?:un\s+|una\s+)?(?:archivo|script|programa|funcion)?\s*(.+?)\s+(?:en|como)\s+(.+)\b',

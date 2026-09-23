@@ -53,6 +53,14 @@ SKILLS_VALIDAS = {
             "description": {"type": "string"},
             "language": {"type": "string", "enum": ["python", "javascript", "java"]},
             "path": {"type": "string"},
+                    "review_to_excel": {
+            "path": {"type": "string"},
+            "output": {"type": "string"},
+        },
+        "review_to_word": {
+            "path": {"type": "string"},
+            "output": {"type": "string"},
+        },
         },
     },
     "office": {

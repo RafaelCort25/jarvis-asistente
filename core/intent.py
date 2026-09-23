@@ -104,7 +104,14 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "en el archivo X cambia Y por Z" -> edit.modify (path = X, instruction = "cambia Y por Z")
   - "que archivos tengo en uploads" -> edit.list_uploads
   - NUNCA envies "modifica X" a office.create_doc ni a dev.*
-  - TELEGRAM (enviar archivos):
+ - DEV COMBOS (revisar CODIGO -> documento):
+  - Solo si mencionan "codigo", "archivo.py", "script" o un path .py/.js/etc.
+  - "revisa el archivo/codigo y hazme un excel con los bugs" -> dev.review_to_excel (path = "", output = "")
+  - "revisa X.py y hazme un excel con los bugs" -> dev.review_to_excel (path = X.py, output = "")
+  - "revisa X.py y hazme un word con el analisis" -> dev.review_to_word (path = X.py, output = "")
+  - NO uses estos combos si la frase es "hazme un word sobre X tema" (eso es office.create_doc)
+  - NUNCA uses dev.create_and_test ni dev.generate_code para estos casos
+ - TELEGRAM (enviar archivos):
   - "envíame el pdf por telegram" -> telegram.send_last (tipo = "pdf")
   - "envíame el word/excel/imagen por telegram" -> telegram.send_last (tipo = "word" | "excel" | "imagen")
   - "envíame el último archivo por telegram" -> telegram.send_last (tipo = "")

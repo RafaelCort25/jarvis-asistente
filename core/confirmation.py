@@ -52,6 +52,8 @@ RISK_LEVELS = {
     ("dev", "explain"): "low",
     ("dev", "find_issues"): "low",
     ("dev", "generate_code"): "low",
+    ("dev", "review_to_excel"): "medium",
+    ("dev", "review_to_word"): "medium",
         # Dev write/run
     ("dev", "write_file"): "high",
     ("dev", "run_file"): "high",
