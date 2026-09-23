@@ -93,6 +93,11 @@ REGLAS DOCS (importante, revisar antes de dev):
   - NUNCA envies "genera una imagen" a dev.create_and_test
 - "que hora es", "dime la hora" -> system.time
 - "que dia es hoy", "que fecha es" -> system.date
+- PDF (conversion):
+  - "convierte el word/ese word a pdf" -> pdf.from_docx (path = "", output = "")
+  - "convierte X.docx a pdf" -> pdf.from_docx (path = X.docx, output = "")
+  - "que pdfs tengo" -> pdf.list
+  - NUNCA envies "convierte a pdf" a office.create_doc ni a dev.*
   
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google

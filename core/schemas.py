@@ -81,6 +81,13 @@ SKILLS_VALIDAS = {
             "height": {"type": "integer", "minimum": 256, "maximum": 2048},
         },
         "list": {},
+    "pdf": {
+        "from_docx": {
+            "path": {"type": "string"},
+            "output": {"type": "string"},
+        },
+        "list": {},
+    },
     },
     "vision": {
         "describe_screen": {},

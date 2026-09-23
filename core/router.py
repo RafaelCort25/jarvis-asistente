@@ -21,6 +21,7 @@ from skills.git import GitSkill
 from skills.spotify import SpotifySkill
 from skills.office import OfficeSkill
 from skills.image import ImageSkill
+from skills.pdf import PdfSkill
 
 
 NUM_MAP = {
@@ -58,6 +59,7 @@ class Router:
             "spotify": SpotifySkill(),
             "office": OfficeSkill(),
             "image": ImageSkill(),
+            "pdf": PdfSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -89,6 +91,16 @@ class Router:
         if len(t) < 10:
             return False
 
+        # Comandos compuestos con conectores -> agente
+        separadores = [
+            " y luego ", " luego ", " y despues ", " despues de eso ",
+            " y tambien ", " y ademas ", " seguido de ",
+            " y por ultimo ", " y por último ",
+        ]
+        if any(sep in f" {t} " for sep in separadores):
+            return True
+
+        # Normalizar acentos
         t = unicodedata.normalize("NFD", t)
         t = "".join(c for c in t if unicodedata.category(c) != "Mn")
 
@@ -192,29 +204,100 @@ class Router:
                 return [{"skill": "git", "action": action, "params": params}]
 
         # Commit con mensaje dictado: variantes
+                # ═══════════════════════════════════════════════════════════════════
+        # ORDEN IMPORTANTE: indexar y office ANTES de docs.ask
+        # (porque "hazme un word sobre mi cv" contiene "mi cv")
+        # ═══════════════════════════════════════════════════════════════════
+
+        # 1. INDEXAR: "indexa X", "aprende X", "procesa X"
+        #    Variante A: "indexa el archivo/pdf/documento X"
         m = re.search(
-            r'\b(?:haz\s+un\s+)?commit\s+(?:con\s+mensaje|diciendo|que\s+diga|dice)\s*:?\s*(.+)$',
+            r'\b(?:indexa|aprende|procesa|ingesta|guarda)\s+(?:el\s+|la\s+)?(?:archivo|pdf|documento|carpeta)\s+(.+)$',
             t,
         )
         if m:
-            msg = m.group(1).strip(" .,!?¡¿")
-            if msg:
-                return [{"skill": "git", "action": "commit", "params": {"message": msg}}]
+            path = m.group(1).strip(" .,!?¡¿")
+            # Limpiar "en X" del final si existe
+            path = re.sub(r'\s+en\s+.*$', '', path).strip()
+            if path:
+                action = "index_folder" if "carpeta" in t else "index_file"
+                return [{"skill": "docs", "action": action, "params": {"path": path}}]
 
-        # Documentos indexados (RAG) - listar
+        #    Variante B: "indexa mi cv", "indexa mi curriculum", "aprende mis apuntes"
+        m = re.search(
+            r'\b(?:indexa|aprende|procesa|ingesta)\s+(?:mi|mis|el|la)\s+(cv|curriculum|currículum|apuntes|documentos|pdfs|notas)\b',
+            t,
+        )
+        if m:
+            # No sabemos la ruta -> pedirla (o buscar automáticamente en Downloads)
+            objetivo = m.group(1)
+            # Intentar encontrar el archivo automáticamente
+            from pathlib import Path
+            home = Path.home()
+            encontrados = []
+            for carpeta in ["Downloads", "Documents", "Desktop"]:
+                base = home / carpeta
+                if not base.exists():
+                    continue
+                for ext in ("*.pdf", "*.docx", "*.txt"):
+                    for f in base.glob(ext):
+                        nombre = f.name.lower()
+                        if "cv" in nombre or "curriculum" in nombre or "currículum" in nombre:
+                            encontrados.append(str(f))
+            if encontrados:
+                # Indexar el primero que encontremos
+                return [{
+                    "skill": "docs",
+                    "action": "index_file",
+                    "params": {"path": encontrados[0]},
+                }]
+            return None  # Dejar que el LLM/intent lo procese
+
+        # 2. OFFICE: "hazme un word/excel/documento sobre X"
+        #    (va ANTES de docs.ask porque "sobre mi cv" matchea docs_ask)
+        m = re.search(
+            r'\b(?:hazme|crea|genera|escribe|redacta)\s+(?:un\s+|una\s+)?(?:documento|informe|reporte|ensayo|word|docx)\s+(?:sobre|de|acerca\s+de|con|segun|según|basado\s+en)\s+(.+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            desc = m.group(1).strip(" .,!?¡¿")
+            if desc:
+                return [{
+                    "skill": "office",
+                    "action": "create_doc",
+                    "params": {"description": desc, "path": "", "title": ""},
+                }]
+
+        m = re.search(
+            r'\b(?:hazme|crea|genera)\s+(?:un\s+|una\s+)?(?:excel|hoja\s+de\s+calculo|spreadsheet)\s+(?:sobre|de|con|para|segun|según)\s+(.+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            desc = m.group(1).strip(" .,!?¡¿")
+            if desc:
+                return [{
+                    "skill": "office",
+                    "action": "create_xlsx",
+                    "params": {"description": desc, "path": ""},
+                }]
+
+        # 3. LISTAR documentos indexados
         if any(p in t for p in [
             "que documentos tienes", "que documentos hay", "lista mis documentos",
             "que has indexado", "documentos indexados",
         ]):
             return [{"skill": "docs", "action": "list", "params": {}}]
 
-        # Preguntas sobre contenido de documentos (currículum, apuntes, PDFs, etc.)
+        # 4. DOCS.ASK: preguntas sobre contenido (el último porque es el más "hambriento")
+        #    Excluir si ya lo capturaron office o indexar arriba.
         docs_ask_triggers = [
             "que dice mi", "que dice el", "que dice la",
             "segun mi", "segun el", "segun la",
             "de que trata mi", "de que trata el",
             "que sabes sobre mi", "que sabes de mi",
-            "que habilidades", "que experiencia",
+            "que habilidades tengo", "que experiencia tengo",
             "busca en mi", "busca en mis",
             "en mi curriculum", "en mi cv", "mi curriculum", "mi cv",
             "en mis apuntes", "en mis pdfs", "en mis documentos",
@@ -294,6 +377,22 @@ class Router:
         m = re.search(r'\b(?:lista|muestra|que hay en)\s+(?:la\s+)?carpeta\s+(?:de\s+)?(descargas|documentos|escritorio|imagenes|musica|videos)\b', t)
         if m:
             return [{"skill": "files", "action": "list_folder", "params": {"folder": m.group(1)}}]
+                # PDF: convertir Word a PDF
+        if re.search(r'\bpdf\b', t) and any(w in t for w in ["convierte", "convertir", "pasa", "exporta", "haz"]):
+            # Con path explicito: "convierte X.docx a pdf"
+            m = re.search(r'\b(?:convierte|convertir|pasa|exporta)\s+(.+\.docx)\s+(?:a\s+|en\s+)?pdf', t, re.IGNORECASE)
+            if m:
+                return [{
+                    "skill": "pdf",
+                    "action": "from_docx",
+                    "params": {"path": m.group(1).strip(), "output": ""},
+                }]
+            # Sin path: usar el .docx mas reciente
+            return [{"skill": "pdf", "action": "from_docx", "params": {"path": "", "output": ""}}]
+
+        # PDF: listar
+        if any(p in t for p in ["que pdfs tengo", "lista mis pdfs", "pdfs generados"]):
+            return [{"skill": "pdf", "action": "list", "params": {}}]
                 # Office Word: crear documento
         m = re.search(
             r'\b(?:hazme|crea|genera|escribe)\s+(?:un\s+|una\s+)?(?:documento|informe|reporte|ensayo|word)\s+(?:sobre|de|acerca\s+de)\s+(.+)$',

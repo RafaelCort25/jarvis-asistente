@@ -66,6 +66,9 @@ RISK_LEVELS = {
         # Imagenes
     ("image", "generate"): "low",
     ("image", "list"): "low",
+        # PDF
+    ("pdf", "from_docx"): "low",
+    ("pdf", "list"): "low",
 
     # Docs / RAG
     ("docs", "ask"): "low",

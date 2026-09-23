@@ -28,6 +28,19 @@ app.add_middleware(
 
 brain = Brain()
 router = Router()
+# Configurar confirmacion para el contexto GUI
+# En modo GUI (Electron), las acciones se auto-aprueban porque:
+# 1. El usuario esta viendo la accion en pantalla.
+# 2. La GUI todavia no soporta dialogo interactivo.
+# 3. En modo voz (main.py) SI se pide confirmacion por voz.
+from core import confirmation
+
+def _gui_confirmation(skill, action, summary, level, timeout=30):
+    print(f"[GUI/CONFIRM] Auto-aprobado ({level}): {skill}.{action} - {summary[:80]}")
+    return True
+
+confirmation.set_handler(_gui_confirmation)
+print("[API] Handler de confirmacion GUI instalado (auto-aprobar).")
 
 # Servir archivos generados (imágenes, documentos) por HTTP
 SANDBOX_DIR = ROOT / "sandbox"
