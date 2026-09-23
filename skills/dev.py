@@ -66,6 +66,16 @@ class DevSkill(Skill):
                 params.get("language", "python"),
                 params.get("path", ""),
             )
+        if action == "review_to_excel":
+            return self._review_to_excel(
+                params.get("path", ""),
+                params.get("output", ""),
+            )
+        if action == "review_to_word":
+            return self._review_to_word(
+                params.get("path", ""),
+                params.get("output", ""),
+            )
         return f"Accion desconocida: {action}"
 
     # ─── HELPERS ─────────────────────────────────────────────────────────
@@ -359,7 +369,6 @@ Corrige el codigo para que funcione. Reglas:
         if not content or not content.strip():
             return "No hay contenido para escribir."
 
-        # Validacion de seguridad: bloquear escrituras fuera del proyecto
         if not self._es_dentro_del_proyecto(path):
             return f"Ruta fuera del proyecto, bloqueado por seguridad: {path}"
 
@@ -516,7 +525,6 @@ Corrige el codigo para que funcione. Reglas:
         if not path:
             return f"Ruta invalida: {path_str}"
 
-        # Validacion de seguridad
         if not self._es_dentro_del_proyecto(path):
             return f"Ruta fuera del proyecto, bloqueado por seguridad: {path}"
 
@@ -552,7 +560,6 @@ Corrige el codigo para que funcione. Reglas:
             resultado = self._run_file_internal(path)
             print(f"[DEV] Intento {intento} resultado:\n{resultado}\n")
 
-            # Exito
             if "[exit code: 0]" in resultado:
                 if intento == 1:
                     return f"Codigo guardado en {path}.\n\nTest exitoso:\n{resultado}"
@@ -561,14 +568,12 @@ Corrige el codigo para que funcione. Reglas:
                     f"Test exitoso tras {intento} intentos:\n{resultado}"
                 )
 
-            # Ultimo intento agotado
             if intento == self.MAX_FIX_ATTEMPTS:
                 return (
                     f"Codigo guardado en {path}, pero sigue fallando tras "
                     f"{self.MAX_FIX_ATTEMPTS} intentos.\n\nUltimo resultado:\n{resultado}"
                 )
 
-            # 3. Pedir correccion al LLM
             print("[DEV] Error detectado. Pidiendo correccion al modelo...")
             codigo_corregido = self._fix_code(codigo, resultado, description, language)
             if not codigo_corregido or codigo_corregido.startswith("[ERROR LLM]"):
@@ -591,3 +596,296 @@ Corrige el codigo para que funcione. Reglas:
             codigo = codigo_corregido
 
         return "Ciclo terminado sin exito."
+
+    # ─── COMBO: REVISAR → EXCEL ──────────────────────────────────────────
+
+    def _review_to_excel(self, path_str, output_str):
+        """
+        Combo: revisa un archivo, extrae bugs reales, y los escribe en un Excel.
+        """
+        import json as _json
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+
+        path = self._resolve_path(path_str)
+        if not path or not path.is_file():
+            return f"No encontre el archivo: {path_str}"
+
+        # 1. Leer el archivo de verdad
+        content, err = self._read_file(path)
+        if err:
+            return err
+        if len(content) > MAX_FILE_CHARS:
+            content = content[:MAX_FILE_CHARS]
+
+        # 2. Pedir al LLM que encuentre bugs en JSON estructurado
+        print(f"[DEV] Analizando {path.name} con {self.model}...")
+        prompt = f"""Analiza el siguiente codigo y encuentra bugs o problemas REALES.
+
+ARCHIVO: {path.name}
+{content}
+
+Devuelve un JSON con esta estructura exacta:
+{{
+  "bugs": [
+    {{
+      "linea": "numero o rango de linea (ej: 37 o 37-42) o 'N/A' si no aplica",
+      "severidad": "alta | media | baja",
+      "descripcion": "que problema es, concreto",
+      "sugerencia": "como arreglarlo, concreto"
+    }}
+  ]
+}}
+
+Reglas:
+- SOLO bugs reales que veas en el codigo. NO inventes.
+- Si no hay bugs, devuelve {{"bugs": []}}.
+- Severidad: "alta" para bugs graves (crash, seguridad), "media" para problemas logicos, "baja" para estilo.
+- Maximo 15 bugs.
+- Ordena de mayor a menor severidad.
+- NO uses markdown, solo el JSON."""
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "bugs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "linea": {"type": "string"},
+                            "severidad": {"type": "string"},
+                            "descripcion": {"type": "string"},
+                            "sugerencia": {"type": "string"},
+                        },
+                        "required": ["linea", "severidad", "descripcion", "sugerencia"],
+                    },
+                },
+            },
+            "required": ["bugs"],
+        }
+
+        try:
+            resp = ollama.chat(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                options={"temperature": 0.1},
+                format=schema,
+            )
+            raw = resp["message"]["content"].strip()
+            print(f"[DEV] Bugs encontrados (raw): {raw[:300]}")
+        except Exception as e:
+            return f"Error del LLM analizando el codigo: {e}"
+
+        # 3. Parsear
+        try:
+            data = _json.loads(raw)
+        except Exception as e:
+            return f"El LLM no devolvio JSON valido: {e}"
+
+        bugs = data.get("bugs", [])
+        sin_bugs = len(bugs) == 0
+
+        # 4. Preview
+        print(f"\n[DEV] Bugs a exportar ({len(bugs)}):")
+        for b in bugs[:5]:
+            print(f"  [{b['severidad'].upper()}] L{b['linea']}: {b['descripcion'][:60]}")
+        if len(bugs) > 5:
+            print(f"  ... (+{len(bugs)-5} mas)")
+        print()
+
+        # 5. Resolver path de salida
+        if output_str:
+            out = Path(output_str.strip().strip('"').strip("'"))
+            if not out.is_absolute():
+                out = ROOT / out
+            if out.suffix.lower() != ".xlsx":
+                out = out.with_suffix(".xlsx")
+        else:
+            office_dir = ROOT / "sandbox" / "office"
+            office_dir.mkdir(parents=True, exist_ok=True)
+            out = office_dir / f"bugs_{path.stem}.xlsx"
+
+        # 6. Confirmacion
+        summary = f"Crear Excel con {len(bugs)} bugs reales de {path.name}"
+        if not confirmation.require("dev", "review_to_excel", summary):
+            return "Cancelado."
+
+        # 7. Escribir Excel
+        try:
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Bugs"
+
+            header = ["linea", "severidad", "descripcion", "sugerencia"]
+            ws.append(header)
+            header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+            header_font = Font(bold=True, color="FFFFFF")
+            for cell in ws[1]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal="center")
+
+            if sin_bugs:
+                ws.append(["N/A", "info", "Sin bugs evidentes en el archivo", "El codigo parece estar bien"])
+            else:
+                colors = {
+                    "alta": "FFCCCC",
+                    "media": "FFE5B4",
+                    "baja": "CCFFCC",
+                }
+                for b in bugs:
+                    ws.append([
+                        b.get("linea", "N/A"),
+                        b.get("severidad", "media"),
+                        b.get("descripcion", ""),
+                        b.get("sugerencia", ""),
+                    ])
+                    row_idx = ws.max_row
+                    sev = (b.get("severidad") or "media").lower()
+                    fill_color = colors.get(sev, "FFFFFF")
+                    for col in range(1, 5):
+                        ws.cell(row=row_idx, column=col).fill = PatternFill(
+                            start_color=fill_color,
+                            end_color=fill_color,
+                            fill_type="solid",
+                        )
+
+            widths = [10, 12, 60, 60]
+            for i, w in enumerate(widths, 1):
+                ws.column_dimensions[chr(64 + i)].width = w
+
+            out.parent.mkdir(parents=True, exist_ok=True)
+            wb.save(str(out))
+        except Exception as e:
+            return f"Error creando Excel: {e}"
+
+        size_kb = out.stat().st_size // 1024
+        print(f"[DEV] Excel guardado: {out}")
+
+        if sin_bugs:
+            return {
+                "thought": "Sin bugs detectados, Excel informativo creado",
+                "display": f"Excel creado: {out}\n(Sin bugs evidentes en {path.name}, {size_kb} KB)",
+                "voice": f"Revise {path.name}, sin bugs evidentes.",
+            }
+
+        return {
+            "thought": f"{len(bugs)} bugs reales en {path.name}",
+            "display": (
+                f"Excel con bugs de {path.name}: {out}\n"
+                f"({len(bugs)} bugs encontrados, {size_kb} KB)\n\n"
+                f"Alta: {sum(1 for b in bugs if b['severidad'].lower() == 'alta')}, "
+                f"Media: {sum(1 for b in bugs if b['severidad'].lower() == 'media')}, "
+                f"Baja: {sum(1 for b in bugs if b['severidad'].lower() == 'baja')}"
+            ),
+            "voice": f"Listo. Encontre {len(bugs)} bugs reales en {path.name}.",
+        }
+
+    # ─── COMBO: REVISAR → WORD ───────────────────────────────────────────
+
+    def _review_to_word(self, path_str, output_str):
+        """
+        Combo: revisa un archivo y genera un Word con el analisis completo.
+        """
+        from docx import Document
+        from docx.shared import Pt
+
+        path = self._resolve_path(path_str)
+        if not path or not path.is_file():
+            return f"No encontre el archivo: {path_str}"
+
+        content, err = self._read_file(path)
+        if err:
+            return err
+        if len(content) > MAX_FILE_CHARS:
+            content = content[:MAX_FILE_CHARS]
+
+        print(f"[DEV] Analizando {path.name} con {self.model}...")
+        prompt = f"""Analiza el siguiente codigo y escribe un informe en espanol.
+
+ARCHIVO: {path.name}
+{content}
+
+Estructura del informe:
+# Analisis de {path.name}
+
+## Proposito
+1-2 frases sobre que hace el archivo.
+
+## Estructura
+Lista de funciones y clases principales (max 8).
+
+## Bugs y problemas
+Lista de bugs REALES que veas. Si no hay, di "Sin bugs evidentes".
+
+## Mejoras sugeridas
+2-4 sugerencias concretas.
+
+Se directo y tecnico. Maximo 500 palabras."""
+
+        try:
+            resp = ollama.chat(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                options={"temperature": 0.3},
+            )
+            analisis = resp["message"]["content"].strip()
+        except Exception as e:
+            return f"Error del LLM: {e}"
+
+        if output_str:
+            out = Path(output_str.strip().strip('"').strip("'"))
+            if not out.is_absolute():
+                out = ROOT / out
+            if out.suffix.lower() != ".docx":
+                out = out.with_suffix(".docx")
+        else:
+            office_dir = ROOT / "sandbox" / "office"
+            office_dir.mkdir(parents=True, exist_ok=True)
+            out = office_dir / f"analisis_{path.stem}.docx"
+
+        summary = f"Crear Word con analisis de {path.name}"
+        if not confirmation.require("dev", "review_to_word", summary):
+            return "Cancelado."
+
+        try:
+            doc = Document()
+            style = doc.styles["Normal"]
+            style.font.name = "Calibri"
+            style.font.size = Pt(11)
+
+            for line in analisis.split("\n"):
+                line = line.rstrip()
+                if not line.strip():
+                    continue
+                if line.startswith("# "):
+                    doc.add_heading(line[2:].strip(), level=0)
+                elif line.startswith("## "):
+                    doc.add_heading(line[3:].strip(), level=1)
+                elif line.startswith("### "):
+                    doc.add_heading(line[4:].strip(), level=2)
+                elif line.startswith("- ") or line.startswith("* "):
+                    doc.add_paragraph(line[2:].strip(), style="List Bullet")
+                elif re.match(r'^\d+\.\s', line):
+                    doc.add_paragraph(re.sub(r'^\d+\.\s', '', line), style="List Number")
+                else:
+                    doc.add_paragraph(line.strip())
+
+            out.parent.mkdir(parents=True, exist_ok=True)
+            doc.save(str(out))
+        except Exception as e:
+            return f"Error creando Word: {e}"
+
+        size_kb = out.stat().st_size // 1024
+        print(f"[DEV] Word guardado: {out}")
+
+        return {
+            "thought": f"Analisis de {path.name} guardado en Word",
+            "display": (
+                f"Word con analisis: {out}\n"
+                f"({size_kb} KB)\n\n"
+                f"Archivo original: {path.name}"
+            ),
+            "voice": f"Listo. Guarde el analisis de {path.name} en un Word.",
+        }
