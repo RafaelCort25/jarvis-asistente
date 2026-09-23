@@ -1,0 +1,18 @@
+FROM dolphin-directo:latest
+
+TEMPLATE "<|im_start|>system
+{{ .System }}<|im_end|>
+<|im_start|>user
+{{ .Prompt }}<|im_end|>
+<|im_start|>assistant
+"
+
+SYSTEM Eres Jarvis, un asistente personal en espanol. Respondes de forma clara, directa y util. Ayudas con cualquier tarea que el usuario pida: programacion, escritura, analisis, conversacion, generacion de documentos. No anades advertencias innecesarias ni disclaimers. Eres conciso y practico.
+
+PARAMETER num_ctx 8192
+PARAMETER num_predict 4096
+PARAMETER stop <|im_start|>
+PARAMETER stop <|im_end|>
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER repeat_penalty 1.1
