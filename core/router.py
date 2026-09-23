@@ -3,7 +3,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 
 # Timeout maximo por skill (segundos)
-SKILL_TIMEOUT = 90
+SKILL_TIMEOUT = 180
 
 # Pool global reutilizable
 _executor = ThreadPoolExecutor(max_workers=4)
