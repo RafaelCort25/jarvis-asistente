@@ -1,4 +1,13 @@
-﻿import re
+﻿import signal
+import threading
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
+
+# Timeout maximo por skill (segundos)
+SKILL_TIMEOUT = 90
+
+# Pool global reutilizable
+_executor = ThreadPoolExecutor(max_workers=4)
+import re
 import unicodedata
 from core.intent import IntentClassifier
 from core.agent import Agent
@@ -658,15 +667,18 @@ class Router:
             return {"voice": "", "display": "", "thought": ""}, False
 
         # 1. Videos pendientes
-        if browser.has_pending():
-            if self._is_cancel(text):
+        try:
+            if browser.has_pending():
+                if self._is_cancel(text):
+                    browser.clear_pending()
+                    return {"voice": "Cancelado.", "display": "Ok, cancelado.", "thought": ""}, False
+                num = self._parse_choice(text)
+                if num is not None:
+                    result = self._safe_run(browser, "play_pending", {"index": num})
+                    return self._normalize(result), False
                 browser.clear_pending()
-                return {"voice": "Cancelado.", "display": "Ok, cancelado.", "thought": ""}, False
-            num = self._parse_choice(text)
-            if num is not None:
-                result = browser.run("play_pending", {"index": num})
-                return self._normalize(result), False
-            browser.clear_pending()
+        except Exception as e:
+            print(f"[ROUTER] Error en videos pendientes: {e}")
 
         # 2. Frases de memoria
         t_lower = text.lower().strip()
@@ -678,17 +690,30 @@ class Router:
             return None, True
 
         # 3. Pre-clasificador rapido (regex)
-        quick = self._quick_match(text)
+        try:
+            quick = self._quick_match(text)
+        except Exception as e:
+            print(f"[ROUTER] Error en _quick_match: {e}")
+            quick = None
+
         if quick:
             actions = quick
         # 4. Si es complejo -> AGENTE
         elif self._is_complex(text):
-            agent_result = self.agent.run(text, self.skills)
-            return agent_result, False
+            try:
+                agent_result = self.agent.run(text, self.skills)
+                return agent_result, False
+            except Exception as e:
+                print(f"[ROUTER] Error en agente: {e}")
+                return {"voice": "El agente fallo.", "display": f"Error del agente: {e}", "thought": ""}, False
         # 5. LLM clasificador normal
         else:
-            intent = self.classifier.classify(text)
-            actions = intent.get("actions", [])
+            try:
+                intent = self.classifier.classify(text)
+                actions = intent.get("actions", [])
+            except Exception as e:
+                print(f"[ROUTER] Error en clasificador: {e}")
+                return {"voice": "Error clasificando.", "display": f"Error: {e}", "thought": ""}, False
 
         if not actions:
             return None, False
@@ -703,20 +728,20 @@ class Router:
                 continue
             skill = self.skills.get(skill_name)
             if not skill:
+                print(f"[ROUTER] Skill no encontrada: {skill_name}")
                 continue
+
             action = act.get("action", "")
             params = act.get("params", {})
 
-            # Fix: docs.ask siempre usa el texto original del usuario como query.
+            # Fix: docs.ask siempre usa el texto original
             if skill_name == "docs" and action == "ask":
                 params = {"query": text}
 
-            try:
-                result = skill.run(action, params)
-                if result:
-                    results.append(self._normalize(result))
-            except Exception as e:
-                results.append({"voice": "Error.", "display": f"Error: {e}", "thought": ""})
+            # Ejecucion con timeout + try/except
+            result = self._safe_run(skill, action, params)
+            if result:
+                results.append(self._normalize(result))
 
         if not results:
             return None, True
@@ -729,3 +754,28 @@ class Router:
             "display": "\n".join(r["display"] for r in results if r["display"]),
             "thought": " | ".join(r["thought"] for r in results if r["thought"]),
         }, False
+
+    def _safe_run(self, skill, action, params):
+        """Ejecuta skill.run() con timeout y captura de errores."""
+        skill_name = getattr(skill, "name", "desconocida")
+        try:
+            future = _executor.submit(skill.run, action, params)
+            try:
+                result = future.result(timeout=SKILL_TIMEOUT)
+                return result
+            except FutureTimeout:
+                print(f"[ROUTER] Timeout: {skill_name}.{action} (> {SKILL_TIMEOUT}s)")
+                return {
+                    "voice": f"La accion {skill_name} tardo demasiado.",
+                    "display": f"Timeout de {skill_name}.{action} tras {SKILL_TIMEOUT}s.",
+                    "thought": "",
+                }
+        except Exception as e:
+            print(f"[ROUTER] Error en {skill_name}.{action}: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                "voice": f"Error en {skill_name}.",
+                "display": f"Error ejecutando {skill_name}.{action}: {e}",
+                "thought": "",
+            }, False

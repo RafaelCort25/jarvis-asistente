@@ -122,14 +122,25 @@ def _extract_artifacts(text):
 
 @app.post("/chat")
 def chat(msg: Message):
-    result, is_chat = router.route(msg.text)
+    try:
+        result, is_chat = router.route(msg.text)
+    except Exception as e:
+        import traceback
+        print(f"[API/CHAT ERROR] {e}")
+        traceback.print_exc()
+        return {
+            "type": "error",
+            "text": f"Error procesando el comando: {e}",
+            "voice": "Hubo un error interno.",
+            "thought": "",
+            "artifacts": [],
+        }
 
     if result:
         display = result.get("display", "")
         voice = result.get("voice", "")
         thought = result.get("thought", "")
         artifacts = _extract_artifacts(display or voice)
-        # Limpiar la voz para el TTS del navegador
         voice_clean = clean_voice(voice or display) or "Listo."
         return {
             "type": "command",
@@ -140,7 +151,17 @@ def chat(msg: Message):
         }
 
     if is_chat:
-        reply = brain.chat(msg.text)
+        try:
+            reply = brain.chat(msg.text)
+        except Exception as e:
+            print(f"[API/BRAIN ERROR] {e}")
+            return {
+                "type": "error",
+                "text": f"Error en el cerebro: {e}",
+                "voice": "Error en el cerebro.",
+                "thought": "",
+                "artifacts": [],
+            }
         return {
             "type": "chat",
             "text": reply,
