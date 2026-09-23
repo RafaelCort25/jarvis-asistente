@@ -32,6 +32,14 @@ SKILLS_VALIDAS = {
         "screenshot": {},
         "time": {},
         "date": {},
+        "disk_info": {},
+        "clean_temp": {},
+        "empty_recycle": {},
+        "list_big_files": {
+            "folder": {"type": "string"},
+            "min_mb": {"type": "integer", "minimum": 1},
+        },
+        "list_startup": {},
     },
     "dev": {
         "review_file": {"path": {"type": "string"}},

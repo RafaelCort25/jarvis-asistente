@@ -377,6 +377,64 @@ class Router:
         ]):
             return [{"skill": "system", "action": "date", "params": {}}]
 
+                # ═══════════════════════════════════════════════════════════════════
+        # SYSTEM: discos, limpieza, startup, archivos grandes
+        # ═══════════════════════════════════════════════════════════════════
+
+        # Discos / espacio
+        if any(p in t for p in [
+            "cuanto espacio tengo", "cuanto espacio libre", "espacio en disco",
+            "espacio del disco", "cuanto disco", "info de discos",
+            "informacion de discos",
+        ]):
+            return [{"skill": "system", "action": "disk_info", "params": {}}]
+
+        # Limpiar temporales
+        if any(p in t for p in [
+            "limpia temporales", "limpia los temporales", "borra temporales",
+            "borra los temporales", "limpia temp", "limpia el temp",
+        ]):
+            return [{"skill": "system", "action": "clean_temp", "params": {}}]
+
+        # Vaciar papelera
+        if any(p in t for p in [
+            "vacia la papelera", "vacía la papelera", "vacia papelera",
+            "limpia la papelera", "borra la papelera",
+        ]):
+            return [{"skill": "system", "action": "empty_recycle", "params": {}}]
+
+        # Listar archivos grandes
+        if any(p in t for p in [
+            "archivos grandes", "archivos pesados", "que ocupa mas",
+            "que ocupa mas espacio", "que es lo que mas pesa",
+        ]):
+            folder = ""
+            min_mb = 100
+            for carpeta in ["descargas", "downloads", "documentos", "escritorio", "videos", "musica"]:
+                if carpeta in t:
+                    folder = carpeta
+                    break
+            m_num = re.search(r'(\d+)\s*(?:mb|megas?|gb|gigas?)', t)
+            if m_num:
+                val = int(m_num.group(1))
+                if "gb" in t or "giga" in t:
+                    min_mb = val * 1024
+                else:
+                    min_mb = val
+            return [{
+                "skill": "system",
+                "action": "list_big_files",
+                "params": {"folder": folder, "min_mb": min_mb},
+            }]
+
+        # Listar programas de inicio
+        if any(p in t for p in [
+            "programas de inicio", "que arranca con windows",
+            "que inicia con windows", "startup", "programas que arrancan",
+        ]):
+            return [{"skill": "system", "action": "list_startup", "params": {}}]
+
+
         # Terminal: comando explicito con "ejecuta" + prefijos conocidos
         m = re.search(r'\b(?:ejecuta|corre|lanza|haz)\s+(?:el\s+comando\s+|en\s+terminal\s+)?(.+)$', t)
         if m:

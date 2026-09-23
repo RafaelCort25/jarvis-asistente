@@ -39,6 +39,11 @@ RISK_LEVELS = {
     ("system", "shutdown"): "high",
     ("system", "restart"): "high",
     ("system", "cancel_shutdown"): "low",
+    ("system", "disk_info"): "low",
+    ("system", "list_big_files"): "low",
+    ("system", "list_startup"): "low",
+    ("system", "clean_temp"): "medium",
+    ("system", "empty_recycle"): "high",
 
     # Files
     ("files", "find_file"): "low",
