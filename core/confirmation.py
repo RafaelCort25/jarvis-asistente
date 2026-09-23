@@ -69,6 +69,9 @@ RISK_LEVELS = {
         # PDF
     ("pdf", "from_docx"): "low",
     ("pdf", "list"): "low",
+        # Telegram
+    ("telegram", "send_last"): "low",
+    ("telegram", "send_file"): "low",
 
     # Docs / RAG
     ("docs", "ask"): "low",

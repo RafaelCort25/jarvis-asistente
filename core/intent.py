@@ -98,6 +98,12 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "convierte X.docx a pdf" -> pdf.from_docx (path = X.docx, output = "")
   - "que pdfs tengo" -> pdf.list
   - NUNCA envies "convierte a pdf" a office.create_doc ni a dev.*
+  - TELEGRAM (enviar archivos):
+  - "envíame el pdf por telegram" -> telegram.send_last (tipo = "pdf")
+  - "envíame el word/excel/imagen por telegram" -> telegram.send_last (tipo = "word" | "excel" | "imagen")
+  - "envíame el último archivo por telegram" -> telegram.send_last (tipo = "")
+  - "envía X.pdf por telegram" -> telegram.send_file (path = X.pdf)
+  - NUNCA envies "envía ... por telegram" a dev.* ni a office.*
   
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google

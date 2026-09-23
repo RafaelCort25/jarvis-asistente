@@ -22,6 +22,7 @@ from skills.spotify import SpotifySkill
 from skills.office import OfficeSkill
 from skills.image import ImageSkill
 from skills.pdf import PdfSkill
+from skills.telegram import TelegramSkill
 
 
 NUM_MAP = {
@@ -60,6 +61,7 @@ class Router:
             "office": OfficeSkill(),
             "image": ImageSkill(),
             "pdf": PdfSkill(),
+            "telegram": TelegramSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -493,6 +495,39 @@ class Router:
             return [{
                 "skill": "office",
                 "action": "read_ppt",
+                "params": {"path": m.group(1).strip()},
+            }]
+                # Telegram: enviar archivo
+        if "telegram" in t and any(w in t for w in ["envia", "envíame", "enviame", "manda", "mandame", "mándame", "pasa", "pasame", "pásame", "comparte"]):
+            # Detectar tipo mencionado
+            tipo = ""
+            if "pdf" in t:
+                tipo = "pdf"
+            elif "word" in t or "docx" in t or "documento" in t:
+                tipo = "word"
+            elif "excel" in t or "xlsx" in t or "hoja" in t:
+                tipo = "excel"
+            elif "imagen" in t or "foto" in t or "logo" in t or "jpg" in t or "png" in t:
+                tipo = "imagen"
+            elif "codigo" in t or "código" in t or ".py" in t:
+                tipo = "codigo"
+            # Sin tipo -> "send_last" generico
+            return [{
+                "skill": "telegram",
+                "action": "send_last",
+                "params": {"tipo": tipo},
+            }]
+
+        # Envio con path explicito: "envia C:\...\archivo.pdf por telegram"
+        m = re.search(
+            r'\b(?:envia|enviame|envíame|manda|mandame|mándame|pasa|pasame|pásame)\s+([^\s]+\.\w{2,5})\s+(?:por|a)\s+telegram',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            return [{
+                "skill": "telegram",
+                "action": "send_file",
                 "params": {"path": m.group(1).strip()},
             }]
 

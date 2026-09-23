@@ -86,7 +86,11 @@ SKILLS_VALIDAS = {
             "path": {"type": "string"},
             "output": {"type": "string"},
         },
-        "list": {},
+    "list": {},
+    "telegram": {
+        "send_last": {"tipo": {"type": "string"}},
+        "send_file": {"path": {"type": "string"}},
+    },
     },
     },
     "vision": {
