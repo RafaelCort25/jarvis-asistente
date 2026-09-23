@@ -33,6 +33,7 @@ from skills.image import ImageSkill
 from skills.pdf import PdfSkill
 from skills.telegram import TelegramSkill
 from skills.edit import EditSkill
+from skills.education import EducationSkill
 
 
 NUM_MAP = {
@@ -73,6 +74,7 @@ class Router:
             "pdf": PdfSkill(),
             "telegram": TelegramSkill(),
             "edit": EditSkill(),
+            "education": EducationSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -178,6 +180,60 @@ class Router:
                 "skill": "docs",
                 "action": "ask_to_word",
                 "params": {"query": text, "title": ""},
+            }]
+                # EDUCATION: PSeInt, conversion, diagramas
+        # PSeInt
+        m = re.search(
+            r'\b(?:hazme|genera|crea|escribe)\s+(?:un\s+|una\s+)?(?:algoritmo|pseudocodigo|pseudocódigo|pseint)\s+(?:de\s+|para\s+|que\s+)?(.+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            desc = m.group(1).strip(" .,!?¡¿")
+            if desc:
+                return [{
+                    "skill": "education",
+                    "action": "pseint",
+                    "params": {"description": desc},
+                }]
+
+        # Diagrama
+        m = re.search(
+            r'\b(?:hazme|genera|crea|dibuja)\s+(?:un\s+|una\s+)?(?:diagrama|flowchart|flujo)\s+(?:de\s+|para\s+|sobre\s+)?(.+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            desc = m.group(1).strip(" .,!?¡¿")
+            kind = "flowchart"
+            if "secuencia" in t or "sequence" in t:
+                kind = "sequence"
+            elif "clase" in t or "class" in t:
+                kind = "class"
+            elif "estado" in t or "state" in t:
+                kind = "state"
+            elif re.search(r'\ber\b', t) or "entidad" in t or "entidades" in t:
+                kind = "er"
+            # "flujo" o "flowchart" -> se queda como default
+            if desc:
+                return [{
+                    "skill": "education",
+                    "action": "diagram",
+                    "params": {"description": desc, "kind": kind},
+                }]
+
+        # Convertir codigo
+        m = re.search(
+            r'\b(?:convierte|pasa|traduce)\s+(?:este\s+|el\s+|ese\s+)?(?:codigo|código|pseudocodigo|algoritmo)?\s*(?:a\s+)(python|java|c|cpp|csharp|javascript|go|rust|pseint)\b',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            lang = m.group(1).lower()
+            return [{
+                "skill": "education",
+                "action": "convert",
+                "params": {"code": "", "to_language": lang},
             }]
 
         # ═══════════════════════════════════════════════════════════════════

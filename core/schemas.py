@@ -111,6 +111,17 @@ SKILLS_VALIDAS = {
         },
         "list_uploads": {},
     },
+    "education": {
+        "pseint": {"description": {"type": "string"}},
+        "convert": {
+            "code": {"type": "string"},
+            "to_language": {"type": "string"},
+        },
+        "diagram": {
+            "description": {"type": "string"},
+            "kind": {"type": "string"},
+        },
+    },
     "vision": {
         "describe_screen": {},
         "explain_screen_code": {},
