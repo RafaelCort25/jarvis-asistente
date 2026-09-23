@@ -1,18 +1,32 @@
 venv/
 __pycache__/
 *.pyc
+
+# Memoria y datos locales
 memory/
 logs/
 models/voices/
+sandbox/
+
+# Entorno
 .env
+*.log
+
+# Modelos
 *.onnx
 *.gguf
+
+# Audio de prueba
+test.wav
 *.wav
-test.wav
+
+# macOS
 .DS_Store
+
+# Scripts de prueba locales (no subir)
 probar_confirmacion.py
-sandbox/
 probar_rag.py
+probar_macro.py
+probar_*.py
 test_agent.py
-test.wav
-sandbox/
+test_*.py
