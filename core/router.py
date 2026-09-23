@@ -503,19 +503,27 @@ class Router:
         if any(p in t for p in ["que pdfs tengo", "lista mis pdfs", "pdfs generados"]):
             return [{"skill": "pdf", "action": "list", "params": {}}]
 
-        # Imagenes: generar
+                # Imagenes: generar
         m = re.search(
-            r'\b(?:genera|crea|hazme|dibuja|imagina)\s+(?:una\s+|un\s+)?(?:imagen|foto|dibujo|ilustracion)\s+(?:de|sobre|con)\s+(.+)$',
+            r'\b(?:genera|crea|hazme|dibuja|imagina)\s+(?:una\s+|un\s+)?(?:imagen|foto|dibujo|ilustracion|logo)\s+(?:de|sobre|con)\s+(.+)$',
             t,
             re.IGNORECASE,
         )
         if m:
             prompt = m.group(1).strip(" .,!?¡¿")
             if prompt:
+                # Detectar si pide alta calidad
+                palabras_hq = [
+                    "alta calidad", "profesional", "detallad", "hq",
+                    "para presentacion", "para cliente", "final",
+                    "moodboard", "estilos visuales", "opciones de diseño",
+                    "propuesta", "variantes", "4k", "2k",
+                ]
+                quality = "hq" if any(w in t for w in palabras_hq) else "fast"
                 return [{
                     "skill": "image",
                     "action": "generate",
-                    "params": {"prompt": prompt, "width": 1024, "height": 1024},
+                    "params": {"prompt": prompt, "width": 1024, "height": 1024, "quality": quality},
                 }]
 
         # Imagenes: listar
