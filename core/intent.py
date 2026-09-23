@@ -91,6 +91,9 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "genera/crea/hazme/dibuja una imagen de X" -> image.generate (prompt = X, width = 1024, height = 1024)
   - "que imagenes tengo", "lista mis imagenes" -> image.list
   - NUNCA envies "genera una imagen" a dev.create_and_test
+- "que hora es", "dime la hora" -> system.time
+- "que dia es hoy", "que fecha es" -> system.date
+  
 - "busca el archivo X", "encuentra X", "dónde está X" → files.find_file
 - "busca en google X", "googlea X" → browser.search_google
 - "busca en youtube X", "pon X", "reproduce X" → browser.search_youtube

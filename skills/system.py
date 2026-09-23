@@ -25,6 +25,10 @@ class SystemSkill(Skill):
             return self._screenshot()
         if action == "cancel_shutdown":
             return self._cancel_shutdown()
+        if action == "time":
+            return self._time()
+        if action == "date":
+            return self._date()
         return f"Accion desconocida: {action}"
 
     def _lock(self):
@@ -93,5 +97,31 @@ class SystemSkill(Skill):
                 "display": f"📸 Captura guardada: {filename.name}\n📤 Enviada por Telegram",
                 "voice": "Listo, capture y envie la pantalla."
             }
+        
         except Exception as e:
             return f"Error al capturar: {e}"
+
+    def _time(self):
+        ahora = datetime.now()
+        hora12 = ahora.strftime("%I:%M %p").lstrip("0")
+        return {
+            "thought": "",
+            "display": f"Son las {hora12}",
+            "voice": f"Son las {hora12}",
+        }
+
+    def _date(self):
+        ahora = datetime.now()
+        dias = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
+        meses = [
+            "enero", "febrero", "marzo", "abril", "mayo", "junio",
+            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+        ]
+        dia_semana = dias[ahora.weekday()]
+        mes = meses[ahora.month - 1]
+        texto = f"Hoy es {dia_semana} {ahora.day} de {mes} de {ahora.year}"
+        return {
+            "thought": "",
+            "display": texto,
+            "voice": texto,
+        }

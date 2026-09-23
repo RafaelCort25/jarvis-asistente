@@ -32,6 +32,8 @@ SKILLS_VALIDAS = {
         "sleep": {},
         "cancel_shutdown": {},
         "screenshot": {},
+        "time": {},
+        "date": {},
     },
     "dev": {
         "review_file": {"path": {"type": "string"}},

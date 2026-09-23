@@ -155,6 +155,18 @@ class Router:
             text_to_copy = m.group(1).strip(" .,!?¡¿")
             if text_to_copy:
                 return [{"skill": "clipboard", "action": "write", "params": {"text": text_to_copy}}]
+                    # Hora y fecha (respuesta directa, sin LLM)
+        if any(p in t for p in [
+            "que hora es", "que hora tienes", "dime la hora", "dame la hora",
+            "hora actual", "hora es",
+        ]):
+            return [{"skill": "system", "action": "time", "params": {}}]
+
+        if any(p in t for p in [
+            "que dia es hoy", "que dia es", "que fecha es hoy", "que fecha es",
+            "dime la fecha", "dame la fecha", "fecha actual",
+        ]):
+            return [{"skill": "system", "action": "date", "params": {}}]
 
         # Terminal: comando explicito con "ejecuta" + prefijos conocidos
         m = re.search(r'\b(?:ejecuta|corre|lanza|haz)\s+(?:el\s+comando\s+|en\s+terminal\s+)?(.+)$', t)

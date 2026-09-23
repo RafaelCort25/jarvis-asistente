@@ -180,8 +180,19 @@ def main():
                         console.print("[dim]No detecte nada.[/]")
                         break
                     console.print(f"[green]Dijiste:[/] {text}")
+                    
 
                     t = text.lower().strip()
+
+                    # Re-armado: si el usuario dijo "hey jarvis" en medio del loop
+                    wake_variants = [
+                        "hey jarvis", "hey yarvis", "hey yardis", "hey yarbis",
+                        "oye jarvis", "oye yarvis", "hey nitro", "oye nitro",
+                    ]
+                    if any(v in t for v in wake_variants) and len(t) < 30:
+                        tts.speak("Te escucho.")
+                        continue
+
                     if any(w in t for w in ["basta", "callate", "silencio", "gracias"]):
                         tts.speak("Ok.")
                         break

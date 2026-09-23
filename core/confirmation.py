@@ -16,6 +16,8 @@ DEFAULT_TIMEOUT = 30
 # "medium" = pregunta siempre
 # "high"   = pregunta siempre + advertencia
 RISK_LEVELS = {
+    ("system", "time"): "low",
+    ("system", "date"): "low",
     # Skill desktop
     ("desktop", "open_app"): "low",
     ("desktop", "open_folder"): "low",
