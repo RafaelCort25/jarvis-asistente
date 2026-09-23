@@ -1,9 +1,9 @@
-"""Capa de confirmación central: skills de riesgo piden autorización."""
+"""Capa de confirmacion central: skills de riesgo piden autorizacion."""
 import threading
 import time
 from datetime import datetime
 
-# Handler externo: main.py inyecta la función que sabe preguntar por voz
+# Handler externo: main.py inyecta la funcion que sabe preguntar por voz
 _ask_handler = None
 _handler_lock = threading.Lock()
 
@@ -16,9 +16,11 @@ DEFAULT_TIMEOUT = 30
 # "medium" = pregunta siempre
 # "high"   = pregunta siempre + advertencia
 RISK_LEVELS = {
+    # System - tiempo/fecha
     ("system", "time"): "low",
     ("system", "date"): "low",
-    # Skill desktop
+
+    # Desktop
     ("desktop", "open_app"): "low",
     ("desktop", "open_folder"): "low",
     ("desktop", "volume_up"): "low",
@@ -32,7 +34,7 @@ RISK_LEVELS = {
     ("browser", "play_pending"): "low",
     ("browser", "cancel_pending"): "low",
 
-    # Sistema
+    # System - acciones
     ("system", "screenshot"): "low",
     ("system", "lock"): "medium",
     ("system", "sleep"): "medium",
@@ -44,7 +46,8 @@ RISK_LEVELS = {
     ("system", "list_startup"): "low",
     ("system", "clean_temp"): "medium",
     ("system", "empty_recycle"): "high",
-        # Macro
+
+    # Macro
     ("macro", "start"): "medium",
     ("macro", "stop"): "low",
     ("macro", "play"): "high",
@@ -54,10 +57,13 @@ RISK_LEVELS = {
     # Files
     ("files", "find_file"): "low",
     ("files", "list_folder"): "low",
+    ("files", "pick"): "low",
+    ("files", "open_path"): "low",
+    ("files", "info"): "low",
     ("files", "move"): "medium",
     ("files", "delete"): "high",
 
-    # Dev
+    # Dev - lectura
     ("dev", "review_file"): "low",
     ("dev", "review_project"): "low",
     ("dev", "explain"): "low",
@@ -65,27 +71,33 @@ RISK_LEVELS = {
     ("dev", "generate_code"): "low",
     ("dev", "review_to_excel"): "medium",
     ("dev", "review_to_word"): "medium",
-        # Dev write/run
+
+    # Dev - escritura/ejecucion
     ("dev", "write_file"): "high",
     ("dev", "run_file"): "high",
     ("dev", "create_and_test"): "high",
-        # Office
+
+    # Office
     ("office", "create_doc"): "medium",
     ("office", "read_doc"): "low",
     ("office", "create_xlsx"): "medium",
     ("office", "read_xlsx"): "low",
     ("office", "create_ppt"): "medium",
     ("office", "read_ppt"): "low",
-        # Imagenes
+
+    # Imagenes
     ("image", "generate"): "low",
     ("image", "list"): "low",
     ("image", "to_word"): "low",
-        # PDF
+
+    # PDF
     ("pdf", "from_docx"): "low",
     ("pdf", "list"): "low",
-        # Telegram
+
+    # Telegram
     ("telegram", "send_last"): "low",
     ("telegram", "send_file"): "low",
+
     # Edit
     ("edit", "modify"): "medium",
     ("edit", "list_uploads"): "low",
@@ -97,7 +109,8 @@ RISK_LEVELS = {
     ("docs", "index_folder"): "low",
     ("docs", "delete"): "medium",
     ("docs", "ask_to_word"): "medium",
-        # Education
+
+    # Education
     ("education", "pseint"): "low",
     ("education", "convert"): "low",
     ("education", "diagram"): "low",
@@ -117,8 +130,30 @@ RISK_LEVELS = {
     ("vision", "describe_screen"): "low",
     ("vision", "explain_screen_code"): "low",
 
-    # Terminal (futuro)
+    # Productivity
+    ("productivity", "save_note"): "low",
+    ("productivity", "read_notes"): "low",
+    ("productivity", "clear_notes"): "medium",
+
+    # Weather
+    ("weather", "current"): "low",
+
+    # Translate
+    ("translate", "text"): "low",
+
+    # Alarm
+    ("alarm", "set"): "low",
+    ("alarm", "list"): "low",
+    ("alarm", "cancel"): "low",
+
+    # Entertainment
+    ("entertainment", "play_pause"): "low",
+    ("entertainment", "next_track"): "low",
+    ("entertainment", "prev_track"): "low",
+
+    # Terminal
     ("terminal", "run"): "high",
+    ("terminal", "suggest"): "medium",
 
     # Git
     ("git", "status"): "low",
@@ -128,7 +163,8 @@ RISK_LEVELS = {
     ("git", "commit"): "medium",
     ("git", "push"): "high",
     ("git", "pull"): "medium",
-        # Spotify (todo low)
+
+    # Spotify
     ("spotify", "play"): "low",
     ("spotify", "pause"): "low",
     ("spotify", "next"): "low",
@@ -146,14 +182,15 @@ RISK_LEVELS = {
     ("github", "list_issues"): "low",
 }
 
+
 def set_handler(fn):
     """
-    main.py llama esto al arrancar para inyectar la función que sabe
-    preguntar por voz. La función debe tener firma:
+    main.py llama esto al arrancar para inyectar la funcion que sabe
+    preguntar por voz. La funcion debe tener firma:
 
         fn(skill: str, action: str, summary: str, level: str) -> bool
 
-    Y devolver True si el usuario confirmó, False si rechazó o si hubo timeout.
+    Y devolver True si el usuario confirmo, False si rechazo o si hubo timeout.
     """
     global _ask_handler
     with _handler_lock:
@@ -167,6 +204,8 @@ def get_risk(skill, action):
 
 def is_low_risk(skill, action):
     return get_risk(skill, action) == "low"
+
+
 def _default_text_handler(skill, action, summary, level, timeout):
     """Handler de texto por defecto para uso desde consola interactiva."""
     print(f"\n[CONFIRMACION {level.upper()}] {summary}")
