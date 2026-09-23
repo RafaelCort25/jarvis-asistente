@@ -67,12 +67,11 @@ SKILLS_VALIDAS = {
             "path": {"type": "string"},
         },
         "read_xlsx": {"path": {"type": "string"}},
-                "create_ppt": {
+        "create_ppt": {
             "description": {"type": "string"},
             "path": {"type": "string"},
         },
         "read_ppt": {"path": {"type": "string"}},
-        
     },
     "image": {
         "generate": {
@@ -81,17 +80,25 @@ SKILLS_VALIDAS = {
             "height": {"type": "integer", "minimum": 256, "maximum": 2048},
         },
         "list": {},
+    },
     "pdf": {
         "from_docx": {
             "path": {"type": "string"},
             "output": {"type": "string"},
         },
-    "list": {},
+        "list": {},
+    },
     "telegram": {
         "send_last": {"tipo": {"type": "string"}},
         "send_file": {"path": {"type": "string"}},
     },
-    },
+    "edit": {
+        "modify": {
+            "path": {"type": "string"},
+            "instruction": {"type": "string"},
+            "output": {"type": "string"},
+        },
+        "list_uploads": {},
     },
     "vision": {
         "describe_screen": {},
@@ -129,14 +136,6 @@ SKILLS_VALIDAS = {
         "commit": {"message": {"type": "string"}},
         "push": {},
         "pull": {},
-    "spotify": {
-        "play": {"query": {"type": "string"}},
-        "pause": {},
-        "next": {},
-        "previous": {},
-        "current": {},
-        "volume": {"percent": {"type": "integer", "minimum": 0, "maximum": 100}},
-    },
     },
     "spotify": {
         "play": {"query": {"type": "string"}},

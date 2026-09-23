@@ -72,6 +72,9 @@ RISK_LEVELS = {
         # Telegram
     ("telegram", "send_last"): "low",
     ("telegram", "send_file"): "low",
+    # Edit
+    ("edit", "modify"): "medium",
+    ("edit", "list_uploads"): "low",
 
     # Docs / RAG
     ("docs", "ask"): "low",
@@ -145,6 +148,31 @@ def get_risk(skill, action):
 
 def is_low_risk(skill, action):
     return get_risk(skill, action) == "low"
+def _default_text_handler(skill, action, summary, level, timeout):
+    """Handler de texto por defecto para uso desde consola interactiva."""
+    print(f"\n[CONFIRMACION {level.upper()}] {summary}")
+    try:
+        resp = input("Confirmas? (s/n): ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return False
+    return resp in ("s", "si", "sí", "y", "yes")
+
+
+def _install_default_if_tty():
+    """Si estamos en una terminal interactiva y no hay handler, instalar uno de texto."""
+    global _ask_handler
+    if _ask_handler is not None:
+        return
+    try:
+        import sys
+        if sys.stdin and sys.stdin.isatty():
+            _ask_handler = _default_text_handler
+    except Exception:
+        pass
+
+
+# Auto-instalar el handler de texto si aplica
+_install_default_if_tty()
 
 
 def require(skill, action, summary, params=None, timeout=DEFAULT_TIMEOUT):

@@ -99,10 +99,14 @@ def process(user, brain, router, tts=None, stt=None):
             console.print(f"[bold magenta]{CONFIG['jarvis']['name']}:[/] {result['display']}\n")
 
         if tts and result.get("voice"):
-            if stt:
-                return _speak_with_barge_in(tts, stt, result["voice"], brain, router)
-            else:
-                tts.speak(result["voice"])
+            # Limpiar la voz antes del TTS
+            from core.voice_cleaner import clean_voice
+            voice_clean = clean_voice(result["voice"])
+            if voice_clean:
+                if stt:
+                    return _speak_with_barge_in(tts, stt, voice_clean, brain, router)
+                else:
+                    tts.speak(voice_clean)
         return True
 
     if not is_chat:
@@ -112,10 +116,13 @@ def process(user, brain, router, tts=None, stt=None):
     reply = brain.chat(user)
     console.print(f"[bold magenta]{CONFIG['jarvis']['name']}:[/] {reply}\n")
     if tts:
-        if stt:
-            return _speak_with_barge_in(tts, stt, reply[:600], brain, router)
-        else:
-            tts.speak(reply[:600])
+        from core.voice_cleaner import clean_voice
+        voice_clean = clean_voice(reply)
+        if voice_clean:
+            if stt:
+                return _speak_with_barge_in(tts, stt, voice_clean, brain, router)
+            else:
+                tts.speak(voice_clean)
     return True
 
 

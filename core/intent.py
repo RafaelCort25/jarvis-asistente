@@ -98,6 +98,12 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "convierte X.docx a pdf" -> pdf.from_docx (path = X.docx, output = "")
   - "que pdfs tengo" -> pdf.list
   - NUNCA envies "convierte a pdf" a office.create_doc ni a dev.*
+  - EDIT (modificar archivos):
+  - "modifica X.docx cambiando 'Juan' por 'Pedro'" -> edit.modify (path = X.docx, instruction = "cambia Juan por Pedro")
+  - "modifica el ultimo archivo de uploads cambiando 'X' por 'Y'" -> edit.modify (path = "", instruction = "cambia X por Y")
+  - "en el archivo X cambia Y por Z" -> edit.modify (path = X, instruction = "cambia Y por Z")
+  - "que archivos tengo en uploads" -> edit.list_uploads
+  - NUNCA envies "modifica X" a office.create_doc ni a dev.*
   - TELEGRAM (enviar archivos):
   - "envíame el pdf por telegram" -> telegram.send_last (tipo = "pdf")
   - "envíame el word/excel/imagen por telegram" -> telegram.send_last (tipo = "word" | "excel" | "imagen")

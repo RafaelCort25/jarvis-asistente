@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from core.brain import Brain
 from core.router import Router
+from core.voice_cleaner import clean_voice
 
 ROOT = Path(__file__).resolve().parent
 
@@ -128,10 +129,12 @@ def chat(msg: Message):
         voice = result.get("voice", "")
         thought = result.get("thought", "")
         artifacts = _extract_artifacts(display or voice)
+        # Limpiar la voz para el TTS del navegador
+        voice_clean = clean_voice(voice or display) or "Listo."
         return {
             "type": "command",
             "text": display or voice or "Listo.",
-            "voice": voice or display,
+            "voice": voice_clean,
             "thought": thought,
             "artifacts": artifacts,
         }
@@ -141,7 +144,7 @@ def chat(msg: Message):
         return {
             "type": "chat",
             "text": reply,
-            "voice": reply[:600],
+            "voice": clean_voice(reply),
             "artifacts": [],
         }
 

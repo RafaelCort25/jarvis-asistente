@@ -23,6 +23,7 @@ from skills.office import OfficeSkill
 from skills.image import ImageSkill
 from skills.pdf import PdfSkill
 from skills.telegram import TelegramSkill
+from skills.edit import EditSkill
 
 
 NUM_MAP = {
@@ -62,6 +63,7 @@ class Router:
             "image": ImageSkill(),
             "pdf": PdfSkill(),
             "telegram": TelegramSkill(),
+            "edit": EditSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -169,7 +171,8 @@ class Router:
             text_to_copy = m.group(1).strip(" .,!?¡¿")
             if text_to_copy:
                 return [{"skill": "clipboard", "action": "write", "params": {"text": text_to_copy}}]
-                    # Hora y fecha (respuesta directa, sin LLM)
+
+        # Hora y fecha (respuesta directa, sin LLM)
         if any(p in t for p in [
             "que hora es", "que hora tienes", "dime la hora", "dame la hora",
             "hora actual", "hora es",
@@ -205,8 +208,7 @@ class Router:
             if any(f in t for f in frases):
                 return [{"skill": "git", "action": action, "params": params}]
 
-        # Commit con mensaje dictado: variantes
-                # ═══════════════════════════════════════════════════════════════════
+        # ═══════════════════════════════════════════════════════════════════
         # ORDEN IMPORTANTE: indexar y office ANTES de docs.ask
         # (porque "hazme un word sobre mi cv" contiene "mi cv")
         # ═══════════════════════════════════════════════════════════════════
@@ -231,9 +233,6 @@ class Router:
             t,
         )
         if m:
-            # No sabemos la ruta -> pedirla (o buscar automáticamente en Downloads)
-            objetivo = m.group(1)
-            # Intentar encontrar el archivo automáticamente
             from pathlib import Path
             home = Path.home()
             encontrados = []
@@ -247,16 +246,14 @@ class Router:
                         if "cv" in nombre or "curriculum" in nombre or "currículum" in nombre:
                             encontrados.append(str(f))
             if encontrados:
-                # Indexar el primero que encontremos
                 return [{
                     "skill": "docs",
                     "action": "index_file",
                     "params": {"path": encontrados[0]},
                 }]
-            return None  # Dejar que el LLM/intent lo procese
+            return None
 
         # 2. OFFICE: "hazme un word/excel/documento sobre X"
-        #    (va ANTES de docs.ask porque "sobre mi cv" matchea docs_ask)
         m = re.search(
             r'\b(?:hazme|crea|genera|escribe|redacta)\s+(?:un\s+|una\s+)?(?:documento|informe|reporte|ensayo|word|docx)\s+(?:sobre|de|acerca\s+de|con|segun|según|basado\s+en)\s+(.+)$',
             t,
@@ -292,8 +289,7 @@ class Router:
         ]):
             return [{"skill": "docs", "action": "list", "params": {}}]
 
-        # 4. DOCS.ASK: preguntas sobre contenido (el último porque es el más "hambriento")
-        #    Excluir si ya lo capturaron office o indexar arriba.
+        # 4. DOCS.ASK: preguntas sobre contenido
         docs_ask_triggers = [
             "que dice mi", "que dice el", "que dice la",
             "segun mi", "segun el", "segun la",
@@ -307,20 +303,11 @@ class Router:
         if any(p in t for p in docs_ask_triggers):
             return [{"skill": "docs", "action": "ask", "params": {"query": text}}]
 
-        # Indexar archivo/carpeta (con ruta explicita)
-        m = re.search(r'\b(?:indexa|aprende|procesa|lee|guarda)\s+(?:el\s+)?(?:archivo|pdf|documento|carpeta)\s+(.+)$', t)
-        if m:
-            path = m.group(1).strip(" .,!?¡¿")
-            if path:
-                action = "index_folder" if "carpeta" in t else "index_file"
-                return [{"skill": "docs", "action": action, "params": {"path": path}}]
-
-        # Spotify (tiene que ir antes del "pon X" general)
+        # Spotify
         m = re.search(r'\b(?:pon|ponme|reproduce|quiero\s+escuchar)\s+(.+?)\s+en\s+spotify\b', t)
         if m:
             return [{"skill": "spotify", "action": "play", "params": {"query": m.group(1).strip()}}]
 
-        # Controles Spotify (frases explicitas)
         if "spotify" in t:
             if any(p in t for p in ["pausa", "pausar"]):
                 return [{"skill": "spotify", "action": "pause", "params": {}}]
@@ -331,7 +318,6 @@ class Router:
             if any(p in t for p in ["que esta sonando", "que suena", "que cancion"]):
                 return [{"skill": "spotify", "action": "current", "params": {}}]
 
-        # "pausa la musica" sin mencionar spotify
         if any(p in t for p in ["pausa la musica", "pausa la cancion", "para la musica"]):
             return [{"skill": "spotify", "action": "pause", "params": {}}]
 
@@ -379,9 +365,9 @@ class Router:
         m = re.search(r'\b(?:lista|muestra|que hay en)\s+(?:la\s+)?carpeta\s+(?:de\s+)?(descargas|documentos|escritorio|imagenes|musica|videos)\b', t)
         if m:
             return [{"skill": "files", "action": "list_folder", "params": {"folder": m.group(1)}}]
-                # PDF: convertir Word a PDF
+
+        # PDF: convertir Word a PDF
         if re.search(r'\bpdf\b', t) and any(w in t for w in ["convierte", "convertir", "pasa", "exporta", "haz"]):
-            # Con path explicito: "convierte X.docx a pdf"
             m = re.search(r'\b(?:convierte|convertir|pasa|exporta)\s+(.+\.docx)\s+(?:a\s+|en\s+)?pdf', t, re.IGNORECASE)
             if m:
                 return [{
@@ -389,27 +375,13 @@ class Router:
                     "action": "from_docx",
                     "params": {"path": m.group(1).strip(), "output": ""},
                 }]
-            # Sin path: usar el .docx mas reciente
             return [{"skill": "pdf", "action": "from_docx", "params": {"path": "", "output": ""}}]
 
         # PDF: listar
         if any(p in t for p in ["que pdfs tengo", "lista mis pdfs", "pdfs generados"]):
             return [{"skill": "pdf", "action": "list", "params": {}}]
-                # Office Word: crear documento
-        m = re.search(
-            r'\b(?:hazme|crea|genera|escribe)\s+(?:un\s+|una\s+)?(?:documento|informe|reporte|ensayo|word)\s+(?:sobre|de|acerca\s+de)\s+(.+)$',
-            t,
-            re.IGNORECASE,
-        )
-        if m:
-            desc = m.group(1).strip(" .,!?¡¿")
-            if desc:
-                return [{
-                    "skill": "office",
-                    "action": "create_doc",
-                    "params": {"description": desc, "path": "", "title": ""},
-                }]
-                    # Imagenes: generar
+
+        # Imagenes: generar
         m = re.search(
             r'\b(?:genera|crea|hazme|dibuja|imagina)\s+(?:una\s+|un\s+)?(?:imagen|foto|dibujo|ilustracion)\s+(?:de|sobre|con)\s+(.+)$',
             t,
@@ -443,20 +415,6 @@ class Router:
                 "action": "read_doc",
                 "params": {"path": m.group(1).strip()},
             }]
-                # Office Excel: crear hoja de calculo
-        m = re.search(
-            r'\b(?:hazme|crea|genera)\s+(?:un\s+|una\s+)?(?:excel|hoja\s+de\s+calculo|spreadsheet)\s+(?:sobre|de|con|para)\s+(.+)$',
-            t,
-            re.IGNORECASE,
-        )
-        if m:
-            desc = m.group(1).strip(" .,!?¡¿")
-            if desc:
-                return [{
-                    "skill": "office",
-                    "action": "create_xlsx",
-                    "params": {"description": desc, "path": ""},
-                }]
 
         # Office Excel: leer
         m = re.search(
@@ -470,7 +428,8 @@ class Router:
                 "action": "read_xlsx",
                 "params": {"path": m.group(1).strip()},
             }]
-                # Office PowerPoint: crear presentacion
+
+        # Office PowerPoint: crear presentacion
         m = re.search(
             r'\b(?:hazme|crea|genera)\s+(?:una\s+|un\s+)?(?:presentacion|powerpoint|ppt|diapositivas)\s+(?:sobre|de|acerca\s+de|para)\s+(.+)$',
             t,
@@ -497,9 +456,9 @@ class Router:
                 "action": "read_ppt",
                 "params": {"path": m.group(1).strip()},
             }]
-                # Telegram: enviar archivo
+
+        # Telegram: enviar archivo
         if "telegram" in t and any(w in t for w in ["envia", "envíame", "enviame", "manda", "mandame", "mándame", "pasa", "pasame", "pásame", "comparte"]):
-            # Detectar tipo mencionado
             tipo = ""
             if "pdf" in t:
                 tipo = "pdf"
@@ -511,14 +470,13 @@ class Router:
                 tipo = "imagen"
             elif "codigo" in t or "código" in t or ".py" in t:
                 tipo = "codigo"
-            # Sin tipo -> "send_last" generico
             return [{
                 "skill": "telegram",
                 "action": "send_last",
                 "params": {"tipo": tipo},
             }]
 
-        # Envio con path explicito: "envia C:\...\archivo.pdf por telegram"
+        # Envio con path explicito por telegram
         m = re.search(
             r'\b(?:envia|enviame|envíame|manda|mandame|mándame|pasa|pasame|pásame)\s+([^\s]+\.\w{2,5})\s+(?:por|a)\s+telegram',
             t,
@@ -531,8 +489,70 @@ class Router:
                 "params": {"path": m.group(1).strip()},
             }]
 
+        # Edit: modificar archivo
+        # Detectar si menciona un archivo con extension o carpeta uploads
+        es_edicion = any(w in t for w in ["modifica", "edita", "actualiza", "corrige", "cambia"])
+        menciona_archivo = (
+            "uploads" in t
+            or ".docx" in t
+            or ".xlsx" in t
+            or ".txt" in t
+            or ".pdf" in t
+            or ".py" in t
+            or ".md" in t
+            or "\\" in t
+            or "/" in t
+        )
+        if es_edicion and menciona_archivo:
+            # Extraer path explicito si existe
+            path = ""
+            m_path = re.search(
+                r'([A-Za-z]:\\[^\s]+\.\w{2,5}|[^\s]+\.(?:docx|xlsx|txt|pdf|py|md|csv))',
+                t,
+            )
+            if m_path:
+                path = m_path.group(1)
+            # Extraer la instruccion: todo despues de "cambiando" / "por" / "que diga"
+            m_instr = re.search(
+                r'\b(?:cambiando|reemplazando|para\s+que\s+diga|que\s+diga|cambia)\s+(.+)$',
+                t,
+                re.IGNORECASE,
+            )
+            if m_instr:
+                instruction = m_instr.group(1).strip(" .,!?¡¿")
+                if path:
+                    instruction = f"cambia {instruction}"
+            else:
+                # Fallback: usar la frase completa
+                instruction = text
+            return [{
+                "skill": "edit",
+                "action": "modify",
+                "params": {"path": path, "instruction": instruction, "output": ""},
+            }]
+
+        # Edit: "modifica el ultimo archivo de uploads cambiando X por Y"
+        m = re.search(
+            r'\b(?:modifica|edita|actualiza|corrige|cambia)\b.*?\b(?:uploads|subidos?)\b.*?\b(?:cambiando|por|para\s+que\s+diga)\s+(.+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            return [{
+                "skill": "edit",
+                "action": "modify",
+                "params": {"path": "", "instruction": m.group(0), "output": ""},
+            }]
+
+        # Edit: listar uploads
+        if any(p in t for p in [
+            "que archivos tengo en uploads",
+            "lista los archivos de uploads",
+            "lista mis uploads",
+        ]):
+            return [{"skill": "edit", "action": "list_uploads", "params": {}}]
+
         # Dev: crear y probar (ciclo completo)
-                # Dev: crear y probar (ciclo completo)
         m = re.search(
             r'\b(?:crea|genera|escribe)\s+(?:un\s+|una\s+)?(?:archivo|script|programa|funcion)?\s*(.+?)\s+(?:en|como)\s+(.+)\b',
             t,
@@ -545,8 +565,7 @@ class Router:
             # Normalizar separadores dictados
             path = path.replace("barra", "/").replace("slash", "/")
 
-            # Normalizar extensiones dictadas ("punto py" -> ".py")
-                        # Normalizar extensiones dictadas ("punto py" -> ".py")
+            # Normalizar extensiones dictadas
             path = re.sub(r'\bpunto\s+py\b', '.py', path)
             path = re.sub(r'\bpunto\s+js\b', '.js', path)
             path = re.sub(r'\bpunto\s+java\b', '.java', path)
@@ -556,9 +575,9 @@ class Router:
             path = re.sub(r'\s+', ' ', path).strip()
             path = path.strip(".,!?¡¿ ")
 
-            # Colapsar espacios alrededor de separadores     <-- AQUI
-            path = re.sub(r'\s*/\s*', '/', path)              # <-- AÑADIR
-            path = re.sub(r'\s*\.\s*', '.', path)             # <-- AÑADIR
+            # Colapsar espacios alrededor de separadores
+            path = re.sub(r'\s*/\s*', '/', path)
+            path = re.sub(r'\s*\.\s*', '.', path)
 
             # Si todavia tiene espacios ("sandbox division.py"), asumir "sandbox/division.py"
             if " " in path:
