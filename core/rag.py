@@ -222,9 +222,16 @@ class RAG:
         sources = list({m.get("name", "?") for _, m in relevant})
 
         prompt = (
-            "Responde la pregunta usando SOLO la informacion del contexto. "
-            "Si el contexto no contiene la respuesta, dilo claramente. "
-            "Responde en espanol, de forma concisa.\n\n"
+            "Eres un asistente que responde basandose en el contexto proporcionado.\n\n"
+            "REGLAS:\n"
+            "1. Puedes INFERIR y SINTETIZAR a partir de la informacion del contexto "
+            "(ej: si el CV lista experiencia laboral, puedes deducir fortalezas profesionales).\n"
+            "2. NO inventes datos concretos (fechas, nombres, empresas, cifras).\n"
+            "3. Si te piden una lista (ej: '5 fortalezas'), genera una lista coherente "
+            "basada en lo que hay en el contexto.\n"
+            "4. Si el contexto es TOTALMENTE irrelevante a la pregunta, di: "
+            "'No tengo informacion sobre eso en los documentos'.\n"
+            "5. Responde en espanol, claro y directo. Usa bullets si es una lista.\n\n"
             f"Contexto:\n{context}\n\n"
             f"Pregunta: {query}\n\n"
             "Respuesta:"

@@ -166,7 +166,21 @@ class Router:
     def _quick_match(self, text):
         """Detecta comandos obvios sin llamar al LLM."""
         t = text.lower().strip()
-                        # ═══════════════════════════════════════════════════════════════════
+
+        # ═══════════════════════════════════════════════════════════════════
+        # COMBO: RAG -> Word (PRIORIDAD ALTA: antes que Office / RAG básico)
+        # ═══════════════════════════════════════════════════════════════════
+        if re.search(r'\b(?:word|docx|documento|informe|reporte)\b', t) and any(p in t for p in [
+            "segun mi", "segun mis", "de mi cv", "de mi curriculum", "de mis apuntes",
+            "de mis pdfs", "de mis documentos", "que dice mi", "que dicen mis",
+        ]):
+            return [{
+                "skill": "docs",
+                "action": "ask_to_word",
+                "params": {"query": text, "title": ""},
+            }]
+
+        # ═══════════════════════════════════════════════════════════════════
         # COMBO IMAGEN -> WORD (antes que office)
         # ═══════════════════════════════════════════════════════════════════
         if re.search(r'\b(?:word|docx|documento)\b', t) and re.search(r'\b(?:genera|crea|dibuja|hazme)\b', t):
@@ -211,7 +225,6 @@ class Router:
                         "action": "to_word",
                         "params": {"prompt": prompt, "count": count, "title": ""},
                     }]
-
 
         # ═══════════════════════════════════════════════════════════════════
         # COMBOS DEV (deben ir PRIMERO, antes de office para evitar intersecciones)
@@ -333,7 +346,6 @@ class Router:
 
         # ═══════════════════════════════════════════════════════════════════
         # ORDEN IMPORTANTE: indexar y office ANTES de docs.ask
-        # (porque "hazme un word sobre mi cv" contiene "mi cv")
         # ═══════════════════════════════════════════════════════════════════
 
         # 1. INDEXAR: "indexa X", "aprende X", "procesa X"
@@ -411,6 +423,7 @@ class Router:
             "que has indexado", "documentos indexados",
         ]):
             return [{"skill": "docs", "action": "list", "params": {}}]
+
         # 4. DOCS.ASK: preguntas sobre contenido
         docs_ask_triggers = [
             "que dice mi", "que dice el", "que dice la",
@@ -424,7 +437,6 @@ class Router:
         ]
         if any(p in t for p in docs_ask_triggers):
             return [{"skill": "docs", "action": "ask", "params": {"query": text}}]
-
         # Spotify
         m = re.search(r'\b(?:pon|ponme|reproduce|quiero\s+escuchar)\s+(.+?)\s+en\s+spotify\b', t)
         if m:

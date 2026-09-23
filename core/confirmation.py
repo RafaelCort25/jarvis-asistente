@@ -85,6 +85,7 @@ RISK_LEVELS = {
     ("docs", "index_file"): "low",
     ("docs", "index_folder"): "low",
     ("docs", "delete"): "medium",
+    ("docs", "ask_to_word"): "medium",
 
     # Clipboard
     ("clipboard", "read"): "low",

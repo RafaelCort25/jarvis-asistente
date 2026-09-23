@@ -160,6 +160,10 @@ SKILLS_VALIDAS = {
         "index_file": {"path": {"type": "string"}},
         "index_folder": {"path": {"type": "string"}},
         "ask": {"query": {"type": "string"}},
+        "ask_to_word": {
+            "query": {"type": "string"},
+            "title": {"type": "string"},
+        },
         "list": {},
         "delete": {"name": {"type": "string"}},
     },
