@@ -503,21 +503,28 @@ class Router:
         if any(p in t for p in ["que pdfs tengo", "lista mis pdfs", "pdfs generados"]):
             return [{"skill": "pdf", "action": "list", "params": {}}]
 
-                # Imagenes: generar
+                                # Imagenes: generar
         m = re.search(
-            r'\b(?:genera|crea|hazme|dibuja|imagina)\s+(?:una\s+|un\s+)?(?:imagen|foto|dibujo|ilustracion|logo)\s+(?:de|sobre|con)\s+(.+)$',
+            r'\b(?:genera|crea|hazme|dibuja|imagina)\s+(?:(\d+)\s+)?(?:una?s?\s+|el\s+|la\s+|los\s+|las\s+)?(imagen(?:es)?|foto(?:s)?|dibujo(?:s)?|ilustracion(?:es)?|logo(?:s)?|moodboard|propuesta(?:s)?|opciones?(?:\s+visuales?)?|variantes?|estilos?(?:\s+visuales?)?|diseno(?:s)?|diseño(?:s)?)\s+(?:(de|sobre|con|para)\s+)?(.+)$',
             t,
             re.IGNORECASE,
         )
         if m:
-            prompt = m.group(1).strip(" .,!?¡¿")
+            sustantivo = m.group(2).strip()
+            preposicion = m.group(3) if m.group(3) else ""
+            detalle = m.group(4).strip(" .,!?¡¿")
+            # Reconstruir el prompt completo con el sustantivo y la preposicion
+            if preposicion:
+                prompt = f"{sustantivo} {preposicion} {detalle}".strip()
+            else:
+                prompt = f"{sustantivo} {detalle}".strip()
             if prompt:
-                # Detectar si pide alta calidad
                 palabras_hq = [
                     "alta calidad", "profesional", "detallad", "hq",
                     "para presentacion", "para cliente", "final",
-                    "moodboard", "estilos visuales", "opciones de diseño",
-                    "propuesta", "variantes", "4k", "2k",
+                    "moodboard", "estilos visuales", "opciones visuales",
+                    "opciones de diseño", "propuesta", "variantes",
+                    "4k", "2k", "para mi marca", "para marca",
                 ]
                 quality = "hq" if any(w in t for w in palabras_hq) else "fast"
                 return [{
