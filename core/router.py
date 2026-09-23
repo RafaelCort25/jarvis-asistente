@@ -258,6 +258,27 @@ class Router:
             name = m.group(1).strip(" .,!?¡¿")
             if name:
                 return [{"skill": "macro", "action": "delete", "params": {"name": name}}]
+                    # ABRIR APP CONOCIDA (va antes que terminal/clasificador)
+        m = re.search(
+            r'\b(?:abre|abrir|lanza|inicia|ejecuta)\s+(?:la\s+|el\s+)?'
+            r'(brave|chrome|notepad|bloc\s+de\s+notas|bloc\s+de\s+nota|'
+            r'calculadora|calc|explorador|explorer|paint|cmd|spotify)\b',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            raw_app = m.group(1).lower().strip()
+            # Normalizar variantes
+            app_map = {
+                "bloc de notas": "notepad",
+                "bloc de nota": "notepad",
+                "calc": "calculadora",
+                "explorer": "explorador",
+            }
+            app = app_map.get(raw_app, raw_app)
+            # Solo devolver si es app valida en el schema
+            if app in ("brave", "chrome", "notepad", "calculadora", "explorador", "paint", "cmd", "spotify"):
+                return [{"skill": "desktop", "action": "open_app", "params": {"app": app}}]
 
         # ═══════════════════════════════════════════════════════════════════
         # COMBO: RAG -> Word (PRIORIDAD ALTA: antes que Office / RAG básico)
