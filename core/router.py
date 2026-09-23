@@ -166,6 +166,52 @@ class Router:
     def _quick_match(self, text):
         """Detecta comandos obvios sin llamar al LLM."""
         t = text.lower().strip()
+                        # ═══════════════════════════════════════════════════════════════════
+        # COMBO IMAGEN -> WORD (antes que office)
+        # ═══════════════════════════════════════════════════════════════════
+        if re.search(r'\b(?:word|docx|documento)\b', t) and re.search(r'\b(?:genera|crea|dibuja|hazme)\b', t):
+            # Variante: "hazme un word con las ultimas imagenes"
+            if re.search(r'\b(?:ultimas?|ultimo|recientes?)\s+(?:imagenes?|logos?|fotos?)\b', t):
+                return [{
+                    "skill": "image",
+                    "action": "to_word",
+                    "params": {"prompt": "", "count": 1, "title": ""},
+                }]
+
+            # Variante: "hazme un word con imagenes de X"
+            m = re.search(
+                r'\bhazme\s+un\s+(?:word|documento|docx)\s+con\s+(?:(\d+)\s+)?(?:imagen(?:es)?|logos?|fotos?|dibujos?)\s+(?:de\s+|sobre\s+)?(.+)$',
+                t,
+                re.IGNORECASE,
+            )
+            if m:
+                count = int(m.group(1)) if m.group(1) else 1
+                prompt = m.group(2).strip(" .,!?¡¿")
+                if prompt:
+                    return [{
+                        "skill": "image",
+                        "action": "to_word",
+                        "params": {"prompt": prompt, "count": count, "title": ""},
+                    }]
+
+            # Variante principal: "genera [N] [art] {sustantivo_visual} {detalle} y hazme..."
+            m = re.search(
+                r'\b(?:genera|crea|dibuja)\s+(?:(\d+)\s+)?(?:(?:un|una|el|la|los|las|mi|mis)\s+)?(imagen(?:es)?|logo(?:s)?|foto(?:s)?|dibujo(?:s)?|ilustracion(?:es)?|diseno(?:s)?|diseño(?:s)?)\s+(.+?)\s+(?:y\s+)?(?:hazme|crea|genera|mete|pon)\b',
+                t,
+                re.IGNORECASE,
+            )
+            if m:
+                count = int(m.group(1)) if m.group(1) else 1
+                tipo = m.group(2)
+                detalle = m.group(3).strip(" .,!?¡¿")
+                prompt = f"{tipo} {detalle}".strip()
+                if prompt:
+                    return [{
+                        "skill": "image",
+                        "action": "to_word",
+                        "params": {"prompt": prompt, "count": count, "title": ""},
+                    }]
+
 
         # ═══════════════════════════════════════════════════════════════════
         # COMBOS DEV (deben ir PRIMERO, antes de office para evitar intersecciones)

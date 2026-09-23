@@ -1,5 +1,3 @@
-# core/schemas.py
-
 SKILLS_VALIDAS = {
     "desktop": {
         "open_app": {"app": {"type": "string", "enum": ["brave", "chrome", "notepad", "calculadora", "explorador", "paint", "cmd", "spotify"]}},
@@ -53,14 +51,14 @@ SKILLS_VALIDAS = {
             "description": {"type": "string"},
             "language": {"type": "string", "enum": ["python", "javascript", "java"]},
             "path": {"type": "string"},
-                    "review_to_excel": {
+        },
+        "review_to_excel": {
             "path": {"type": "string"},
             "output": {"type": "string"},
         },
         "review_to_word": {
             "path": {"type": "string"},
             "output": {"type": "string"},
-        },
         },
     },
     "office": {
@@ -88,6 +86,11 @@ SKILLS_VALIDAS = {
             "height": {"type": "integer", "minimum": 256, "maximum": 2048},
         },
         "list": {},
+        "to_word": {
+            "prompt": {"type": "string"},
+            "count": {"type": "integer", "minimum": 1, "maximum": 5},
+            "title": {"type": "string"},
+        },
     },
     "pdf": {
         "from_docx": {

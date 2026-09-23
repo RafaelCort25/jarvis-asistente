@@ -93,6 +93,11 @@ REGLAS DOCS (importante, revisar antes de dev):
   - NUNCA envies "genera una imagen" a dev.create_and_test
 - "que hora es", "dime la hora" -> system.time
 - "que dia es hoy", "que fecha es" -> system.date
+- IMAGENES -> WORD (combo):
+  - "genera un logo y hazme un word con el" -> image.to_word (prompt = "logo", count = 1)
+  - "genera 3 logos y hazme un word con los 3" -> image.to_word (prompt = "logos", count = 3)
+  - "hazme un word con las ultimas imagenes" -> image.to_word (prompt = "", count = 1)
+  - NUNCA uses image.generate + office.create_doc para estos casos
 - PDF (conversion):
   - "convierte el word/ese word a pdf" -> pdf.from_docx (path = "", output = "")
   - "convierte X.docx a pdf" -> pdf.from_docx (path = X.docx, output = "")
