@@ -165,6 +165,48 @@ class Router:
                 return True
 
         return False
+    def _is_multi_objetivo(self, text):
+        """Detecta si la frase tiene 2+ objetivos unidos por 'y'/'tambien'/'ademas'."""
+        t = text.lower().strip()
+        palabras = t.split()
+        if len(palabras) < 5:
+            return False
+        if len(t) < 15:
+            return False
+
+        # Partir por " y ", " e ", " tambien ", " ademas "
+        partes = re.split(r'\s+(?:y|e|tambien|también|ademas|además)\s+', t)
+
+        # Verificar que al menos 2 partes tengan 2+ palabras
+        partes_sustanciales = [p for p in partes if len(p.split()) >= 2]
+        if len(partes_sustanciales) < 2:
+            return False
+
+        # Asegurar que cada parte sustancial tenga un verbo o intencion clara
+        # (evita "manzana y pera y uva" que son sustantivos simples)
+        intenciones = [
+            "abre", "abrir", "cierra", "cerrar",
+            "busca", "buscar", "muestra", "muestrame",
+            "lista", "listar", "dime", "cuanto", "cuanta", "cuantos", "cuantas",
+            "que", "cual", "cuales",
+            "genera", "crea", "hazme", "haz",
+            "envia", "enviame", "manda", "mandame",
+            "guarda", "guardame", "pon", "ponme",
+            "reproduce", "revisa", "revisar",
+            "limpia", "vacia", "borra", "elimina",
+            "convierte", "traduce", "exporta",
+            # sustantivos "de consulta" que también cuentan como intención
+            "espacio", "disco", "hora", "fecha", "clima",
+            "programas", "arranca", "inicia", "archivos",
+            "notas", "documentos", "apuntes", "pdfs",
+        ]
+
+        count_con_intencion = 0
+        for parte in partes_sustanciales:
+            if any(f" {w} " in f" {parte} " or parte.startswith(f"{w} ") for w in intenciones):
+                count_con_intencion += 1
+
+        return count_con_intencion >= 2
 
     def _quick_match(self, text):
         """Detecta comandos obvios sin llamar al LLM."""
@@ -968,6 +1010,17 @@ class Router:
             return None, True
 
         # 3. Pre-clasificador rapido (regex)
+                # 3. Multi-objetivo explicito -> AGENTE PRIMERO (antes que quick_match)
+        if self._is_multi_objetivo(text):
+            try:
+                agent_result = self.agent.run(text, self.skills)
+                return agent_result, False
+            except Exception as e:
+                print(f"[ROUTER] Error en agente (multi): {e}")
+                # Fallback: continuar con el flujo normal
+                pass
+
+        # 4. Pre-clasificador rapido (regex)
         try:
             quick = self._quick_match(text)
         except Exception as e:
@@ -976,7 +1029,7 @@ class Router:
 
         if quick:
             actions = quick
-        # 4. Si es complejo -> AGENTE
+        # 5. Si es complejo -> AGENTE
         elif self._is_complex(text):
             try:
                 agent_result = self.agent.run(text, self.skills)
