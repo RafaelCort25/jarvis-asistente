@@ -345,6 +345,34 @@
     border-color: #c98f8f; animation: pulse 1s infinite;
   }
   #hint{ font-size:0.68rem; color: var(--text-dim); letter-spacing:.03em; opacity:0.7; }
+    /* Overlay de drag & drop */
+  #dropOverlay{
+    position:fixed; inset:0; z-index:100;
+    background: rgba(10,9,8,0.85);
+    backdrop-filter: blur(8px);
+    display:none; align-items:center; justify-content:center;
+    border: 3px dashed var(--gold);
+    border-radius: 8px;
+  }
+  #dropOverlay.active{ display:flex; }
+  #dropOverlay .message{
+    font-family: 'Fraunces', serif;
+    font-size: 1.6rem;
+    color: var(--gold-bright);
+    text-align: center;
+    padding: 40px;
+    border: 2px solid var(--gold);
+    border-radius: 12px;
+    background: rgba(20,17,13,0.7);
+  }
+  #dropOverlay .message .small{
+    display: block;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    margin-top: 12px;
+    font-style: italic;
+  }
 </style>
 </head>
 <body>
@@ -352,6 +380,12 @@
 <div id="grid"></div>
 <div id="scene"></div>
 <div id="vignette"></div>
+<div id="dropOverlay">
+  <div class="message">
+    Suelta el archivo aqui
+    <span class="small">Se guardara en sandbox/uploads/</span>
+  </div>
+</div>
 
 <header>
   <div class="wordmark">JARVIS <span>asistente</span></div>
@@ -1084,6 +1118,109 @@ renderer.domElement.addEventListener('click', () => {
     startRecording();
   }
 });
+
+console.log('[JARVIS] Interfaz cargada correctamente');
+// ═══════════════════════════════════════════════════════════
+// DRAG & DROP — Subir archivos a sandbox/uploads/
+// ═══════════════════════════════════════════════════════════
+const dropOverlay = document.getElementById('dropOverlay');
+let dragCounter = 0;
+
+function preventDefaults(e) {
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+document.addEventListener('dragenter', (e) => {
+  preventDefaults(e);
+  if (!e.dataTransfer || !e.dataTransfer.types.includes('Files')) return;
+  dragCounter++;
+  if (dragCounter === 1) {
+    dropOverlay.classList.add('active');
+  }
+});
+
+document.addEventListener('dragleave', (e) => {
+  preventDefaults(e);
+  dragCounter--;
+  if (dragCounter <= 0) {
+    dragCounter = 0;
+    dropOverlay.classList.remove('active');
+  }
+});
+
+document.addEventListener('dragover', (e) => {
+  preventDefaults(e);
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+});
+
+document.addEventListener('drop', async (e) => {
+  preventDefaults(e);
+  dragCounter = 0;
+  dropOverlay.classList.remove('active');
+
+  if (!e.dataTransfer || !e.dataTransfer.files || e.dataTransfer.files.length === 0) {
+    return;
+  }
+
+  const files = Array.from(e.dataTransfer.files);
+  await uploadFiles(files);
+});
+
+async function uploadFiles(files) {
+  enterConversation();
+  setState('thinking');
+
+  const uploaded = [];
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    try {
+      const res = await fetch('/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.ok) {
+        uploaded.push(data);
+      } else {
+        console.warn('[UPLOAD] Fallo:', data.error);
+      }
+    } catch (err) {
+      console.error('[UPLOAD]', err);
+    }
+  }
+
+  setState('idle');
+
+  if (uploaded.length === 0) {
+    addMessage('jarvis', '⚠️ No pude subir los archivos.');
+    soundError();
+    return;
+  }
+
+  soundSuccess();
+
+  let msg = `📎 **${uploaded.length}** archivo(s) subido(s):\n\n`;
+  for (const u of uploaded) {
+    const size_kb = Math.round(u.size / 1024);
+    msg += `- \`${u.name}\` (${size_kb} KB)\n`;
+  }
+  msg += `\n¿Qué quieres que haga con ${uploaded.length === 1 ? 'él' : 'ellos'}?`;
+
+  addMessage('jarvis', msg);
+
+  // Mensaje de voz simplificado
+  if ('speechSynthesis' in window && SPEAK_REPLIES) {
+    const utter = new SpeechSynthesisUtterance(
+      `${uploaded.length} archivo subido. Que quieres que haga con el?`
+    );
+    utter.lang = 'es-PE';
+    utter.rate = 1.05;
+    speechSynthesis.speak(utter);
+  }
+}
 
 console.log('[JARVIS] Interfaz cargada correctamente');
 </script>

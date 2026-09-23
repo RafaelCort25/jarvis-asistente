@@ -195,6 +195,46 @@ def copy_image(path: str = Query(...)):
     except Exception as e:
         print(f"[API/COPY ERROR] {e}")
         return {"ok": False, "error": str(e)}
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)):
+    """Recibe un archivo y lo guarda en sandbox/uploads/."""
+    uploads_dir = SANDBOX_DIR / "uploads"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    # Sanear el nombre del archivo
+    from pathlib import PurePath
+    safe_name = PurePath(file.filename).name
+    # Quitar caracteres problematicos
+    safe_name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', safe_name)
+    if not safe_name:
+        return {"ok": False, "error": "Nombre de archivo invalido"}
+
+    target = uploads_dir / safe_name
+
+    # Si ya existe, anadir sufijo numerico
+    if target.exists():
+        stem = target.stem
+        suffix = target.suffix
+        i = 1
+        while target.exists():
+            target = uploads_dir / f"{stem}_{i}{suffix}"
+            i += 1
+
+    try:
+        content = await file.read()
+        target.write_bytes(content)
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+    size_kb = len(content) // 1024
+    print(f"[API] Upload: {target.name} ({size_kb} KB)")
+
+    return {
+        "ok": True,
+        "path": str(target),
+        "name": target.name,
+        "size": len(content),
+    }
 
 @app.post("/open_file")
 def open_file(path: str = Query(...)):

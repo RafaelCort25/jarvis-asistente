@@ -314,14 +314,16 @@ Responde SOLO con el JSON."""
                 "con el contenido del archivo."
             )
 
-        size_kb = out_path.stat().st_size // 1024
+        size_bytes = out_path.stat().st_size
+        size_kb = size_bytes // 1024 if size_bytes >= 1024 else 0
+        size_str = f"{size_kb} KB" if size_kb > 0 else f"{size_bytes} bytes"
         print(f"[EDIT] Guardado: {out_path} ({total} cambios aplicados)")
 
         return {
             "thought": f"{total} cambios aplicados en {file_type}",
             "display": (
                 f"Archivo modificado: {out_path}\n"
-                f"({total} cambios aplicados, {size_kb} KB)\n\n"
+                f"({total} cambios aplicados, {size_str}) KB)\n\n"
                 f"Origen: {path.name}"
             ),
             "voice": f"Listo. Modifique {path.name} con {total} cambios.",
