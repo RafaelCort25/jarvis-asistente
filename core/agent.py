@@ -16,108 +16,113 @@ Piensa y actua:
 O termina:
 {"thought": "razonamiento", "final_answer": "respuesta final al usuario"}
 
+Si necesitas pedir informacion al usuario (no la tienes y no puedes deducirla), usa:
+{"thought": "razonamiento", "ask": "pregunta al usuario"}
+
 SKILLS DISPONIBLES:
 
+=== ARCHIVOS Y SISTEMA ===
 1. files.list_folder(folder, sort, filter_ext, limit)
    - folder: "descargas"|"documentos"|"escritorio"|"imagenes"|"musica"|"videos"
    - sort: "date_desc"|"date_asc"|"size_desc"|"size_asc"|"name"
-   - filter_ext: extension sin punto, ej "mp4", "pdf"
-   - limit: numero maximo de resultados
-   - Devuelve lista de archivos con nombre, tamaño, fecha
-
-2. files.pick(folder, criteria, filter_ext)
-   - criteria: "mas_reciente"|"mas_antiguo"|"mas_grande"|"mas_pequeno"|"primero"|"ultimo"
-   - Devuelve el PATH completo de UN archivo
-
+   - filter_ext: extension sin punto (ej "pdf")
+2. files.pick(folder, criteria, filter_ext) — criteria: "mas_reciente"|"mas_grande"|"primero"
 3. files.open_path(path)
-   - Abre un archivo o carpeta con el programa por defecto
-
 4. files.find_file(name)
-   - Busca archivos por nombre en carpetas comunes
-
 5. files.info(path)
-   - Informacion detallada de un archivo (tamaño, fecha, tipo)
+6. desktop.open_app(app) — app: "brave"|"chrome"|"notepad"|"calculadora"|"explorador"|"paint"|"cmd"|"spotify"
+7. desktop.volume_up() | desktop.volume_down() | desktop.mute()
+8. system.time() | system.date() | system.screenshot()
+9. system.disk_info() | system.list_big_files(folder, min_mb) | system.list_startup()
+10. clipboard.read() | clipboard.write(text)
 
-6. browser.search_youtube(query)
-7. browser.search_google(query)
-8. browser.open_url(url)
+=== WEB Y COMUNICACION ===
+11. browser.search_youtube(query) | browser.search_google(query) | browser.open_url(url)
+12. telegram.send_last(tipo) | telegram.send_file(path)
 
-9. desktop.open_app(app)
-   - app: "brave"|"chrome"|"notepad"|"calculadora"|"explorador"|"paint"|"cmd"|"spotify"
+=== PRODUCTIVIDAD ===
+13. productivity.save_note(text) | productivity.read_notes()
+14. weather.current(city)
+15. translate.text(text, to)
+16. alarm.set(minutes, text) | alarm.list() | alarm.cancel()
+17. scheduler.add_once(seconds, message) | scheduler.add_daily(time, message) | scheduler.list()
 
-10. desktop.volume_up() | desktop.volume_down() | desktop.mute()
+=== DESARROLLO ===
+18. dev.generate_code(description, language)
+    - language: "python"|"javascript"|"java"|"c"|"cpp"|"csharp"|"go"|"rust"|"ruby"|"php"
+19. dev.review_file(path) | dev.review_project(path) | dev.explain(path) | dev.find_issues(path)
+20. dev.review_to_excel(path, output) — genera Excel con analisis
+21. dev.review_to_word(path, output) — genera Word con analisis
+22. git.status() | git.diff() | git.log(n)
 
-11. system.screenshot() | system.lock()
+=== DOCUMENTOS Y OFICINA ===
+23. docs.ask(query) — pregunta sobre los documentos del usuario (CV, apuntes, PDFs)
+24. docs.ask_to_word(query, title) — RAG + Word
+25. docs.index_file(path) | docs.index_folder(path) | docs.list()
+26. office.create_doc(description, path, title) — Word
+27. office.create_xlsx(description, path) — Excel
+28. office.create_ppt(description, path)
+29. office.read_doc(path) | office.read_xlsx(path) | office.read_ppt(path)
+30. pdf.from_docx(path, output)
+31. edit.modify(path, instruction, output) — edita archivo segun instrucciones
 
-12. productivity.save_note(text) | productivity.read_notes()
+=== IMAGENES Y EDUCACION ===
+32. image.generate(prompt, width, height) — genera imagen con IA
+33. image.to_word(prompt, count, title) — N imagenes + Word
+34. education.pseint(description) — pseudocodigo PSeInt
+35. education.diagram(description, kind) — kind: "flowchart"|"sequence"|"class"|"state"|"er"
+36. education.convert(code, to_language) — convierte codigo entre lenguajes
 
-13. weather.current(city)
-
-14. translate.text(text, to)
-
-15. alarm.set(minutes, text) | alarm.list() | alarm.cancel()
+=== OTROS ===
+37. vision.describe_screen() | vision.explain_screen_code()
+38. spotify.play(query) | spotify.pause() | spotify.next() | spotify.current()
 
 REGLAS:
-- Responde SOLO JSON, sin markdown, sin texto extra
+- Responde SOLO JSON, sin markdown, sin texto extra.
 - Usa UN solo paso por respuesta. Espera el resultado antes del siguiente.
-- Si el usuario pidio algo simple (abrir X, buscar Y), un solo paso basta.
-- Si necesitas informacion (listar archivos, buscar), hazlo paso a paso.
+- Si el objetivo es simple (abrir X, buscar Y), un solo paso basta.
+- Para tareas multi-paso, encadena acciones usando resultados anteriores.
 - Cuando tengas la respuesta final, usa "final_answer".
-- Maximo usa los 5 pasos disponibles.
-- Los parametros van en "params" como objeto.
-- Si una skill falla, intenta otra ruta o da un final_answer explicando.
+- Si te falta informacion que SOLO el usuario puede dar (nombre de empresa, tono, preferencias), usa "ask".
+- Maximo usa los 12 pasos disponibles.
+- Si una skill falla, intenta otra ruta o usa "final_answer" explicando.
+- NUNCA inventes paths. Si no sabes un path, usa files.find_file primero.
 
 EJEMPLOS:
 
-Objetivo: "abre el ultimo archivo de la carpeta descargas"
-Paso 1: {"thought": "Necesito el archivo mas reciente en descargas", "action": "files.pick", "params": {"folder": "descargas", "criteria": "mas_reciente"}}
-Resultado: {"path": "C:/Users/alein/Downloads/video.mp4", "name": "video.mp4"}
-Paso 2: {"thought": "Ya tengo la ruta, ahora lo abro", "action": "files.open_path", "params": {"path": "C:/Users/alein/Downloads/video.mp4"}}
-Resultado: "Abriendo video.mp4."
+Objetivo: "abre el ultimo archivo de descargas"
+Paso 1: {"thought": "Necesito el archivo mas reciente", "action": "files.pick", "params": {"folder": "descargas", "criteria": "mas_reciente"}}
+Resultado: {"path": "C:/Users/alein/Downloads/video.mp4"}
+Paso 2: {"thought": "Ya tengo la ruta", "action": "files.open_path", "params": {"path": "C:/Users/alein/Downloads/video.mp4"}}
 Paso 3: {"thought": "Listo", "final_answer": "Listo, abri video.mp4"}
 
-Objetivo: "cuantos archivos pdf tengo en descargas"
-Paso 1: {"thought": "Necesito listar los pdf de descargas", "action": "files.list_folder", "params": {"folder": "descargas", "filter_ext": "pdf"}}
-Resultado: [lista de 8 pdfs]
-Paso 2: {"thought": "Hay 8", "final_answer": "Tienes 8 archivos PDF en descargas"}
+Objetivo: "revisa mi CV y dime mis 5 fortalezas, guarda en Word"
+Paso 1: {"thought": "Consulto el RAG", "action": "docs.ask", "params": {"query": "cuales son mis 5 fortalezas profesionales"}}
+Resultado: {"answer": "...", "sources": [...]}
+Paso 2: {"thought": "Guardo en Word", "action": "docs.ask_to_word", "params": {"query": "cuales son mis 5 fortalezas profesionales", "title": "Mis 5 Fortalezas"}}
+Paso 3: {"thought": "Listo", "final_answer": "Word creado con tus 5 fortalezas"}
 
-Objetivo: "abre notepad"
-Paso 1: {"thought": "Es directo", "action": "desktop.open_app", "params": {"app": "notepad"}}
-Resultado: "Abriendo notepad."
-Paso 2: {"thought": "Listo", "final_answer": "Listo, abri Notepad"}
-
-Objetivo: "que clima hace en lima y pon musica de bad bunny"
-Paso 1: {"thought": "Primero el clima", "action": "weather.current", "params": {"city": "lima"}}
-Resultado: "Lima: 20 grados, mayormente despejado"
-Paso 2: {"thought": "Ahora la musica", "action": "browser.search_youtube", "params": {"query": "bad bunny"}}
-Resultado: "5 canciones encontradas"
-Paso 3: {"thought": "Ambas hechas", "final_answer": "En Lima esta mayormente despejado, 20 grados. Y ya busque Bad Bunny en YouTube."}
-
-Objetivo: "cual es el archivo mas grande en documentos"
-Paso 1: {"thought": "Buscar el mas grande en documentos", "action": "files.pick", "params": {"folder": "documentos", "criteria": "mas_grande"}}
-Resultado: {"path": "C:/Users/alein/Documents/pelicula.mp4", "name": "pelicula.mp4", "size_kb": 500000}
-Paso 2: {"thought": "El mas grande es pelicula.mp4", "final_answer": "El archivo mas grande en documentos es pelicula.mp4 (500 MB)"}
-
-Objetivo: "hay algun archivo mp4 en descargas"
-Paso 1: {"thought": "Buscar mp4 en descargas", "action": "files.list_folder", "params": {"folder": "descargas", "filter_ext": "mp4"}}
-Resultado: {"thought": "Listar descargas", "data": [{"name": "video.mp4", "size_kb": 5000}]}
-Paso 2: {"thought": "Si hay mp4", "final_answer": "Si, hay archivos mp4 en descargas"}
+Objetivo: "crea un chatbot de whatsapp para una clinica dental"
+Paso 1: {"thought": "Necesito saber el tono", "ask": "¿Que tono quieres para el chatbot? (formal / cercano / profesional)"}
+(User responde: "profesional")
+Paso 2: {"thought": "Genero un workflow base", "action": "dev.generate_code", "params": {"description": "workflow n8n de chatbot whatsapp para clinica dental, tono profesional", "language": "python"}}
 """
+
 
 class Agent:
     def __init__(self):
         self.model = CONFIG["models"].get("reasoning", CONFIG["models"]["default"])
-        self.max_steps = 5
+        self.max_steps = 12
 
     def run(self, user_input, skills, on_step=None):
         """
         Ejecuta el bucle ReAct.
-        
+
         Args:
             user_input: el objetivo del usuario
             skills: dict {nombre: instancia_skill}
             on_step: callback(step_dict) para notificar cada paso (opcional)
-        
+
         Returns:
             dict con {voice, display, thought, steps}
         """
@@ -126,8 +131,8 @@ class Agent:
             {"role": "user", "content": f"Objetivo: {user_input}"},
         ]
 
-        steps_log = []  # historial visible
-        display_lines = []  # lineas para la consola/gui
+        steps_log = []
+        display_lines = []
         voice_parts = []
 
         for step_num in range(1, self.max_steps + 1):
@@ -148,10 +153,9 @@ class Agent:
                 }
 
             # Parsear JSON
-                        # Parsear JSON
             parsed = self._parse_json(raw)
 
-            # Si falla el parse, retry con instrucción más estricta
+            # Si falla el parse, retry con instruccion mas estricta
             if not parsed:
                 print(f"[AGENT] Parse fallo, reintentando. Raw: {raw[:200]}")
                 messages.append({"role": "assistant", "content": raw})
@@ -183,6 +187,18 @@ class Agent:
                     }
 
             thought = parsed.get("thought", "")
+
+            # Caso 0: el agente pide informacion al usuario
+            if "ask" in parsed:
+                question = parsed["ask"]
+                steps_log.append({"step": step_num, "type": "ask", "text": question})
+                return {
+                    "voice": question,
+                    "display": question,
+                    "thought": f"Pregunta al usuario: {question}",
+                    "steps": steps_log,
+                    "needs_answer": True,
+                }
 
             # Caso 1: respuesta final
             if "final_answer" in parsed:
@@ -221,14 +237,14 @@ class Agent:
                 "text": thought,
                 "action": action,
                 "params": params,
-                "result": result_str[:200],  # truncar
+                "result": result_str[:200],
             }
             steps_log.append(step_info)
 
-            display_lines.append(f"  {step_num}. {action} → {result_str[:100]}")
+            display_lines.append(f"  {step_num}. {action} -> {result_str[:100]}")
             voice_parts.append(thought)
 
-            # Añadir al historial de mensajes
+            # Anadir al historial de mensajes
             messages.append({"role": "assistant", "content": raw})
             messages.append({
                 "role": "user",
@@ -238,7 +254,7 @@ class Agent:
         # Se acabaron los pasos sin final_answer
         return {
             "voice": "No pude completar la tarea en el limite de pasos.",
-            "display": "Se alcanzo el maximo de 5 pasos:\n" + "\n".join(display_lines),
+            "display": f"Se alcanzo el maximo de {self.max_steps} pasos:\n" + "\n".join(display_lines),
             "thought": " | ".join(voice_parts),
             "steps": steps_log,
         }
@@ -290,14 +306,20 @@ class Agent:
         if not skill:
             return f"Skill desconocida: {skill_name}"
 
+        # Respetar confirmacion para acciones riesgosas
         try:
-            # Llamar al metodo. Las skills viejas usan run(action, params),
-            # pero las nuevas del agente exponen los metodos directos.
+            from core import confirmation
+            summary = f"Agente quiere ejecutar: {action}"
+            if not confirmation.require(skill_name, method_name, summary):
+                return "El usuario rechazo esta accion. Busca otra forma o usa final_answer."
+        except Exception as e:
+            print(f"[AGENT] Confirmacion fallo: {e}")
+
+        try:
             result = skill.run(method_name, params)
             if result is None:
                 return "Sin resultado."
             if isinstance(result, dict):
-                # Convertir dict a string legible para el LLM
                 return json.dumps(result, ensure_ascii=False)
             return str(result)
         except Exception as e:
