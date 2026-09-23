@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jarvis</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 <style>
@@ -18,6 +18,7 @@
     --text: #efe9de;
     --text-dim: #8b8478;
     --user-bg: rgba(201,166,104,0.12);
+    --success: #8fbc8f;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{
@@ -28,13 +29,25 @@
   }
   #scene{position:fixed; inset:0; z-index:0; transition: opacity .6s ease;}
   body.conversation #scene{ opacity:0.35; }
+
+  /* Grid de fondo sutil */
+  #grid{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(rgba(201,166,104,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201,166,104,0.025) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity:0.6;
+  }
+
   #vignette{
     position:fixed; inset:0; z-index:1; pointer-events:none;
-    background: radial-gradient(ellipse at 50% 40%, transparent 0%, transparent 40%, rgba(10,9,8,0.55) 100%);
+    background: radial-gradient(ellipse at 50% 40%, transparent 0%, transparent 40%, rgba(10,9,8,0.65) 100%);
   }
+
   header{
     position:fixed; top:0; left:0; right:0; z-index:5;
-    display:flex; align-items:baseline; justify-content:space-between;
+    display:flex; align-items:center; justify-content:space-between;
     padding: 26px 44px; pointer-events:none;
   }
   .wordmark{
@@ -42,9 +55,12 @@
     letter-spacing:0.01em; color: var(--text);
   }
   .wordmark span{ color: var(--gold); font-style:italic; font-weight:300; }
+
+  /* Status bar enriquecida */
   .status{
+    display:flex; align-items:center; gap:10px;
     font-size: 0.72rem; letter-spacing: 0.06em; color: var(--text-dim);
-    display:flex; align-items:center; gap:8px;
+    pointer-events:auto;
   }
   .status .dot{
     width:6px; height:6px; border-radius:50%;
@@ -55,6 +71,21 @@
   .status.thinking .dot{ background:#9ab8c9; box-shadow:0 0 12px #9ab8c9; animation: pulse 1s infinite;}
   .status.speaking .dot{ background:#c98f8f; box-shadow:0 0 12px #c98f8f;}
   @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+  .status .sep{ color: rgba(201,166,104,0.3); }
+  .status .meta{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--gold);
+    opacity: 0.7;
+    text-transform: lowercase;
+    transition: opacity .3s ease;
+  }
+  .status .meta.flash{
+    opacity: 1;
+    color: var(--gold-bright);
+    text-shadow: 0 0 8px var(--gold);
+  }
 
   #transcript{
     position:fixed; left:50%; top:88px; transform:translate(-50%, -16px);
@@ -145,6 +176,101 @@
     margin: 0.8em 0;
   }
 
+  /* Artefactos: imagenes y archivos generados */
+  .bubble .artifacts {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(201,166,104,0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .bubble .artifact-image-wrap {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+  }
+  .bubble .artifact-image {
+    max-width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(201,166,104,0.25);
+    cursor: pointer;
+    transition: transform .2s ease, border-color .2s ease;
+    display: block;
+  }
+  .bubble .artifact-image:hover {
+    border-color: var(--gold);
+    transform: scale(1.01);
+  }
+  .bubble .artifact-actions {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  .bubble .artifact-image-wrap:hover .artifact-actions {
+    opacity: 1;
+  }
+  .bubble .artifact-btn {
+    font-size: 0.7rem;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0.03em;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: rgba(10,9,8,0.85);
+    color: var(--gold-bright);
+    border: 1px solid rgba(201,166,104,0.4);
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .bubble .artifact-btn:hover {
+    background: rgba(201,166,104,0.25);
+    border-color: var(--gold);
+  }
+  .bubble .artifact-btn.success {
+    background: rgba(120,180,120,0.35);
+    border-color: var(--success);
+    color: #d4f0d4;
+  }
+  .bubble .artifact-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: rgba(201,166,104,0.06);
+    border: 1px solid rgba(201,166,104,0.2);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease;
+    font-size: 0.85rem;
+  }
+  .bubble .artifact-file:hover {
+    background: rgba(201,166,104,0.14);
+    border-color: var(--gold);
+  }
+  .bubble .artifact-file .icon {
+    font-size: 1.2rem;
+    flex: none;
+  }
+  .bubble .artifact-file .name {
+    flex: 1;
+    color: var(--gold-bright);
+    word-break: break-all;
+    font-size: 0.82rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .bubble .artifact-file .action {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    flex: none;
+  }
+
   .bubble .thought{
     font-size:0.75rem; color:var(--text-dim);
     margin-top:8px; padding-top:8px;
@@ -223,12 +349,18 @@
 </head>
 <body>
 
+<div id="grid"></div>
 <div id="scene"></div>
 <div id="vignette"></div>
 
 <header>
   <div class="wordmark">JARVIS <span>asistente</span></div>
-  <div class="status" id="status"><span class="dot"></span><span id="statusText">EN ESPERA</span></div>
+  <div class="status" id="status">
+    <span class="dot"></span>
+    <span id="statusText">EN ESPERA</span>
+    <span class="sep">·</span>
+    <span class="meta" id="lastSkill">listo</span>
+  </div>
 </header>
 
 <button id="closeChat" title="Cerrar chat">✕</button>
@@ -255,6 +387,65 @@
 </div>
 
 <script>
+// ═══════════════════════════════════════════════════════════
+// SISTEMA DE SONIDO (Web Audio API, sin archivos externos)
+// ═══════════════════════════════════════════════════════════
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch(e) {
+      console.warn('[SOUND] No audio context', e);
+    }
+  }
+  return audioCtx;
+}
+
+function playTone(freq, duration, type = 'sine', volume = 0.06, when = 0) {
+  try {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    const t = ctx.currentTime + when;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(volume, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + duration + 0.02);
+  } catch(e) { console.warn('[SOUND]', e); }
+}
+
+function soundListening() {
+  playTone(880, 0.06, 'sine', 0.05, 0);
+  playTone(1100, 0.08, 'sine', 0.04, 0.04);
+}
+
+function soundThinking() {
+  playTone(440, 0.12, 'sine', 0.04, 0);
+  playTone(550, 0.14, 'sine', 0.04, 0.09);
+}
+
+function soundSpeaking() {
+  playTone(660, 0.08, 'sine', 0.05, 0);
+}
+
+function soundSuccess() {
+  playTone(880, 0.08, 'sine', 0.05, 0);
+  playTone(1320, 0.12, 'sine', 0.05, 0.06);
+}
+
+function soundError() {
+  playTone(220, 0.15, 'triangle', 0.06, 0);
+  playTone(180, 0.2, 'triangle', 0.05, 0.12);
+}
+
 // ═══════════════════════════════════════════════════════════
 // THREE.JS ORB
 // ═══════════════════════════════════════════════════════════
@@ -386,16 +577,35 @@ animate();
 // ═══════════════════════════════════════════════════════════
 const statusEl = document.getElementById('status');
 const statusText = document.getElementById('statusText');
+const lastSkillEl = document.getElementById('lastSkill');
 const transcriptEl = document.getElementById('transcript');
 
 const LABELS = { idle:'EN ESPERA', listening:'ESCUCHANDO', thinking:'PENSANDO', speaking:'RESPONDIENDO' };
 const ENERGY = { idle:0.22, listening:0.5, thinking:0.7, speaking:0.9 };
 
+let lastState = 'idle';
+
 function setState(state){
+  if (state === lastState) return;
+  const prev = lastState;
+  lastState = state;
   currentState = state;
   targetEnergy = ENERGY[state];
   statusEl.className = 'status ' + state;
   statusText.textContent = LABELS[state];
+
+  // Sonidos de transición
+  if (state === 'listening' && prev === 'idle') soundListening();
+  else if (state === 'thinking' && prev === 'listening') soundThinking();
+  else if (state === 'speaking' && prev === 'thinking') soundSpeaking();
+}
+
+function setLastSkill(skill, flash = true) {
+  lastSkillEl.textContent = skill;
+  if (flash) {
+    lastSkillEl.classList.add('flash');
+    setTimeout(() => lastSkillEl.classList.remove('flash'), 800);
+  }
 }
 
 function enterConversation(){
@@ -411,22 +621,20 @@ function exitConversation(){
 
 document.getElementById('closeChat').addEventListener('click', exitConversation);
 
-function addMessage(role, text, thought){
+// ═══════════════════════════════════════════════════════════
+// MENSAJES
+// ═══════════════════════════════════════════════════════════
+function addMessage(role, text, thought, artifacts){
   const msg = document.createElement('div');
   msg.className = 'bubble ' + role;
 
-  // El usuario → texto plano. Jarvis → markdown renderizado.
   let contentHtml;
   if (role === 'user') {
     contentHtml = escapeHtml(text);
   } else {
     try {
-      // Configurar marked para saltarse sanitizacion (es nuestra propia salida)
       if (typeof marked !== 'undefined') {
-        marked.setOptions({
-          breaks: true,
-          gfm: true,
-        });
+        marked.setOptions({ breaks: true, gfm: true });
         contentHtml = marked.parse(text);
       } else {
         contentHtml = escapeHtml(text);
@@ -438,13 +646,138 @@ function addMessage(role, text, thought){
   }
 
   let html = `<div class="markdown-body">${contentHtml}</div>`;
+
+  if (artifacts && artifacts.length > 0) {
+    html += '<div class="artifacts">';
+    for (const a of artifacts) {
+      if (a.type === 'image' && a.url) {
+        const safeUrl = escapeHtml(a.url);
+        const safeName = escapeHtml(a.name);
+        const safePath = escapeHtml(a.path || '');
+        html += `<div class="artifact-image-wrap">
+          <img class="artifact-image" src="${safeUrl}" alt="${safeName}" data-url="${safeUrl}">
+          <div class="artifact-actions">
+            <button class="artifact-btn" data-action="copy" data-url="${safeUrl}">Copiar</button>
+            <button class="artifact-btn" data-action="open-folder" data-path="${safePath}">Carpeta</button>
+          </div>
+        </div>`;
+      } else if (a.type === 'document' || a.type === 'code') {
+        const icon = a.type === 'document' ? '📄' : '📝';
+        const action = a.exists ? 'Abrir' : 'No existe';
+        const safePath = escapeHtml(a.path);
+        const safeName = escapeHtml(a.name);
+        html += `<div class="artifact-file" data-path="${safePath}">
+          <span class="icon">${icon}</span>
+          <span class="name">${safeName}</span>
+          <span class="action">${action}</span>
+        </div>`;
+      }
+    }
+    html += '</div>';
+  }
+
   if (thought) {
     html += `<div class="thought">🤔 ${escapeHtml(thought)}</div>`;
   }
+
   msg.innerHTML = html;
+
+  // Click handlers
+  msg.querySelectorAll('.artifact-image').forEach(img => {
+    img.addEventListener('click', (e) => {
+      if (e.target.classList.contains('artifact-btn')) return;
+      window.open(img.dataset.url, '_blank');
+    });
+  });
+  msg.querySelectorAll('.artifact-file').forEach(div => {
+    div.addEventListener('click', () => openArtifact(div.dataset.path));
+  });
+  msg.querySelectorAll('.artifact-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const action = btn.dataset.action;
+      if (action === 'copy') {
+        await copyImage(btn.dataset.url, btn);
+      } else if (action === 'open-folder') {
+        await openFolder(btn.dataset.path);
+      }
+    });
+  });
+
   transcriptEl.appendChild(msg);
   transcriptEl.scrollTop = transcriptEl.scrollHeight;
   return msg;
+}
+async function copyImage(url, btn) {
+  const originalText = btn.textContent;
+  try {
+    // Convertir URL (/sandbox/...) a path absoluto para el backend
+    const path = await urlToAbsolutePath(url);
+    if (!path) throw new Error('No pude resolver la ruta');
+
+    const res = await fetch('/copy_image?path=' + encodeURIComponent(path), {
+      method: 'POST',
+    });
+    
+    const data = await res.json();
+    if (!data.ok) {
+      throw new Error(data.error || 'Error desconocido');
+    }
+
+    btn.textContent = 'Copiado';
+    btn.classList.add('success');
+    soundSuccess();
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.classList.remove('success');
+    }, 1500);
+
+  } catch (e) {
+    console.error('[COPY]', e);
+    btn.textContent = 'Error';
+    btn.title = e.message;
+    soundError();
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.title = '';
+    }, 2500);
+  }
+}
+
+// Convierte una URL tipo /sandbox/images/foo.jpg al path absoluto C:\JARVIS\sandbox\images\foo.jpg
+async function urlToAbsolutePath(url) {
+  try {
+    // Pedirle al backend que resuelva la ruta desde la URL
+    const res = await fetch('/resolve_url?url=' + encodeURIComponent(url));
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.ok ? data.path : null;
+  } catch (e) {
+    console.error('[RESOLVE]', e);
+    return null;
+  }
+}
+async function openFolder(path) {
+  try {
+    const folder = path.substring(0, path.lastIndexOf('\\'));
+    await fetch('/open_file?path=' + encodeURIComponent(folder), { method: 'POST' });
+  } catch (e) {
+    console.error('[OPEN FOLDER]', e);
+  }
+}
+
+async function openArtifact(path) {
+  try {
+    const res = await fetch('/open_file?path=' + encodeURIComponent(path), {
+      method: 'POST',
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      alert('No se pudo abrir: ' + (data.error || 'error desconocido'));
+    }
+  } catch (e) {
+    alert('Error al abrir: ' + e.message);
+  }
 }
 
 function addThinkingMessage(){
@@ -492,6 +825,7 @@ async function respondTo(cmd){
     thinkingMsg.remove();
     addMessage('jarvis', '⚠️ No pude conectar con el servidor.');
     setState('idle');
+    soundError();
     return;
   }
 
@@ -499,7 +833,14 @@ async function respondTo(cmd){
 
   const reply = data.text || 'Listo.';
   const voice = data.voice || reply;
-  addMessage('jarvis', reply, data.thought);
+  const artifacts = data.artifacts || [];
+
+  // Actualizar status bar
+  if (data.type) {
+    setLastSkill(data.type === 'chat' ? 'conversacion' : 'comando');
+  }
+
+  addMessage('jarvis', reply, data.thought, artifacts);
 
   setState('speaking');
   if (SPEAK_REPLIES && 'speechSynthesis' in window) {
@@ -534,7 +875,6 @@ input.addEventListener('keydown', e => {
 
 // ═══════════════════════════════════════════════════════════
 // MICRÓFONO — MediaRecorder + Whisper del servidor
-// Funciona en Electron, Edge, Chrome, Brave
 // ═══════════════════════════════════════════════════════════
 const micBtn = document.getElementById('mic');
 
@@ -572,6 +912,7 @@ async function startRecording() {
     enterConversation();
     addMessage('jarvis', '⚠️ No pude acceder al micrófono. Verifica permisos.');
     setState('idle');
+    soundError();
     return;
   }
 
@@ -585,7 +926,6 @@ async function startRecording() {
   silenceStart = null;
   recordingStartTime = Date.now();
 
-  // Detector de silencio
   try {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const source = audioContext.createMediaStreamSource(currentStream);
@@ -596,7 +936,6 @@ async function startRecording() {
     console.warn('[MIC] No se pudo iniciar analyser:', e);
   }
 
-  // MediaRecorder
   let mimeType = 'audio/webm;codecs=opus';
   if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/webm';
   if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/ogg;codecs=opus';
@@ -643,7 +982,6 @@ async function startRecording() {
 
   mediaRecorder.start(100);
 
-  // Monitor de volumen para auto-stop
   monitorInterval = setInterval(() => {
     if (!analyser) return;
     const data = new Uint8Array(analyser.frequencyBinCount);
@@ -716,6 +1054,7 @@ async function transcribeAndSend(blob) {
     input.placeholder = 'Escribe o habla con Jarvis…';
     enterConversation();
     addMessage('jarvis', '⚠️ Error transcribiendo el audio.');
+    soundError();
     return;
   }
 
@@ -732,7 +1071,6 @@ async function transcribeAndSend(blob) {
   respondTo(text);
 }
 
-// Click en el micrófono
 micBtn.addEventListener('click', () => {
   if (mediaRecorder && mediaRecorder.state === 'recording') {
     stopRecording();
@@ -741,14 +1079,11 @@ micBtn.addEventListener('click', () => {
   }
 });
 
-// Click en la esfera también activa el micrófono
 renderer.domElement.addEventListener('click', () => {
   if (currentState === 'idle') {
     startRecording();
   }
 });
-
-console.log('[JARVIS] Interfaz cargada correctamente');
 
 console.log('[JARVIS] Interfaz cargada correctamente');
 </script>
