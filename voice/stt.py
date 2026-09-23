@@ -1,11 +1,32 @@
-﻿import numpy as np
+﻿import os
+import re
+import sys
+import time
+import tempfile
+from pathlib import Path
+
+import numpy as np
 import sounddevice as sd
+
+# Cargar DLLs de CUDA desde el venv (necesario para ctranslate2 en GPU)
+_dll_handles = []  # Mantener vivos los handles
+_nvidia_dir = Path(sys.prefix) / "Lib" / "site-packages" / "nvidia"
+_loaded = []
+try:
+    for subdir in ("cublas", "cudnn", "cuda_runtime"):
+        bin_dir = _nvidia_dir / subdir / "bin"
+        if bin_dir.exists():
+            _dll_handles.append(os.add_dll_directory(str(bin_dir)))
+            _loaded.append(subdir)
+    if _loaded:
+        print(f"[STT] DLLs de CUDA registradas: {', '.join(_loaded)}")
+    else:
+        print("[STT] No encontre DLLs de CUDA en el venv")
+except Exception as _e:
+    print(f"[STT] Error cargando DLLs: {_e}")
+
 from faster_whisper import WhisperModel
 from scipy.io.wavfile import write
-import tempfile
-import os
-import re
-import time
 from voice import audio_state
 
 
@@ -56,6 +77,11 @@ class STT:
         ) as stream:
             while True:
                 frame, _ = stream.read(self.frame_size)
+
+                # Ignorar audio mientras Jarvis sigue hablando (eco residual)
+                if audio_state.is_speaking():
+                    continue
+
                 rms = self._rms(frame)
 
                 if rms > energy_threshold:
@@ -137,8 +163,8 @@ class STT:
     def transcribe(self, audio, samplerate):
         t0 = time.time()
         peak = int(np.abs(audio).max())
-        
-        # Si el audio dura menos de 0.5 seg → ruido
+
+        # Si el audio dura menos de 0.5 seg -> ruido
         if len(audio) < samplerate * 0.5:
             print(f"[STT] audio muy corto ({len(audio)/samplerate:.2f}s), ignorado")
             return ""
@@ -251,7 +277,7 @@ class STT:
             r'\b(michael ?jackson|maicol ?yacson)\b': 'michael jackson',
             r'\b(luis ?miguel|luis ?migel)\b': 'luis miguel',
             r'\b(juan ?gabriel|guan ?gabriel)\b': 'juan gabriel',
-                        # Dev / git
+            # Dev / git
             r'\bcomits?\b': 'commits',
             r'\bcomit\b': 'commit',
             r'\best[aá]jien\b': 'staging',
@@ -270,19 +296,19 @@ class STT:
             r'\bpañade\b': 'añade',
             r'\bpanade\b': 'añade',
             r'\bagnade\b': 'añade',
-                        # Spotify
+            # Spotify
             r'\bespoti?fai?\b': 'spotify',
             r'\bespotify\b': 'spotify',
             r'\bsiguente\b': 'siguiente',
             r'\bsiguient\b': 'siguiente',
             r'\bcanción\b': 'cancion',
             r'\bcanció?n\b': 'cancion',
-                        # Dev / matematicas
+            # Dev / matematicas
             r'\bsube\s+dos\s+numeros?\b': 'sume dos numeros',
             r'\bsuma\s+dos\s+numeros?\b': 'sume dos numeros',
             r'\bresta\s+dos\s+numeros?\b': 'reste dos numeros',
             r'\bmultipli(?:ca|que)\s+dos\s+numeros?\b': 'multiplique dos numeros',
-                        # Separadores y puntuacion dictada
+            # Separadores y puntuacion dictada
             r'\bslash\b': '/',
             r'\bbarra\b': '/',
             r'\bpunto\s+py\b': '.py',
@@ -290,7 +316,7 @@ class STT:
             r'\bpunto\s+java\b': '.java',
             r'\bpunto\s+json\b': '.json',
             r'\bpunto\s+txt\b': '.txt',
-                        # Separadores pegados a palabras (Whisper a veces une todo)
+            # Separadores pegados a palabras
             r'sandboxbarra': 'sandbox/',
             r'sandboxslash': 'sandbox/',
             r'(?<=\w)barra(?=\w)': '/',
@@ -300,7 +326,7 @@ class STT:
             # Extensiones cortadas por Whisper
             r'\.p\b': '.py',
             r'\.j\b': '.js',
-                        # Whisper y los underscores
+            # Whisper y los underscores
             r'\byonbajo\b': '_',
             r'\byonbajo\s+': '_',
             r'\byonbajo': '_',
@@ -312,9 +338,13 @@ class STT:
         for pattern, replacement in corrections.items():
             t = re.sub(pattern, replacement, t)
 
+        # Colapsar espacios alrededor de underscore
+        t = re.sub(r'\s*_\s*', '_', t)
+
         # Limpiar espacios dobles
         t = re.sub(r'\s+', ' ', t)
         return t.strip()
+
     def listen(self):
         """Devuelve texto o None si no se detecto voz."""
         result = self.record_until_silence()
