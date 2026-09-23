@@ -34,7 +34,7 @@ from skills.pdf import PdfSkill
 from skills.telegram import TelegramSkill
 from skills.edit import EditSkill
 from skills.education import EducationSkill
-
+from skills.macro import MacroSkill
 
 NUM_MAP = {
     "1": 1, "uno": 1, "primero": 1, "primer": 1, "la primera": 1, "el primero": 1,
@@ -75,6 +75,7 @@ class Router:
             "telegram": TelegramSkill(),
             "edit": EditSkill(),
             "education": EducationSkill(),
+            "macro": MacroSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -168,6 +169,53 @@ class Router:
     def _quick_match(self, text):
         """Detecta comandos obvios sin llamar al LLM."""
         t = text.lower().strip()
+                # MACRO: grabar/reproducir secuencias
+        # Empezar a grabar
+        m = re.search(
+            r'\b(?:empieza|empezar|inicia|iniciar|comienza|comenzar)\s+(?:a\s+)?grabar\s+(?:el\s+|un\s+|la\s+)?(?:macro\s+)?(.+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            name = m.group(1).strip(" .,!?¡¿")
+            if name:
+                return [{"skill": "macro", "action": "start", "params": {"name": name}}]
+
+        # Parar de grabar
+        if any(p in t for p in [
+            "para de grabar", "detén la grabación", "deten la grabacion",
+            "termina de grabar", "finaliza la grabacion", "stop grabacion",
+        ]):
+            return [{"skill": "macro", "action": "stop", "params": {}}]
+
+        # Reproducir
+        m = re.search(
+            r'\b(?:ejecuta|reproduce|corre|lanza|haz)\s+(?:el\s+|la\s+)?macro\s+(.+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            name = m.group(1).strip(" .,!?¡¿")
+            if name:
+                return [{"skill": "macro", "action": "play", "params": {"name": name}}]
+
+        # Listar
+        if any(p in t for p in [
+            "que macros tengo", "lista mis macros", "lista los macros",
+            "macros guardados",
+        ]):
+            return [{"skill": "macro", "action": "list", "params": {}}]
+
+        # Borrar
+        m = re.search(
+            r'\b(?:borra|elimina|quita)\s+(?:el\s+|la\s+)?macro\s+(.+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            name = m.group(1).strip(" .,!?¡¿")
+            if name:
+                return [{"skill": "macro", "action": "delete", "params": {"name": name}}]
 
         # ═══════════════════════════════════════════════════════════════════
         # COMBO: RAG -> Word (PRIORIDAD ALTA: antes que Office / RAG básico)

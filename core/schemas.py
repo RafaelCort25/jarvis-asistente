@@ -130,6 +130,13 @@ SKILLS_VALIDAS = {
             "kind": {"type": "string"},
         },
     },
+    "macro": {
+        "start": {"name": {"type": "string"}},
+        "stop": {},
+        "play": {"name": {"type": "string"}},
+        "list": {},
+        "delete": {"name": {"type": "string"}},
+    },
     "vision": {
         "describe_screen": {},
         "explain_screen_code": {},

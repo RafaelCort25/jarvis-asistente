@@ -44,6 +44,12 @@ RISK_LEVELS = {
     ("system", "list_startup"): "low",
     ("system", "clean_temp"): "medium",
     ("system", "empty_recycle"): "high",
+        # Macro
+    ("macro", "start"): "medium",
+    ("macro", "stop"): "low",
+    ("macro", "play"): "high",
+    ("macro", "list"): "low",
+    ("macro", "delete"): "high",
 
     # Files
     ("files", "find_file"): "low",

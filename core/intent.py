@@ -104,12 +104,18 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "genera 3 logos y hazme un word con los 3" -> image.to_word (prompt = "logos", count = 3)
   - "hazme un word con las ultimas imagenes" -> image.to_word (prompt = "", count = 1)
   - NUNCA uses image.generate + office.create_doc para estos casos
-  - EDUCATION (PSeInt, diagramas, conversion):
+  -EDUCATION (PSeInt, diagramas, conversion):
   - "hazme un algoritmo/pseudocodigo PSeInt de X" -> education.pseint (description = X)
   - "hazme un diagrama de flujo de X" -> education.diagram (description = X, kind = "flowchart")
   - "hazme un diagrama de secuencia/clases X" -> education.diagram (description = X, kind = "sequence"|"class")
   - "convierte este codigo a Python" -> education.convert (code = "", to_language = "python")
   - NUNCA uses dev.generate_code para PSeInt ni para diagramas
+  - MACRO:
+  - "empieza a grabar el macro X" -> macro.start (name = X)
+  - "para de grabar" -> macro.stop
+  - "ejecuta el macro X" -> macro.play (name = X)
+  - "que macros tengo" -> macro.list
+  - "borra el macro X" -> macro.delete (name = X)
 - PDF (conversion):
   - "convierte el word/ese word a pdf" -> pdf.from_docx (path = "", output = "")
   - "convierte X.docx a pdf" -> pdf.from_docx (path = X.docx, output = "")
