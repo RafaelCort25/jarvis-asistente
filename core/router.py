@@ -157,6 +157,31 @@ class Router:
     def _quick_match(self, text):
         """Detecta comandos obvios sin llamar al LLM."""
         t = text.lower().strip()
+                # ═══════════════════════════════════════════════════════════════════
+        # PRIORIDAD MAXIMA: si la frase EMPIEZA con verbo de edicion, es edit.
+        # Esto evita que "modifica el titulo para que no diga Convertir a PDF"
+        # se confunda con la skill de PDF.
+        # ═══════════════════════════════════════════════════════════════════
+        if re.match(r'^(?:modifica|edita|actualiza|corrige)\b', t):
+            # Extraer path explicito si hay
+            path = ""
+            m_path = re.search(
+                r'([A-Za-z]:\\[^\s]+\.\w{2,5}|[^\s]+\.(?:docx|xlsx|txt|pdf|py|md|csv))',
+                t,
+            )
+            if m_path:
+                path = m_path.group(1)
+
+            # Extraer la instruccion (todo despues del verbo inicial)
+            m_instr = re.sub(r'^(?:modifica|edita|actualiza|corrige)\s+', '', t)
+            m_instr = m_instr.strip(" .,!?¡¿")
+
+            if m_instr:
+                return [{
+                    "skill": "edit",
+                    "action": "modify",
+                    "params": {"path": path, "instruction": m_instr, "output": ""},
+                }]
 
         # Portapapeles: leer
         if any(p in t for p in [
