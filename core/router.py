@@ -301,6 +301,34 @@ class Router:
             name = m.group(1).strip(" .,!?¡¿")
             if name:
                 return [{"skill": "n8n", "action": "delete_workflow", "params": {"id_or_name": name}}]
+                    # Buscar templates en n8n.io
+        m = re.search(
+            r'\b(?:busca|buscar|encuentra)\s+(?:templates?|plantillas?|workflows?)\s+(?:de\s+|sobre\s+|para\s+)?(.+?)(?:\s+en\s+n8n)?$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            query = m.group(1).strip(" .,!?¡¿")
+            if query:
+                return [{"skill": "n8n", "action": "search_templates", "params": {"query": query, "limit": 5}}]
+
+        # Ver detalle de template
+        m = re.search(
+            r'\b(?:ver|muestra|detalle|detalles)\s+(?:el\s+)?template\s+(\d+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            return [{"skill": "n8n", "action": "get_template", "params": {"id": m.group(1)}}]
+
+        # Importar template
+        m = re.search(
+            r'\b(?:importa|descarga|instala|trae)\s+(?:el\s+)?template\s+(\d+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            return [{"skill": "n8n", "action": "import_template", "params": {"id": m.group(1), "name": ""}}]
                 # MACRO: grabar/reproducir secuencias
         # Empezar a grabar
         m = re.search(

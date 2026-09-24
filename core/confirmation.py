@@ -60,6 +60,9 @@ RISK_LEVELS = {
     ("n8n", "activate"): "medium",
     ("n8n", "deactivate"): "medium",
     ("n8n", "delete_workflow"): "high",
+    ("n8n", "search_templates"): "low",
+    ("n8n", "get_template"): "low",
+    ("n8n", "import_template"): "medium",
 
     # Files
     ("files", "find_file"): "low",

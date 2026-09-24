@@ -144,6 +144,15 @@ SKILLS_VALIDAS = {
         "deactivate": {"id_or_name": {"type": "string"}},
         "delete_workflow": {"id_or_name": {"type": "string"}},
         "list_executions": {},
+        "search_templates": {
+            "query": {"type": "string"},
+            "limit": {"type": "integer", "minimum": 1, "maximum": 10},
+        },
+        "get_template": {"id": {"type": "string"}},
+        "import_template": {
+            "id": {"type": "string"},
+            "name": {"type": "string"},
+        },
     },
     "vision": {
         "describe_screen": {},
