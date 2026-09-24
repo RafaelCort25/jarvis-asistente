@@ -133,6 +133,15 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "crea un workflow en n8n que cada dia a las 9 me mande un Telegram" -> n8n.create_workflow (description = "cada dia a las 9 me mande un Telegram", name = "")
   - "genera un workflow que reciba webhooks y guarde en Google Sheets" -> n8n.create_workflow (description = "recibir webhooks y guardar en Google Sheets", name = "")
   - NUNCA uses dev.create_and_test ni dev.generate_code para crear workflows n8n
+- GMAIL:
+  - "lee mis correos", "correos de hoy", "ultimos correos" -> gmail.list_recent (n = 5)
+  - "tengo correos sin leer", "cuantos correos" -> gmail.count_unread
+  - "busca correos de Amazon" -> gmail.search (query = "Amazon")
+  - "envia un correo a X@Y.com diciendo Z" -> gmail.send (to = X@Y.com, subject = "", body = Z)
+  - "lee el correo 30635" -> gmail.read (uid = "30635")
+  - NUNCA uses browser.* ni dev.* para leer correos
+
+
 
 
 - PDF (conversion):

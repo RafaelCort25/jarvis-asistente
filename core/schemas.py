@@ -162,6 +162,18 @@ SKILLS_VALIDAS = {
             "name": {"type": "string"},
         },
     },
+    "gmail": {
+            "list_recent": {"n": {"type": "integer", "minimum": 1, "maximum": 20}},
+            "read": {"uid": {"type": "string"}},
+            "search": {"query": {"type": "string"}},
+            "send": {
+                "to": {"type": "string"},
+                "subject": {"type": "string"},
+                "body": {"type": "string"},
+            },
+            "count_unread": {},
+        },
+
     "vision": {
         "describe_screen": {},
         "explain_screen_code": {},

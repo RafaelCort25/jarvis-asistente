@@ -65,6 +65,13 @@ RISK_LEVELS = {
     ("n8n", "import_template"): "medium",
     ("n8n", "create_workflow"): "medium",
 
+        # Gmail
+    ("gmail", "list_recent"): "low",
+    ("gmail", "read"): "low",
+    ("gmail", "search"): "low",
+    ("gmail", "count_unread"): "low",
+    ("gmail", "send"): "medium",
+
     # Files
     ("files", "find_file"): "low",
     ("files", "list_folder"): "low",

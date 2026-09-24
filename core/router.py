@@ -36,6 +36,7 @@ from skills.edit import EditSkill
 from skills.education import EducationSkill
 from skills.macro import MacroSkill
 from skills.n8n import N8nSkill
+from skills.gmail import GmailSkill
 
 NUM_MAP = {
     "1": 1, "uno": 1, "primero": 1, "primer": 1, "la primera": 1, "el primero": 1,
@@ -78,6 +79,7 @@ class Router:
             "education": EducationSkill(),
             "macro": MacroSkill(),
             "n8n": N8nSkill(),
+            "gmail": GmailSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -349,6 +351,64 @@ class Router:
         )
         if m:
             return "__N8N_BUILDER__"
+
+                # ═══════════════════════════════════════════════════════════════════
+        # GMAIL: correos
+        # ═══════════════════════════════════════════════════════════════════
+
+        # Contar sin leer
+        if any(p in t for p in [
+            "tengo correos", "correos sin leer", "cuantos correos",
+            "hay correos nuevos", "correos nuevos",
+        ]):
+            return [{"skill": "gmail", "action": "count_unread", "params": {}}]
+
+        # Listar recientes
+        if any(p in t for p in [
+            "lee mis correos", "leeme los correos", "leeme mis correos",
+            "correos de hoy", "ultimos correos", "muestra mis correos",
+            "revisa mi correo", "revisa mis correos",
+        ]):
+            n = 5
+            m = re.search(r'\b(\d+)\s+correos?\b', t)
+            if m:
+                n = min(int(m.group(1)), 20)
+            return [{"skill": "gmail", "action": "list_recent", "params": {"n": n}}]
+
+        # Buscar correos
+        m = re.search(
+            r'\b(?:busca|buscar|encuentra)\s+(?:correos?\s+(?:de|sobre|con)\s+)(.+)$',
+            t, re.IGNORECASE,
+        )
+        if m:
+            query = m.group(1).strip(" .,!?¡¿")
+            if query:
+                return [{"skill": "gmail", "action": "search", "params": {"query": query}}]
+
+        # Enviar correo
+        m = re.search(
+            r'\b(?:envia|enviar|mandale|mandar|escribele|escribir)\s+(?:un\s+)?(?:correo|email|mail)\s+a\s+([^\s]+@[^\s]+)',
+            t, re.IGNORECASE,
+        )
+        if m:
+            to = m.group(1).strip(" .,!?¡¿")
+            # Extraer asunto y cuerpo si vienen despues
+            resto = t[m.end():].strip()
+            asunto = ""
+            cuerpo = resto
+            m_asunto = re.search(r'(?:asunto|sobre|diciendo|que diga)\s+(.+)$', resto, re.IGNORECASE)
+            if m_asunto:
+                cuerpo = m_asunto.group(1).strip(" .,!?¡¿")
+            return [{
+                "skill": "gmail",
+                "action": "send",
+                "params": {"to": to, "subject": asunto or "(sin asunto)", "body": cuerpo},
+            }]
+
+        # Leer un correo por UID
+        m = re.search(r'\b(?:lee|abre|muestra)\s+(?:el\s+)?correo\s+(\d+)\b', t)
+        if m:
+            return [{"skill": "gmail", "action": "read", "params": {"uid": m.group(1)}}]
 
 
             

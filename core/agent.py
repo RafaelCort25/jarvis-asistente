@@ -81,6 +81,13 @@ SKILLS DISPONIBLES:
 === MACRO (grabar/reproducir) ===
 41. macro.start(name) | macro.stop() | macro.list()
 42. macro.play(name) | macro.delete(name)
+=== GMAIL (correos) ===
+43. gmail.list_recent(n) - ultimos N correos sin leer (default 5)
+44. gmail.read(uid) - lee el correo con ese UID
+45. gmail.search(query) - busca correos por asunto o remitente
+46. gmail.send(to, subject, body) - envia un correo
+47. gmail.count_unread() - cuantos correos sin leer
+
 
 REGLAS:
 - Responde SOLO JSON, sin markdown, sin texto extra.
@@ -173,6 +180,10 @@ REGLAS DEL BUILDER:
 NUNCA uses dev.list_workflows, dev.get_workflow, dev.create_workflow, dev.activate,
 dev.deactivate, dev.delete_workflow, ni dev.list_executions. NO EXISTEN.
 Esas acciones pertenecen SOLO a la skill n8n.
+Si el usuario menciona correos, emails, gmail, "lee mis correos", "envia un correo",
+"cuantos correos tengo":
+   -> USA SOLO las skills gmail.* (nunca browser.*, nunca dev.*)
+
 
 VERIFICACION OBLIGATORIA ANTES DE "final_answer":
 Antes de terminar, comprueba:

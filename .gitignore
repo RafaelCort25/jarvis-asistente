@@ -35,3 +35,4 @@ test_*.py
 
 # n8n
 .env.n8n*
+.env.gmail*
