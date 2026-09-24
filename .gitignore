@@ -1,4 +1,4 @@
-venv/
+﻿venv/
 __pycache__/
 *.pyc
 
@@ -10,6 +10,8 @@ sandbox/
 
 # Entorno
 .env
+.env.*
+.env.n8n*
 *.log
 
 # Modelos
@@ -30,3 +32,6 @@ probar_macro.py
 probar_*.py
 test_agent.py
 test_*.py
+
+# n8n
+.env.n8n*
