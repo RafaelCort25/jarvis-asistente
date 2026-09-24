@@ -125,6 +125,7 @@ class MacroSkill(Skill):
         self._record_lock = threading.Lock()
         self._playback_abort = False
         self._record_window = None
+        self._last_save_result = None
 
     # ─── DISPATCHER ──────────────────────────────────────────────────────
 
@@ -145,16 +146,28 @@ class MacroSkill(Skill):
 
     def _start(self, name):
         if self._recording:
-            return "Ya estoy grabando. Di 'para de grabar' o pulsa ESC."
+            return {
+                "thought": "",
+                "display": "Ya estoy grabando. Di 'para de grabar' o pulsa ESC.",
+                "voice": "Ya estoy grabando.",
+            }
 
         name = (name or "").strip()
         if not name:
-            return "Dime como quieres llamar al macro."
+            return {
+                "thought": "",
+                "display": "Dime como quieres llamar al macro.",
+                "voice": "Dime como llamarlo.",
+            }
 
         slug = _slugify(name)
         summary = f"Empezar a grabar macro '{slug}' (pulsa ESC para parar)"
         if not confirmation.require("macro", "start", summary):
-            return "Cancelado."
+            return {
+                "thought": "Cancelado por el usuario",
+                "display": "Cancelado.",
+                "voice": "Cancelado.",
+            }
 
                 # Capturar ventana activa antes de empezar a grabar
         active_window = _get_active_window_info()
@@ -255,19 +268,29 @@ class MacroSkill(Skill):
 
     def _stop(self):
         if not self._recording:
-            return "No estoy grabando."
+            return {
+                "thought": "",
+                "display": "No estoy grabando.",
+                "voice": "No estoy grabando.",
+            }
         self._recording = False
-        # Forzar parada de listeners
         for listener in (self._kb_listener, self._mouse_listener):
             if listener:
                 try:
                     listener.stop()
                 except Exception:
                     pass
-        # Esperar un momento a que se guarde
         time.sleep(0.6)
-        return "Detuve la grabacion."
-
+        # Si se guardo algo, devolver ese resultado
+        if self._last_save_result:
+            r = self._last_save_result
+            self._last_save_result = None
+            return r
+        return {
+            "thought": "",
+            "display": "Detuve la grabacion.",
+            "voice": "Detuve la grabacion.",
+        }
     def _save_recording(self):
         with self._record_lock:
             events = list(self._record_events)
@@ -277,6 +300,10 @@ class MacroSkill(Skill):
 
         if not events:
             print(f"[MACRO] Sin eventos. No se guarda '{name}'.")
+            print(f"[MACRO] Causas comunes:")
+            print(f"[MACRO]   - Se pulso ESC antes de tocar algo en la ventana objetivo")
+            print(f"[MACRO]   - La ventana con foco no era la que se queria grabar")
+            print(f"[MACRO]   - Solo se movio el raton, sin clicks ni teclas")
             return
 
         duration = events[-1]["t"]
@@ -292,8 +319,18 @@ class MacroSkill(Skill):
         try:
             path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
             print(f"[MACRO] Guardado: {path} ({len(events)} eventos, {duration:.1f}s)")
+            self._last_save_result = {
+                "thought": f"Grabado '{name}'",
+                "display": f"Macro '{name}' guardado ({len(events)} eventos, {duration:.1f}s)",
+                "voice": "Macro guardado.",
+            }
         except Exception as e:
             print(f"[MACRO] Error guardando: {e}")
+            self._last_save_result = {
+                "thought": "Error guardando macro",
+                "display": f"Error guardando: {e}",
+                "voice": "Error guardando.",
+            }
 
     # ─── PLAY ────────────────────────────────────────────────────────────
 
@@ -322,10 +359,14 @@ class MacroSkill(Skill):
         current_exe = (current or {}).get("exe", "")
 
         if _is_blacklisted(current_exe):
-            return (
-                f"BLOQUEADO: el macro no se reproduce en '{current_exe}' "
-                f"(lista negra por seguridad). Cambia a otra ventana e intenta de nuevo."
-            )
+            return {
+                "thought": f"Bloqueado por lista negra ({current_exe})",
+                "display": (
+                    f"BLOQUEADO: el macro no se reproduce en '{current_exe}' "
+                    f"(lista negra por seguridad). Cambia a otra ventana e intenta de nuevo."
+                ),
+                "voice": "Bloqueado por seguridad. Cambia de ventana.",
+            }
 
         # ═══ BLINDAJE 2: Verificar ventana activa ═══
         if saved_exe and current_exe and saved_exe != current_exe:
@@ -340,7 +381,11 @@ class MacroSkill(Skill):
                 f"pero estas en '{current_exe}'. ¿Continuar de todas formas?"
             )
             if not confirmation.require("macro", "play_wrong_window", summary):
-                return "Cancelado. Cambia a la ventana correcta e intenta otra vez."
+                return {
+                    "thought": "Cancelado por ventana incorrecta",
+                    "display": "Cancelado. Cambia a la ventana correcta e intenta otra vez.",
+                    "voice": "Cancelado.",
+                }
 
         # Confirmacion normal
         summary = (
@@ -348,7 +393,11 @@ class MacroSkill(Skill):
             f"({len(events)} eventos, {duration:.1f}s)"
         )
         if not confirmation.require("macro", "play", summary):
-            return "Cancelado."
+            return {
+                "thought": "Cancelado por el usuario",
+                "display": "Cancelado.",
+                "voice": "Cancelado.",
+            }
 
         # ═══ BLINDAJE 3: Delay con opcion de abortar ═══
         print(f"[MACRO] Empezando en {PLAYBACK_DELAY_SEC} segundos. Pulsa ESC para abortar.")
@@ -375,7 +424,11 @@ class MacroSkill(Skill):
             pass
 
         if abort_early:
-            return "Cancelado por ESC antes de empezar."
+            return {
+                "thought": "Abortado antes de empezar",
+                "display": "Cancelado por ESC antes de empezar.",
+                "voice": "Cancelado.",
+            }
 
         print(f"[MACRO] Reproduciendo '{name}' ({len(events)} eventos)...")
         print("[MACRO] Pulsa ESC para abortar.")
