@@ -329,6 +329,16 @@ class Router:
         )
         if m:
             return [{"skill": "n8n", "action": "import_template", "params": {"id": m.group(1), "name": ""}}]
+                # Crear workflow nuevo con LLM
+        m = re.search(
+            r'\b(?:crea|crear|genera|generar|hazme|haz)\s+(?:un\s+|el\s+)?workflow\s+(?:en\s+n8n\s+)?(?:que\s+|para\s+|de\s+)?(.+)$',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            desc = m.group(1).strip(" .,!?¡¿")
+            if desc:
+                return [{"skill": "n8n", "action": "create_workflow", "params": {"description": desc, "name": ""}}]
                 # MACRO: grabar/reproducir secuencias
         # Empezar a grabar
         m = re.search(

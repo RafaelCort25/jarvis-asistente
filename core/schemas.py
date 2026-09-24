@@ -153,6 +153,14 @@ SKILLS_VALIDAS = {
             "id": {"type": "string"},
             "name": {"type": "string"},
         },
+                "import_template": {
+            "id": {"type": "string"},
+            "name": {"type": "string"},
+        },
+        "create_workflow": {
+            "description": {"type": "string"},
+            "name": {"type": "string"},
+        },
     },
     "vision": {
         "describe_screen": {},

@@ -124,6 +124,17 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "borra el workflow X" -> n8n.delete_workflow (id_or_name = X)
   - "que se ejecuto en n8n", "ejecuciones recientes" -> n8n.list_executions
   - NUNCA uses dev.* ni terminal.* para consultar workflows de n8n
+  - N8N TEMPLATES:
+  - "busca templates de whatsapp en n8n" -> n8n.search_templates (query = "whatsapp", limit = 5)
+  - "muestra el template 11807" -> n8n.get_template (id = "11807")
+  - "importa el template 11807" -> n8n.import_template (id = "11807", name = "")
+  - NUNCA uses dev.* ni browser.* para buscar templates de n8n
+  - N8N CREATE:
+  - "crea un workflow en n8n que cada dia a las 9 me mande un Telegram" -> n8n.create_workflow (description = "cada dia a las 9 me mande un Telegram", name = "")
+  - "genera un workflow que reciba webhooks y guarde en Google Sheets" -> n8n.create_workflow (description = "recibir webhooks y guardar en Google Sheets", name = "")
+  - NUNCA uses dev.create_and_test ni dev.generate_code para crear workflows n8n
+
+
 - PDF (conversion):
   - "convierte el word/ese word a pdf" -> pdf.from_docx (path = "", output = "")
   - "convierte X.docx a pdf" -> pdf.from_docx (path = X.docx, output = "")
