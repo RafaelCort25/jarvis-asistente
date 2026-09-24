@@ -53,6 +53,13 @@ RISK_LEVELS = {
     ("macro", "play"): "high",
     ("macro", "list"): "low",
     ("macro", "delete"): "high",
+        # n8n
+    ("n8n", "list_workflows"): "low",
+    ("n8n", "get_workflow"): "low",
+    ("n8n", "list_executions"): "low",
+    ("n8n", "activate"): "medium",
+    ("n8n", "deactivate"): "medium",
+    ("n8n", "delete_workflow"): "high",
 
     # Files
     ("files", "find_file"): "low",

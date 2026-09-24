@@ -137,6 +137,14 @@ SKILLS_VALIDAS = {
         "list": {},
         "delete": {"name": {"type": "string"}},
     },
+    "n8n": {
+        "list_workflows": {},
+        "get_workflow": {"id_or_name": {"type": "string"}},
+        "activate": {"id_or_name": {"type": "string"}},
+        "deactivate": {"id_or_name": {"type": "string"}},
+        "delete_workflow": {"id_or_name": {"type": "string"}},
+        "list_executions": {},
+    },
     "vision": {
         "describe_screen": {},
         "explain_screen_code": {},

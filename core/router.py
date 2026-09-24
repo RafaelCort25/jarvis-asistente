@@ -35,6 +35,7 @@ from skills.telegram import TelegramSkill
 from skills.edit import EditSkill
 from skills.education import EducationSkill
 from skills.macro import MacroSkill
+from skills.n8n import N8nSkill
 
 NUM_MAP = {
     "1": 1, "uno": 1, "primero": 1, "primer": 1, "la primera": 1, "el primero": 1,
@@ -76,6 +77,7 @@ class Router:
             "edit": EditSkill(),
             "education": EducationSkill(),
             "macro": MacroSkill(),
+            "n8n": N8nSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -241,6 +243,64 @@ class Router:
     def _quick_match(self, text):
         """Detecta comandos obvios sin llamar al LLM."""
         t = text.lower().strip()
+                # ═══════════════════════════════════════════════════════════════════
+        # N8N: workflows y automatizacion
+        # ═══════════════════════════════════════════════════════════════════
+
+        # Listar workflows
+        if any(p in t for p in [
+            "workflows en n8n", "workflows de n8n", "que workflows tengo",
+            "lista workflows", "listar workflows", "muestra workflows",
+            "mis workflows",
+        ]):
+            return [{"skill": "n8n", "action": "list_workflows", "params": {}}]
+
+        # Listar ejecuciones
+        if any(p in t for p in [
+            "ejecuciones de n8n", "ejecuciones n8n", "ultimas ejecuciones",
+            "que se ejecuto", "historial de n8n",
+        ]):
+            return [{"skill": "n8n", "action": "list_executions", "params": {}}]
+
+        # Ver detalle de workflow
+        m = re.search(
+            r'\b(?:muestra|detalle|detalles|info|ver)\s+(?:el\s+|del\s+)?workflow\s+(.+)$',
+            t, re.IGNORECASE
+        )
+        if m:
+            name = m.group(1).strip(" .,!?¡¿")
+            if name:
+                return [{"skill": "n8n", "action": "get_workflow", "params": {"id_or_name": name}}]
+
+        # Activar workflow
+        m = re.search(
+            r'\b(?:activa|activar|enciende|prende)\s+(?:el\s+|la\s+)?workflow\s+(.+)$',
+            t, re.IGNORECASE
+        )
+        if m:
+            name = m.group(1).strip(" .,!?¡¿")
+            if name:
+                return [{"skill": "n8n", "action": "activate", "params": {"id_or_name": name}}]
+
+        # Desactivar workflow
+        m = re.search(
+            r'\b(?:desactiva|desactivar|apaga|para)\s+(?:el\s+|la\s+)?workflow\s+(.+)$',
+            t, re.IGNORECASE
+        )
+        if m:
+            name = m.group(1).strip(" .,!?¡¿")
+            if name:
+                return [{"skill": "n8n", "action": "deactivate", "params": {"id_or_name": name}}]
+
+        # Borrar workflow
+        m = re.search(
+            r'\b(?:borra|elimina|quita)\s+(?:el\s+|la\s+)?workflow\s+(.+)$',
+            t, re.IGNORECASE
+        )
+        if m:
+            name = m.group(1).strip(" .,!?¡¿")
+            if name:
+                return [{"skill": "n8n", "action": "delete_workflow", "params": {"id_or_name": name}}]
                 # MACRO: grabar/reproducir secuencias
         # Empezar a grabar
         m = re.search(

@@ -116,6 +116,14 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "ejecuta el macro X" -> macro.play (name = X)
   - "que macros tengo" -> macro.list
   - "borra el macro X" -> macro.delete (name = X)
+  - N8N:
+  - "que workflows tengo", "workflows en n8n", "lista workflows" -> n8n.list_workflows
+  - "muestra el workflow X", "detalle del workflow X" -> n8n.get_workflow (id_or_name = X)
+  - "activa el workflow X" -> n8n.activate (id_or_name = X)
+  - "desactiva el workflow X" -> n8n.deactivate (id_or_name = X)
+  - "borra el workflow X" -> n8n.delete_workflow (id_or_name = X)
+  - "que se ejecuto en n8n", "ejecuciones recientes" -> n8n.list_executions
+  - NUNCA uses dev.* ni terminal.* para consultar workflows de n8n
 - PDF (conversion):
   - "convierte el word/ese word a pdf" -> pdf.from_docx (path = "", output = "")
   - "convierte X.docx a pdf" -> pdf.from_docx (path = X.docx, output = "")
