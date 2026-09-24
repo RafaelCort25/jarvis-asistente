@@ -68,6 +68,19 @@ SKILLS DISPONIBLES:
 === OTROS ===
 31. vision.describe_screen() | vision.explain_screen_code()
 32. spotify.play(query) | spotify.pause() | spotify.next() | spotify.current()
+=== N8N (automatizacion de workflows) ===
+33. n8n.list_workflows() - lista tus workflows locales
+34. n8n.get_workflow(id_or_name) - detalle de un workflow
+35. n8n.activate(id_or_name) | n8n.deactivate(id_or_name)
+36. n8n.delete_workflow(id_or_name)
+37. n8n.list_executions() - ultimas ejecuciones
+38. n8n.search_templates(query, limit) - busca en la libreria de n8n.io (12k+ templates)
+39. n8n.get_template(id) | n8n.import_template(id, name)
+40. n8n.create_workflow(description, name) - crea un workflow desde cero con LLM
+
+=== MACRO (grabar/reproducir) ===
+41. macro.start(name) | macro.stop() | macro.list()
+42. macro.play(name) | macro.delete(name)
 
 REGLAS:
 - Responde SOLO JSON, sin markdown, sin texto extra.
@@ -107,6 +120,17 @@ EJEMPLOS DE ACCIONES (con skills):
 NUNCA generes codigo Python para responder una pregunta conceptual.
 NUNCA busques archivos cuando el usuario pide una opinion o un plan.
 Si dudas, usa "final_answer". Es mejor responder directo que inventar acciones.
+REGLA CRITICA — N8N Y MACRO:
+Si el usuario menciona n8n, workflows, templates, activar/desactivar/crear/borrar workflow,
+o "que se ejecuto":
+   -> USA SOLO las skills n8n.* (nunca dev.*, files.*, terminal.*, browser.*)
+
+Si el usuario dice "grabar", "reproducir", "macro", "grabacion":
+   -> USA SOLO las skills macro.* (nunca dev.* ni terminal.*)
+
+NUNCA uses dev.list_workflows, dev.get_workflow, dev.create_workflow, dev.activate,
+dev.deactivate, dev.delete_workflow, ni dev.list_executions. NO EXISTEN.
+Esas acciones pertenecen SOLO a la skill n8n.
 
 VERIFICACION OBLIGATORIA ANTES DE "final_answer":
 Antes de terminar, comprueba:
@@ -361,20 +385,40 @@ class Agent:
             return True
         low = s.lower()
         markers = [
+            # Errores genéricos
             "error en ",
             "error al ",
             "skill desconocida",
             "accion invalida",
             "action invalida",
+            "accion desconocida",
             "sin resultado",
             "[error",
             "[error llm]",
             "no se pudo",
             "no pude ",
+            "no puedo ",
             "timeout",
             "tardo demasiado",
+            "no encontre",
+            "no lo encontre",
+            # Errores especificos de n8n
+            "error n8n",
+            "error consultando",
+            "error buscando",
+            "error subiendo",
+            "error importando",
+            "error leyendo",
+            "error guardando",
+            "error llamando",
+            "error llamando al llm",
+            "n8n respondio 4",
+            "n8n respondio 5",
+            # Errores de macros
             "no encontre el macro",
             "no encontre la carpeta",
+            "bloqueado",
+            "cancelado por",
         ]
         return any(m in low for m in markers)
 
