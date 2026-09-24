@@ -339,6 +339,19 @@ class Router:
             desc = m.group(1).strip(" .,!?¡¿")
             if desc:
                 return [{"skill": "n8n", "action": "create_workflow", "params": {"description": desc, "name": ""}}]
+        # N8N BUILDER: frases que piden un workflow complejo (chatbot, automatizacion, etc.)
+        # Estas van al AGENTE, no al quick_match (porque necesitan preguntar antes)
+        m = re.search(
+            r'\b(?:crea|crear|hazme|haz|genera|generar)\s+(?:un\s+|una\s+)?'
+            r'(chatbot|bot|asistente virtual|automatizacion|automatización|flujo complejo|workflow complejo)\b',
+            t,
+            re.IGNORECASE,
+        )
+        if m:
+            return "__N8N_BUILDER__"
+
+
+            
                 # MACRO: grabar/reproducir secuencias
         # Empezar a grabar
         m = re.search(
@@ -1190,7 +1203,15 @@ class Router:
             print(f"[ROUTER] Error en _quick_match: {e}")
             quick = None
 
-        if quick:
+        if quick == "__N8N_BUILDER__":
+            # Workflow complejo: va al agente para que pregunte paso a paso
+            try:
+                agent_result = self.agent.run(text, self.skills)
+                return agent_result, False
+            except Exception as e:
+                print(f"[ROUTER] Error en n8n builder: {e}")
+                return {"voice": "El agente fallo.", "display": f"Error: {e}", "thought": ""}, False
+        elif quick:
             actions = quick
         # 5. Razonamiento puro -> brain.chat (sin skills)
         elif self._is_pure_reasoning(text):

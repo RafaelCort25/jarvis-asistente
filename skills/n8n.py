@@ -622,7 +622,7 @@ Ahora genera el workflow para: {description}
             response = ollama.chat(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
-                options={"temperature": 0.1, "num_predict": 3000},
+                options={"temperature": 0.1, "num_predict": 6000},
             )
             raw = response["message"]["content"].strip()
         except Exception as e:
@@ -639,6 +639,7 @@ Ahora genera el workflow para: {description}
             pass
 
         # Buscar el primer JSON balanceado
+                # Buscar el primer JSON balanceado
         start = raw.find("{")
         if start == -1:
             return None, f"El LLM no devolvio JSON. Respuesta: {raw[:300]}"
@@ -656,7 +657,71 @@ Ahora genera el workflow para: {description}
                     except json.JSONDecodeError as e:
                         return None, f"JSON invalido: {e}. Respuesta: {candidate[:300]}"
 
+        # FALLBACK: JSON incompleto -> intentar repararlo cerrando llaves/corchetes
+        repaired = self._repair_incomplete_json(raw[start:])
+        if repaired:
+            print("[N8N] JSON incompleto reparado automaticamente")
+            return repaired, None
+
         return None, "JSON incompleto (no se cerraron las llaves)."
+
+    def _repair_incomplete_json(self, candidate):
+        """Intenta cerrar un JSON que quedo incompleto (LLM corto la salida)."""
+        candidate = candidate.rstrip()
+
+        # ─── PASO 1: rastrear con pila el orden de apertura ───
+        stack = []
+        in_string = False
+        escape = False
+
+        for c in candidate:
+            if escape:
+                escape = False
+                continue
+            if c == "\\":
+                escape = True
+                continue
+            if c == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if c == "{":
+                stack.append("}")
+            elif c == "[":
+                stack.append("]")
+            elif c == "}":
+                if stack and stack[-1] == "}":
+                    stack.pop()
+            elif c == "]":
+                if stack and stack[-1] == "]":
+                    stack.pop()
+
+        # ─── PASO 2: reparar el corte ───
+        out = candidate
+
+        # Si un string quedo abierto, cerrarlo
+        if in_string:
+            out += '"'
+
+        # Si el ultimo caracter es ':' (falta valor), anadir null
+        if out.rstrip().endswith(":"):
+            out += " null"
+
+        # Si el ultimo caracter es ',' (falta elemento), quitarlo
+        if out.rstrip().endswith(","):
+            out = out.rstrip()[:-1]
+
+        # ─── PASO 3: cerrar en orden inverso al de apertura ───
+        for closer in reversed(stack):
+            out += closer
+
+        try:
+            return json.loads(out)
+        except json.JSONDecodeError as e:
+            print(f"[N8N] No pude reparar el JSON: {e}")
+            print(f"[N8N] JSON intentado: {out[-300:]}")
+            return None
 
     def _validate_workflow(self, wf):
         """Valida estructura + nodos contra whitelist."""
@@ -685,7 +750,7 @@ Ahora genera el workflow para: {description}
         return True, "OK"
 
     def _autofix_workflow(self, wf):
-        """Rellena campos faltantes que n8n requiere."""
+        """Rellena campos faltantes y repara problemas que n8n rechazaria."""
         # Asegurar name
         if not wf.get("name"):
             wf["name"] = "Workflow generado por Nitro"
@@ -694,26 +759,71 @@ Ahora genera el workflow para: {description}
         if "settings" not in wf or not isinstance(wf["settings"], dict):
             wf["settings"] = {}
 
-        # Auto-fix nodos
+        # ─── PASO 1: normalizar nodos (id, name, parameters, typeVersion, position) ───
         x_pos = 250
         for node in wf.get("nodes", []):
-            # id
             if not node.get("id"):
                 node["id"] = str(uuid.uuid4())
-            # name
             if not node.get("name"):
                 tipo = node.get("type", "node").split(".")[-1]
                 node["name"] = tipo
-            # parameters
             if "parameters" not in node or not isinstance(node["parameters"], dict):
                 node["parameters"] = {}
-            # typeVersion
             if "typeVersion" not in node:
                 node["typeVersion"] = 1
-            # position
             if "position" not in node or not isinstance(node["position"], list) or len(node["position"]) != 2:
                 node["position"] = [x_pos, 300]
             x_pos += 200
+
+        # ─── PASO 2: renombrar duplicados ───
+        # n8n rechaza workflows con nombres de nodo duplicados.
+        # El LLM a veces repite "WhatsApp" o "Postgres" varias veces.
+        seen_names = {}
+        rename_map = {}  # (indice_original) -> nombre_final
+        for i, node in enumerate(wf.get("nodes", [])):
+            original = node.get("name", "")
+            if original not in seen_names:
+                seen_names[original] = 1
+                rename_map[i] = original
+            else:
+                seen_names[original] += 1
+                nuevo = f"{original}_{seen_names[original]}"
+                node["name"] = nuevo
+                rename_map[i] = nuevo
+                print(f"[N8N] Nodo duplicado renombrado: '{original}' -> '{nuevo}'")
+
+        # ─── PASO 3: limpiar connections rotas ───
+        # n8n rechaza workflows con conexiones que apuntan a nodos inexistentes.
+        # El LLM a veces confunde case labels con nodos reales.
+        nombres_reales = set(rename_map.values())
+        connections = wf.get("connections", {})
+        connections_limpias = {}
+
+        for src, outputs in connections.items():
+            # Si el source no existe, eliminar toda la entrada
+            if src not in nombres_reales:
+                print(f"[N8N] Connection source inexistente eliminado: '{src}'")
+                continue
+
+            nuevos_outputs = {}
+            for output_type, lista_ramas in outputs.items():
+                nuevas_ramas = []
+                for rama in lista_ramas:
+                    rama_limpia = []
+                    for target in rama:
+                        target_name = target.get("node", "")
+                        if target_name in nombres_reales:
+                            rama_limpia.append(target)
+                        else:
+                            print(f"[N8N] Connection target inexistente eliminado: '{src}' -> '{target_name}'")
+                    if rama_limpia:
+                        nuevas_ramas.append(rama_limpia)
+                if nuevas_ramas:
+                    nuevos_outputs[output_type] = nuevas_ramas
+            if nuevos_outputs:
+                connections_limpias[src] = nuevos_outputs
+
+        wf["connections"] = connections_limpias
 
         return wf
 
