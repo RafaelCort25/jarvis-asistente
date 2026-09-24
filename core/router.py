@@ -207,6 +207,36 @@ class Router:
                 count_con_intencion += 1
 
         return count_con_intencion >= 2
+    def _is_pure_reasoning(self, text):
+        """Detecta frases de razonamiento puro que deben ir al chat, no a skills."""
+        t = text.lower().strip()
+        patterns = [
+            r'\bdame\s+\d*\s*ideas?\b',
+            r'\bdame\s+\d*\s*consejos?\b',
+            r'\baconsejame\b',
+            r'\bexplicame\b',
+            r'\bexplícame\b',
+            r'\bque opinas\b',
+            r'\bque piensas\b',
+            r'\bque es\b',
+            r'\bque significa\b',
+            r'\bpor que\b',
+            r'\bpor qué\b',
+            r'\bcomo\s+(?:puedo|hago|mejorar|empiezo)\b',
+            r'\bcómo\s+(?:puedo|hago|mejorar|empiezo)\b',
+            r'\bescribeme\b',
+            r'\bescríbeme\b',
+            r'\bcuentame\b',
+            r'\bcuéntame\b',
+            r'\bplanifica\b',
+            r'\bresume\b',
+            r'\bresúmeme\b',
+            r'\bexplica\b',
+            r'\bdime\s+(?:algo|sobre|acerca)\b',
+            r'\bdame\s+una\s+opinion\b',
+            r'\bque\s+recomiendas\b',
+        ]
+        return any(re.search(p, t) for p in patterns)
 
     def _quick_match(self, text):
         """Detecta comandos obvios sin llamar al LLM."""
@@ -1055,6 +1085,7 @@ class Router:
                 pass
 
         # 4. Pre-clasificador rapido (regex)
+                # 4. Pre-clasificador rapido (regex)
         try:
             quick = self._quick_match(text)
         except Exception as e:
@@ -1063,7 +1094,10 @@ class Router:
 
         if quick:
             actions = quick
-        # 5. Si es complejo -> AGENTE
+        # 5. Razonamiento puro -> brain.chat (sin skills)
+        elif self._is_pure_reasoning(text):
+            return None, True
+        # 6. Si es complejo -> AGENTE
         elif self._is_complex(text):
             try:
                 agent_result = self.agent.run(text, self.skills)

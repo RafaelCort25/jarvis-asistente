@@ -80,6 +80,34 @@ REGLAS:
 - Si una skill falla, ANALIZA el error y prueba OTRA ruta. NO repitas la misma accion.
 - NUNCA inventes paths. Si no sabes un path, usa files.find_file primero.
 
+REGLA CRITICA — CUANDO NO USAR SKILLS:
+Las skills son SOLO para ACCIONES CONCRETAS EN EL PC (abrir apps, buscar archivos, generar imagenes,
+crear documentos, ejecutar comandos, consultar el RAG, etc.).
+
+Si la tarea es de RAZONAMIENTO PURO (planificar, aconsejar, explicar, analizar, redactar contenido,
+escribir un plan, dar ideas, resumir, traducir texto conceptual, etc.), NO uses skills.
+Responde DIRECTAMENTE con "final_answer".
+
+EJEMPLOS DE RAZONAMIENTO PURO (sin skills):
+- "planifica un viaje" -> final_answer con el plan escrito
+- "dame ideas para un negocio" -> final_answer con las ideas
+- "explicame que es la fotosintesis" -> final_answer con la explicacion
+- "como puedo mejorar mi CV" -> final_answer con consejos
+- "aconsejame sobre X" -> final_answer con el consejo
+- "escribeme un poema" -> final_answer con el poema
+
+EJEMPLOS DE ACCIONES (con skills):
+- "abre notepad" -> desktop.open_app
+- "cuanto espacio tengo" -> system.disk_info
+- "hazme un word sobre X" -> office.create_doc
+- "genera una imagen de X" -> image.generate
+- "busca mi cv y dime mis fortalezas" -> docs.ask + docs.ask_to_word
+- "crea un archivo .py que sume dos numeros" -> dev.create_and_test
+
+NUNCA generes codigo Python para responder una pregunta conceptual.
+NUNCA busques archivos cuando el usuario pide una opinion o un plan.
+Si dudas, usa "final_answer". Es mejor responder directo que inventar acciones.
+
 VERIFICACION OBLIGATORIA ANTES DE "final_answer":
 Antes de terminar, comprueba:
 1. ¿Cumpli TODOS los objetivos de la frase del usuario?
@@ -121,7 +149,7 @@ Paso 3: {"thought": "Ya tengo la ruta correcta", "action": "files.open_path", "p
 class Agent:
     def __init__(self):
         self.model = CONFIG["models"].get("reasoning", CONFIG["models"]["default"])
-        self.max_steps = 12
+        self.max_steps = 6
         # Estado pendiente cuando el agente pregunta algo y espera respuesta
         self._pending_state = None
 
@@ -172,7 +200,7 @@ class Agent:
                 response = ollama.chat(
                     model=self.model,
                     messages=messages,
-                    options={"temperature": 0.1},
+                    options={"temperature": 0.1, "num_predict": 500},
                 )
                 raw = response["message"]["content"].strip()
             except Exception as e:
@@ -203,7 +231,7 @@ class Agent:
                     retry = ollama.chat(
                         model=self.model,
                         messages=messages,
-                        options={"temperature": 0.0},
+                        options={"temperature": 0.0, "num_predict": 500},
                     )
                     parsed = self._parse_json(retry["message"]["content"].strip())
                 except Exception:
