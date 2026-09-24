@@ -1,8 +1,10 @@
 """Skill de n8n: controla workflows + busca/importa templates de n8n.io."""
 import json
 import re
+import uuid
 from pathlib import Path
 
+import ollama
 import requests
 
 from skills.base import Skill
@@ -12,6 +14,49 @@ ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / ".env.n8n.tmp"
 TIMEOUT = 20
 N8N_IO_API = "https://api.n8n.io/api"
+# Tipos de nodo que el LLM puede usar (whitelist)
+# Fuente: https://docs.n8n.io/integrations/
+NODE_WHITELIST = {
+    # Triggers
+    "n8n-nodes-base.scheduleTrigger",
+    "n8n-nodes-base.webhook",
+    "n8n-nodes-base.manualTrigger",
+    "n8n-nodes-base.emailReadImap",
+    "n8n-nodes-base.telegramTrigger",
+    "n8n-nodes-base.slackTrigger",
+    "n8n-nodes-base.whatsAppTrigger",
+    # Utils
+    "n8n-nodes-base.httpRequest",
+    "n8n-nodes-base.code",
+    "n8n-nodes-base.set",
+    "n8n-nodes-base.if",
+    "n8n-nodes-base.switch",
+    "n8n-nodes-base.merge",
+    "n8n-nodes-base.noOp",
+    "n8n-nodes-base.wait",
+    "n8n-nodes-base.splitInBatches",
+    "n8n-nodes-base.removeDuplicates",
+    # Comunicación
+    "n8n-nodes-base.telegram",
+    "n8n-nodes-base.slack",
+    "n8n-nodes-base.discord",
+    "n8n-nodes-base.emailSend",
+    "n8n-nodes-base.gmail",
+    "n8n-nodes-base.whatsApp",
+    # Datos
+    "n8n-nodes-base.googleSheets",
+    "n8n-nodes-base.postgres",
+    "n8n-nodes-base.mysql",
+    "n8n-nodes-base.supabase",
+    "n8n-nodes-base.redis",
+    "n8n-nodes-base.mongodb",
+    # IA
+    "@n8n/n8n-nodes-langchain.agent",
+    "@n8n/n8n-nodes-langchain.chainLlm",
+    "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+    "@n8n/n8n-nodes-langchain.lmChatOllama",
+    "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+}
 
 
 def _load_env():
@@ -80,6 +125,16 @@ class N8nSkill(Skill):
         if action == "import_template":
             return self._import_template(
                 params.get("id", ""),
+                params.get("name", ""),
+            )
+        if action == "import_template":
+            return self._import_template(
+                params.get("id", ""),
+                params.get("name", ""),
+            )
+        if action == "create_workflow":
+            return self._create_workflow(
+                params.get("description", ""),
                 params.get("name", ""),
             )
 
@@ -387,6 +442,280 @@ class N8nSkill(Skill):
             return r.json(), None
         except Exception as e:
             return None, f"Error: {e}"
+            # ─── CREAR WORKFLOW DESDE CERO CON LLM ───────────────────────────────
+
+    def _create_workflow(self, description, name=""):
+        description = (description or "").strip()
+        if not description:
+            return {"thought": "", "display": "Dime que workflow quieres crear.", "voice": "Dime que workflow."}
+
+        # 1. Generar JSON con LLM
+        print(f"[N8N] Generando workflow con qwen2.5-coder:7b...")
+        wf_json, err = self._generate_workflow_with_llm(description)
+        if err:
+            return {
+                "thought": "LLM fallo",
+                "display": f"No pude generar el workflow: {err}",
+                "voice": "No pude generar el workflow.",
+            }
+
+        # 2. Validar
+        ok, msg = self._validate_workflow(wf_json)
+        if not ok:
+            return {
+                "thought": "Workflow invalido",
+                "display": f"El workflow generado no es valido: {msg}",
+                "voice": "El workflow no es valido.",
+            }
+
+        # 3. Auto-fix (ids, positions)
+        wf_json = self._autofix_workflow(wf_json)
+
+        # 4. Nombre final
+        final_name = name or wf_json.get("name") or "Workflow generado por Nitro"
+        wf_json["name"] = final_name
+
+        # 5. Preview + confirmacion
+        nodes = wf_json.get("nodes", [])
+        n_nodes = len(nodes)
+        resumen_nodos = []
+        for n in nodes:
+            tipo_corto = n.get("type", "?").split(".")[-1]
+            resumen_nodos.append(f"  - {n.get('name', '?')} ({tipo_corto})")
+
+        preview = (
+            f"Workflow: {final_name}\n"
+            f"  Nodos: {n_nodes}\n"
+            + "\n".join(resumen_nodos)
+        )
+
+        if not confirmation.require("n8n", "create_workflow", preview):
+            return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
+
+        # 6. Subir a n8n
+        payload = {
+            "name": final_name,
+            "nodes": wf_json.get("nodes", []),
+            "connections": wf_json.get("connections", {}),
+            "settings": wf_json.get("settings", {}) or {},
+        }
+
+        result, err = self._api_post("/api/v1/workflows", payload)
+        if err:
+            return {
+                "thought": "Error subiendo",
+                "display": f"Error subiendo el workflow a n8n: {err}",
+                "voice": "No pude subir el workflow.",
+            }
+
+        nuevo_id = result.get("id", "?")
+
+        return {
+            "thought": f"Workflow {final_name} creado ({n_nodes} nodos)",
+            "display": (
+                f"Workflow creado en n8n.\n"
+                f"  Nombre: {final_name}\n"
+                f"  ID: {nuevo_id}\n"
+                f"  Nodos: {n_nodes}\n\n"
+                f"Ábrelo en: http://localhost:5678/workflow/{nuevo_id}\n\n"
+                f"Esta inactivo por defecto. Dime 'activa el workflow {final_name}' para activarlo."
+            ),
+            "voice": f"Workflow {final_name} creado con {n_nodes} nodos.",
+        }
+
+    def _generate_workflow_with_llm(self, description):
+        """Llama al LLM para generar el JSON del workflow."""
+        prompt = f"""Eres un experto en n8n. Genera un workflow en JSON valido para esta tarea:
+
+{description}
+
+FORMATO DE RESPUESTA (JSON puro, sin markdown):
+
+{{
+  "name": "Nombre descriptivo del workflow",
+  "nodes": [
+    {{
+      "parameters": {{}},
+      "id": "uuid-aqui",
+      "name": "Nombre del nodo",
+      "type": "n8n-nodes-base.xxx",
+      "typeVersion": 1,
+      "position": [250, 300]
+    }}
+  ],
+  "connections": {{
+    "Nodo A": {{
+      "main": [[{{"node": "Nodo B", "type": "main", "index": 0}}]]
+    }}
+  }},
+  "settings": {{}}
+}}
+
+NODOS PERMITIDOS (usa SOLO estos, no inventes):
+- n8n-nodes-base.scheduleTrigger (cron, "cada dia a las 9")
+- n8n-nodes-base.webhook (recibir HTTP)
+- n8n-nodes-base.manualTrigger (ejecucion manual)
+- n8n-nodes-base.httpRequest (hacer peticiones HTTP)
+- n8n-nodes-base.code (codigo JS/Python)
+- n8n-nodes-base.set (editar campos)
+- n8n-nodes-base.if (condicion)
+- n8n-nodes-base.switch (switch multiple)
+- n8n-nodes-base.merge (unir ramas)
+- n8n-nodes-base.telegram (enviar mensaje Telegram)
+- n8n-nodes-base.slack (enviar a Slack)
+- n8n-nodes-base.discord (enviar a Discord)
+- n8n-nodes-base.emailSend (enviar email)
+- n8n-nodes-base.gmail (Gmail)
+- n8n-nodes-base.whatsApp (WhatsApp Business)
+- n8n-nodes-base.googleSheets (Google Sheets)
+- n8n-nodes-base.postgres (PostgreSQL)
+- n8n-nodes-base.mysql (MySQL)
+- @n8n/n8n-nodes-langchain.agent (AI Agent)
+- @n8n/n8n-nodes-langchain.lmChatOpenAi (modelo OpenAI)
+
+REGLAS ESTRICTAS:
+1. Responde SOLO con JSON puro. Sin ```json, sin texto antes ni despues.
+2. Empieza con {{ y termina con }}.
+3. Cada nodo DEBE tener: parameters, id, name, type, typeVersion, position.
+4. El campo "id" de cada nodo debe ser un string unico (usa formato UUID).
+5. El campo "position" es un array [x, y]. Empieza en [250, 300] y suma 200 al x para cada nodo siguiente.
+6. Las "connections" usan el NOMBRE del nodo (no el id) como clave.
+7. SIEMPRE incluye un trigger como primer nodo.
+8. typeVersion mas comun: 1, 1.1, 2. Si dudas, usa 1.
+9. NO uses nodos fuera de la lista permitida.
+10. Si el usuario pide algo que necesita credenciales (Telegram chat ID, API key, etc.), deja esos parametros con un placeholder como "REEMPLAZAR_AQUI".
+
+EJEMPLO para "cada dia a las 9 mandar buenos dias por Telegram":
+
+{{
+  "name": "Buenos dias por Telegram",
+  "nodes": [
+    {{
+      "parameters": {{"rule": {{"interval": [{{"field": "days", "triggerAtHour": 9}}]}}}},
+      "id": "a1b2c3d4-1111-2222-3333-444455556666",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    }},
+    {{
+      "parameters": {{"chatId": "REEMPLAZAR_AQUI", "text": "Buenos dias", "additionalFields": {{}}}},
+      "id": "b2c3d4e5-2222-3333-4444-555566667777",
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [450, 300]
+    }}
+  ],
+  "connections": {{
+    "Schedule Trigger": {{"main": [[{{"node": "Telegram", "type": "main", "index": 0}}]]}}
+  }},
+  "settings": {{}}
+}}
+
+Ahora genera el workflow para: {description}
+"""
+
+        try:
+            from core.config_loader import CONFIG
+            model = CONFIG["models"].get("coding", "qwen2.5-coder:7b")
+            response = ollama.chat(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                options={"temperature": 0.1, "num_predict": 3000},
+            )
+            raw = response["message"]["content"].strip()
+        except Exception as e:
+            return None, f"Error llamando al LLM: {e}"
+
+        # Parser robusto (limpiar fences, buscar JSON balanceado)
+        raw = re.sub(r'^```(?:json)?\s*', '', raw)
+        raw = re.sub(r'\s*```$', '', raw)
+
+        try:
+            wf = json.loads(raw)
+            return wf, None
+        except json.JSONDecodeError:
+            pass
+
+        # Buscar el primer JSON balanceado
+        start = raw.find("{")
+        if start == -1:
+            return None, f"El LLM no devolvio JSON. Respuesta: {raw[:300]}"
+
+        depth = 0
+        for i in range(start, len(raw)):
+            if raw[i] == "{":
+                depth += 1
+            elif raw[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    candidate = raw[start:i + 1]
+                    try:
+                        return json.loads(candidate), None
+                    except json.JSONDecodeError as e:
+                        return None, f"JSON invalido: {e}. Respuesta: {candidate[:300]}"
+
+        return None, "JSON incompleto (no se cerraron las llaves)."
+
+    def _validate_workflow(self, wf):
+        """Valida estructura + nodos contra whitelist."""
+        if not isinstance(wf, dict):
+            return False, "No es un objeto JSON."
+
+        if "nodes" not in wf or not isinstance(wf["nodes"], list):
+            return False, "Falta 'nodes' o no es lista."
+
+        if not wf["nodes"]:
+            return False, "'nodes' esta vacio."
+
+        if "connections" not in wf or not isinstance(wf["connections"], dict):
+            return False, "Falta 'connections' o no es dict."
+
+        # Verificar que cada nodo tenga type permitido
+        for i, node in enumerate(wf["nodes"]):
+            if not isinstance(node, dict):
+                return False, f"Nodo {i} no es dict."
+            node_type = node.get("type")
+            if not node_type:
+                return False, f"Nodo {i} no tiene 'type'."
+            if node_type not in NODE_WHITELIST:
+                return False, f"Nodo '{node.get('name', i)}' usa tipo no permitido: {node_type}"
+
+        return True, "OK"
+
+    def _autofix_workflow(self, wf):
+        """Rellena campos faltantes que n8n requiere."""
+        # Asegurar name
+        if not wf.get("name"):
+            wf["name"] = "Workflow generado por Nitro"
+
+        # Asegurar settings
+        if "settings" not in wf or not isinstance(wf["settings"], dict):
+            wf["settings"] = {}
+
+        # Auto-fix nodos
+        x_pos = 250
+        for node in wf.get("nodes", []):
+            # id
+            if not node.get("id"):
+                node["id"] = str(uuid.uuid4())
+            # name
+            if not node.get("name"):
+                tipo = node.get("type", "node").split(".")[-1]
+                node["name"] = tipo
+            # parameters
+            if "parameters" not in node or not isinstance(node["parameters"], dict):
+                node["parameters"] = {}
+            # typeVersion
+            if "typeVersion" not in node:
+                node["typeVersion"] = 1
+            # position
+            if "position" not in node or not isinstance(node["position"], list) or len(node["position"]) != 2:
+                node["position"] = [x_pos, 300]
+            x_pos += 200
+
+        return wf
 
     def _import_template(self, template_id, custom_name=""):
         template_id = str(template_id or "").strip()
