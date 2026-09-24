@@ -24,8 +24,6 @@ SKILLS DISPONIBLES:
 === ARCHIVOS Y SISTEMA ===
 1. files.list_folder(folder, sort, filter_ext, limit)
    - folder: "descargas"|"documentos"|"escritorio"|"imagenes"|"musica"|"videos"
-   - sort: "date_desc"|"date_asc"|"size_desc"|"size_asc"|"name"
-   - filter_ext: extension sin punto (ej "pdf")
 2. files.pick(folder, criteria, filter_ext) - criteria: "mas_reciente"|"mas_grande"|"primero"
 3. files.open_path(path)
 4. files.find_file(name)
@@ -51,31 +49,25 @@ SKILLS DISPONIBLES:
 18. dev.generate_code(description, language)
     - language: "python"|"javascript"|"java"|"c"|"cpp"|"csharp"|"go"|"rust"|"ruby"|"php"
 19. dev.review_file(path) | dev.review_project(path) | dev.explain(path) | dev.find_issues(path)
-20. dev.review_to_excel(path, output) - genera Excel con analisis
-21. dev.review_to_word(path, output) - genera Word con analisis
-22. git.status() | git.diff() | git.log(n)
+20. dev.review_to_excel(path, output) | dev.review_to_word(path, output)
+21. git.status() | git.diff() | git.log(n)
 
 === DOCUMENTOS Y OFICINA ===
-23. docs.ask(query) - pregunta sobre los documentos del usuario (CV, apuntes, PDFs)
-24. docs.ask_to_word(query, title) - RAG + Word
-25. docs.index_file(path) | docs.index_folder(path) | docs.list()
-26. office.create_doc(description, path, title) - Word
-27. office.create_xlsx(description, path) - Excel
-28. office.create_ppt(description, path)
-29. office.read_doc(path) | office.read_xlsx(path) | office.read_ppt(path)
-30. pdf.from_docx(path, output)
-31. edit.modify(path, instruction, output) - edita archivo segun instrucciones
+22. docs.ask(query) - pregunta sobre los documentos del usuario
+23. docs.ask_to_word(query, title)
+24. docs.index_file(path) | docs.index_folder(path) | docs.list()
+25. office.create_doc(description, path, title) | office.create_xlsx(description, path) | office.create_ppt(description, path)
+26. office.read_doc(path) | office.read_xlsx(path) | office.read_ppt(path)
+27. pdf.from_docx(path, output)
+28. edit.modify(path, instruction, output)
 
 === IMAGENES Y EDUCACION ===
-32. image.generate(prompt, width, height) - genera imagen con IA
-33. image.to_word(prompt, count, title) - N imagenes + Word
-34. education.pseint(description) - pseudocodigo PSeInt
-35. education.diagram(description, kind) - kind: "flowchart"|"sequence"|"class"|"state"|"er"
-36. education.convert(code, to_language) - convierte codigo entre lenguajes
+29. image.generate(prompt, width, height) | image.to_word(prompt, count, title)
+30. education.pseint(description) | education.diagram(description, kind) | education.convert(code, to_language)
 
 === OTROS ===
-37. vision.describe_screen() | vision.explain_screen_code()
-38. spotify.play(query) | spotify.pause() | spotify.next() | spotify.current()
+31. vision.describe_screen() | vision.explain_screen_code()
+32. spotify.play(query) | spotify.pause() | spotify.next() | spotify.current()
 
 REGLAS:
 - Responde SOLO JSON, sin markdown, sin texto extra.
@@ -83,19 +75,18 @@ REGLAS:
 - Si el objetivo es simple (abrir X, buscar Y), un solo paso basta.
 - Para tareas multi-paso, encadena acciones usando resultados anteriores.
 - Cuando tengas la respuesta final, usa "final_answer".
-- Si te falta informacion que SOLO el usuario puede dar (nombre de empresa, tono, preferencias), usa "ask".
+- Si te falta informacion que SOLO el usuario puede dar, usa "ask".
 - Maximo usa los 12 pasos disponibles.
-- Si una skill falla, intenta otra ruta o usa "final_answer" explicando.
+- Si una skill falla, ANALIZA el error y prueba OTRA ruta. NO repitas la misma accion.
 - NUNCA inventes paths. Si no sabes un path, usa files.find_file primero.
 
 VERIFICACION OBLIGATORIA ANTES DE "final_answer":
-Antes de terminar, comprueba estas 3 cosas:
+Antes de terminar, comprueba:
 1. ¿Cumpli TODOS los objetivos de la frase del usuario?
-2. Si el usuario pidio 2+ cosas (unidas por "y", "tambien", "ademas", "luego", "y despues"), ¿hice TODAS?
+2. Si el usuario pidio 2+ cosas (unidas por "y", "tambien", "ademas"), ¿hice TODAS?
 3. Si el usuario pidio informacion de 2 fuentes distintas, ¿consulte AMBAS?
 
-Si la respuesta a alguna es NO, NO uses "final_answer". Ejecuta el siguiente paso.
-El "final_answer" solo se usa cuando REALMENTE terminaste todo lo que pidio el usuario.
+Si la respuesta es NO, NO uses "final_answer". Ejecuta el siguiente paso.
 
 EJEMPLOS:
 
@@ -105,25 +96,25 @@ Resultado: {"path": "C:/Users/alein/Downloads/video.mp4"}
 Paso 2: {"thought": "Ya tengo la ruta", "action": "files.open_path", "params": {"path": "C:/Users/alein/Downloads/video.mp4"}}
 Paso 3: {"thought": "Listo", "final_answer": "Listo, abri video.mp4"}
 
-Objetivo: "revisa mi CV y dime mis 5 fortalezas, guarda en Word"
-Paso 1: {"thought": "Consulto el RAG", "action": "docs.ask", "params": {"query": "cuales son mis 5 fortalezas profesionales"}}
-Resultado: {"answer": "...", "sources": [...]}
-Paso 2: {"thought": "Guardo en Word", "action": "docs.ask_to_word", "params": {"query": "cuales son mis 5 fortalezas profesionales", "title": "Mis 5 Fortalezas"}}
-Paso 3: {"thought": "Listo", "final_answer": "Word creado con tus 5 fortalezas"}
-
 Objetivo: "cuanto espacio tengo y que programas arrancan con windows"
-Paso 1: {"thought": "Primero consulto el disco", "action": "system.disk_info", "params": {}}
+Paso 1: {"thought": "Primero el disco", "action": "system.disk_info", "params": {}}
 Resultado: "C: 511 GB total, 132 GB libres"
 Paso 2: {"thought": "Ahora los programas de inicio", "action": "system.list_startup", "params": {}}
-Resultado: "12 programas: OneDrive, Steam, Discord..."
-Paso 3: {"thought": "Ya tengo ambas cosas, ahora si termino", "final_answer": "Tienes 511 GB en C: con 132 GB libres. Y 12 programas arrancan con Windows."}
+Resultado: "12 programas: OneDrive, Steam..."
+Paso 3: {"thought": "Ya tengo ambas cosas", "final_answer": "Tienes 511 GB en C: con 132 GB libres. Y 12 programas arrancan con Windows."}
 
 Objetivo: "crea un chatbot de whatsapp para una clinica dental"
 Paso 1: {"thought": "Necesito saber el tono", "ask": "¿Que tono quieres para el chatbot? (formal / cercano / profesional)"}
 (User responde: "profesional")
 Paso 2: {"thought": "Genero un workflow base", "action": "dev.generate_code", "params": {"description": "workflow n8n de chatbot whatsapp para clinica dental, tono profesional", "language": "python"}}
-Resultado: {"code": "...", "path": "..."}
-Paso 3: {"thought": "Listo, workflow creado", "final_answer": "Workflow generado. Guardado en sandbox."}
+Paso 3: {"thought": "Listo", "final_answer": "Workflow generado. Guardado en sandbox."}
+
+EJEMPLO DE ERROR RECUPERADO:
+Paso 1: {"thought": "Busco el archivo", "action": "files.open_path", "params": {"path": "C:/ruta/inventada.pdf"}}
+Resultado: "Error en files.open_path: archivo no encontrado"
+Paso 2: {"thought": "La ruta no existia, mejor busco el archivo primero", "action": "files.find_file", "params": {"name": "factura"}}
+Resultado: [lista de archivos]
+Paso 3: {"thought": "Ya tengo la ruta correcta", "action": "files.open_path", "params": {"path": "..."}}
 """
 
 
@@ -131,29 +122,51 @@ class Agent:
     def __init__(self):
         self.model = CONFIG["models"].get("reasoning", CONFIG["models"]["default"])
         self.max_steps = 12
+        # Estado pendiente cuando el agente pregunta algo y espera respuesta
+        self._pending_state = None
+
+    def has_pending_question(self):
+        """True si el agente hizo una pregunta y espera respuesta del usuario."""
+        return self._pending_state is not None
+
+    def clear_pending(self):
+        """Limpia cualquier estado pendiente."""
+        self._pending_state = None
 
     def run(self, user_input, skills, on_step=None):
-        """
-        Ejecuta el bucle ReAct.
-
-        Args:
-            user_input: el objetivo del usuario
-            skills: dict {nombre: instancia_skill}
-            on_step: callback(step_dict) para notificar cada paso (opcional)
-
-        Returns:
-            dict con {voice, display, thought, steps}
-        """
+        """Ejecuta el bucle ReAct desde cero."""
         messages = [
             {"role": "system", "content": AGENT_SYSTEM_PROMPT},
             {"role": "user", "content": f"Objetivo: {user_input}"},
         ]
+        return self._run_loop(messages, [], 1, skills, on_step)
 
-        steps_log = []
+    def resume(self, user_response, skills, on_step=None):
+        """Continua la ejecucion desde donde el agente pregunto."""
+        if not self._pending_state:
+            return None
+
+        state = self._pending_state
+        self._pending_state = None
+
+        messages = state["messages"]
+        steps_log = state["steps_log"]
+        next_step = state["step_num"]
+
+        # Inyectar la respuesta del usuario
+        messages.append({
+            "role": "user",
+            "content": f"Respuesta del usuario a tu pregunta: {user_response}",
+        })
+
+        return self._run_loop(messages, steps_log, next_step, skills, on_step)
+
+    def _run_loop(self, messages, steps_log, start_step, skills, on_step):
+        """Bucle ReAct principal (reutilizable por run y resume)."""
         display_lines = []
         voice_parts = []
 
-        for step_num in range(1, self.max_steps + 1):
+        for step_num in range(start_step, self.max_steps + 1):
             # Llamar al LLM
             try:
                 response = ollama.chat(
@@ -173,7 +186,7 @@ class Agent:
             # Parsear JSON
             parsed = self._parse_json(raw)
 
-            # Si falla el parse, retry con instruccion mas estricta
+            # Retry si falla el parse
             if not parsed:
                 print(f"[AGENT] Parse fallo, reintentando. Raw: {raw[:200]}")
                 messages.append({"role": "assistant", "content": raw})
@@ -210,6 +223,15 @@ class Agent:
             if "ask" in parsed:
                 question = parsed["ask"]
                 steps_log.append({"step": step_num, "type": "ask", "text": question})
+
+                # Guardar estado para poder reanudar
+                self._pending_state = {
+                    "messages": messages,
+                    "steps_log": steps_log,
+                    "step_num": step_num + 1,
+                }
+
+                print(f"[AGENT] Pregunta pendiente: {question}")
                 return {
                     "voice": question,
                     "display": question,
@@ -248,7 +270,33 @@ class Agent:
             # Ejecutar skill
             result_str = self._execute_action(action, params, skills)
 
-            # Log
+            # AUTO-VERIFICACION: detectar si el paso fallo
+            if self._looks_like_error(result_str):
+                print(f"[AGENT] Paso {step_num} fallo: {result_str[:120]}")
+                steps_log.append({
+                    "step": step_num,
+                    "type": "error",
+                    "text": thought,
+                    "action": action,
+                    "params": params,
+                    "result": result_str[:200],
+                })
+                display_lines.append(f"  {step_num}. {action} -> FALLO")
+                voice_parts.append(thought)
+
+                messages.append({"role": "assistant", "content": raw})
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        f"El paso {step_num} FALLO con: {result_str}\n\n"
+                        "Analiza por que fallo y prueba OTRA ruta. "
+                        "NO repitas la misma accion con los mismos parametros. "
+                        "Si no hay otra ruta posible, usa final_answer explicando el problema."
+                    ),
+                })
+                continue
+
+            # Paso exitoso: loggear
             step_info = {
                 "step": step_num,
                 "type": "action",
@@ -262,7 +310,6 @@ class Agent:
             display_lines.append(f"  {step_num}. {action} -> {result_str[:100]}")
             voice_parts.append(thought)
 
-            # Anadir al historial de mensajes
             messages.append({"role": "assistant", "content": raw})
             messages.append({
                 "role": "user",
@@ -277,19 +324,42 @@ class Agent:
             "steps": steps_log,
         }
 
+    def _looks_like_error(self, result_str):
+        """Detecta si el resultado de un paso parece un error."""
+        if result_str is None:
+            return True
+        s = str(result_str).strip()
+        if not s:
+            return True
+        low = s.lower()
+        markers = [
+            "error en ",
+            "error al ",
+            "skill desconocida",
+            "accion invalida",
+            "action invalida",
+            "sin resultado",
+            "[error",
+            "[error llm]",
+            "no se pudo",
+            "no pude ",
+            "timeout",
+            "tardo demasiado",
+            "no encontre el macro",
+            "no encontre la carpeta",
+        ]
+        return any(m in low for m in markers)
+
     def _parse_json(self, raw):
         """Parser robusto: intenta extraer JSON aunque venga con texto extra."""
-        # 1. Limpiar fences markdown
         raw = re.sub(r'^```(?:json)?\s*', '', raw.strip())
         raw = re.sub(r'\s*```$', '', raw)
 
-        # 2. Intentar parsear directo
         try:
             return json.loads(raw)
         except json.JSONDecodeError:
             pass
 
-        # 3. Buscar el primer JSON balanceado
         start = raw.find("{")
         if start == -1:
             return None
@@ -305,7 +375,6 @@ class Agent:
                     try:
                         return json.loads(candidate)
                     except json.JSONDecodeError:
-                        # Intentar reparar comillas simples
                         candidate = candidate.replace("'", '"')
                         try:
                             return json.loads(candidate)
@@ -324,7 +393,6 @@ class Agent:
         if not skill:
             return f"Skill desconocida: {skill_name}"
 
-        # Respetar confirmacion para acciones riesgosas
         try:
             from core import confirmation
             summary = f"Agente quiere ejecutar: {action}"

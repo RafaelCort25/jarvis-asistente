@@ -1001,6 +1001,19 @@ class Router:
 
     def route(self, text):
         browser = self.skills["browser"]
+                # 0. ¿Hay pregunta pendiente del agente?
+        try:
+            if self.agent.has_pending_question():
+                if self._is_cancel(text):
+                    self.agent.clear_pending()
+                    return {"voice": "Cancelado.", "display": "Ok, cancelado.", "thought": ""}, False
+
+                result = self.agent.resume(text, self.skills)
+                if result:
+                    return result, False
+        except Exception as e:
+            print(f"[ROUTER] Error resumiendo agente: {e}")
+            self.agent.clear_pending()
 
         # Rechazar palabras sueltas que no son comandos validos
         t_stripped = text.lower().strip().strip(".,!?¡¿ ")
