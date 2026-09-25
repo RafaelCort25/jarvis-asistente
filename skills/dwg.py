@@ -6,6 +6,8 @@ import subprocess
 import tempfile
 import uuid
 from pathlib import Path
+from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import polygonize, unary_union
 
 import ezdxf
 
@@ -129,6 +131,8 @@ class DwgSkill(Skill):
     description = "Lee, convierte y analiza planos DWG/DXF"
 
     def run(self, action, params):
+        if action == "extract_rooms_with_areas":
+            return self.extract_rooms_with_areas(params.get("path", ""))
         if action == "add_hatch":
             return self.add_hatch(params.get("path", ""), params.get("output", ""))
         if action == "convert_to_dxf":
@@ -803,3 +807,160 @@ class DwgSkill(Skill):
         if "OK_STEP" not in stdout:
             return False, f"FreeCAD no completo. Log:\n{stdout[-500:]}"
         return True, None
+    def extract_rooms_with_areas(self, path):
+        """Detecta ambientes por sus etiquetas de texto y calcula su area en m2.
+
+        Estrategia:
+        1. Lee todas las lineas de la capa MUROS.
+        2. Usa shapely.polygonize para armar poligonos cerrados.
+        3. Por cada texto (etiqueta de ambiente), encuentra el poligono que lo contiene.
+        4. Calcula el area en m2 (asumiendo que el DXF esta en metros).
+        """
+        if not path:
+            return {"thought": "", "display": "Falta la ruta.", "voice": "Falta la ruta."}
+
+        doc, err = _abrir_dxf(path)
+        if err:
+            return {"thought": "Error", "display": err, "voice": "Error."}
+
+        msp = doc.modelspace()
+
+        # 1. Extraer lineas de MUROS
+        capas_muro = [l.dxf.name for l in doc.layers if 'muro' in l.dxf.name.lower()]
+        if not capas_muro:
+            return {
+                "thought": "Sin capa MUROS",
+                "display": "No encontre capas con 'muro'.",
+                "voice": "Sin capa de muros.",
+            }
+
+        lineas = []
+        for entidad in msp:
+            try:
+                if entidad.dxf.layer not in capas_muro:
+                    continue
+                if entidad.dxftype() == "LINE":
+                    p1 = entidad.dxf.start
+                    p2 = entidad.dxf.end
+                    lineas.append(LineString([(p1.x, p1.y), (p2.x, p2.y)]))
+                elif entidad.dxftype() == "LWPOLYLINE":
+                    pts = list(entidad.get_points("xy"))
+                    if len(pts) >= 2:
+                        lineas.append(LineString(pts))
+            except Exception:
+                continue
+
+        if not lineas:
+            return {
+                "thought": "Sin lineas",
+                "display": "No hay lineas en MUROS.",
+                "voice": "Sin lineas.",
+            }
+
+        # 2. Unir lineas que se tocan (tolerancia ~1cm) y polygonizar
+        try:
+            merged = unary_union(lineas)
+            poligonos = list(polygonize(merged))
+        except Exception as e:
+            return {
+                "thought": "Error polygonizando",
+                "display": f"Error al unir lineas: {e}",
+                "voice": "Error.",
+            }
+
+        if not poligonos:
+            return {
+                "thought": "Sin poligonos",
+                "display": "No se pudieron formar poligonos cerrados con las lineas de MUROS.",
+                "voice": "Sin ambientes cerrados.",
+            }
+
+        # 3. Extraer textos (etiquetas de ambientes)
+        textos = []
+        for t in msp.query("TEXT MTEXT"):
+            try:
+                if t.dxftype() == "MTEXT":
+                    raw = t.text
+                    pos = t.dxf.insert
+                else:
+                    raw = t.dxf.text
+                    pos = t.dxf.insert
+                limpio = _limpiar_texto(raw)
+                if not limpio or len(limpio) < 2:
+                    continue
+                # Filtrar niveles y cotas
+                up = limpio.upper()
+                if any(s in up for s in ["N.P.T", "NPT", "+0.", "+1.", "+2.", "+3.", "+4.", "+5."]):
+                    continue
+                # Filtrar textos muy cortos o puramente numericos
+                if len(limpio) < 3 or limpio.replace(".", "").isdigit():
+                    continue
+                textos.append({"texto": limpio, "x": pos.x, "y": pos.y})
+            except Exception:
+                continue
+
+        if not textos:
+            return {
+                "thought": "Sin etiquetas",
+                "display": "No encontre etiquetas de texto en el plano.",
+                "voice": "Sin etiquetas.",
+            }
+
+        # 4. Emparejar cada texto con su poligono contenedor
+        ambientes = []
+        for t in textos:
+            punto = Point(t["x"], t["y"])
+            for poly in poligonos:
+                if poly.contains(punto):
+                    area = poly.area
+                    # Asumimos que DXF esta en metros; si fuera mm, dividir por 1e6
+                    ambientes.append({
+                        "texto": t["texto"],
+                        "x": round(t["x"], 2),
+                        "y": round(t["y"], 2),
+                        "area_m2": round(area, 2),
+                    })
+                    break
+
+        if not ambientes:
+            return {
+                "thought": "Sin match",
+                "display": (
+                    f"Encontre {len(textos)} textos y {len(poligonos)} poligonos, "
+                    "pero ningun texto cayo dentro de un poligono."
+                ),
+                "voice": "No pude emparejar ambientes.",
+            }
+
+        # Ordenar por area descendente
+        ambientes.sort(key=lambda a: -a["area_m2"])
+
+        # Detectar si la unidad probablemente es mm (areas muy grandes)
+        area_media = sum(a["area_m2"] for a in ambientes) / len(ambientes)
+        escala = "m2"
+        if area_media > 5000:
+            # Probablemente mm -> convertir a m2
+            for a in ambientes:
+                a["area_m2"] = round(a["area_m2"] / 1_000_000, 2)
+            escala = "m2 (convertido de mm)"
+
+        # Total
+        total = round(sum(a["area_m2"] for a in ambientes), 2)
+
+        # Construir display
+        lineas_display = [
+            f"Ambientes detectados: {len(ambientes)}",
+            f"Poligonos cerrados: {len(poligonos)}",
+            f"Total area: {total} m2",
+            f"Escala: {escala}",
+            "",
+            "Detalle:",
+        ]
+        for a in ambientes:
+            lineas_display.append(f"  {a['area_m2']:>8.2f} m2   {a['texto']}")
+
+        return {
+            "thought": f"{len(ambientes)} ambientes, {total} m2",
+            "display": "\n".join(lineas_display),
+            "voice": f"Detecte {len(ambientes)} ambientes con un total de {total} metros cuadrados.",
+        }
