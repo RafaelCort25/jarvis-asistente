@@ -178,10 +178,12 @@ print('PATH=' + r'{out_path}')
 
 SCRIPT_EXPORT_PDF = SCRIPT_OPEN_OR_NEW + """
 try:
-    import importPDF
-    importPDF.export([o for o in doc.Objects], r'{out_path}')
-    print('OK_EXPORT_PDF')
-    print('PATH=' + r'{out_path}')
+    # En FreeCAD 1.x el modulo importPDF no existe; intentamos usar TechDraw
+    import TechDraw
+    page = doc.addObject('TechDraw::DrawPage', 'Page')
+    template = doc.addObject('TechDraw::DrawSVGTemplate', 'Template')
+    # Sin template, no se puede renderizar; avisamos
+    print('WARN_PDF: TechDraw requiere template manual. Usa export_dxf en su lugar.')
 except Exception as e:
     print('ERROR_PDF=' + str(e))
 """

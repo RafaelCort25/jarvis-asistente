@@ -504,10 +504,10 @@ class Router:
             return [{"skill": "canva", "action": "authorize", "params": {}}]
 
                 # Exportar a IFC (BIM)
-        if any(p in t for p in [
-            "exporta el plano a ifc", "exportar a ifc", "guardar como ifc",
-            "convierte el plano a ifc", "plano en ifc", "archivo ifc",
-            "exporta a bim", "convierte a bim",
+                # Exportar a IFC (BIM) — matchea variantes con nombre en medio
+        if re.search(r'\b(?:ifc|bim)\b', t) and any(v in t for v in [
+            "exporta", "exportar", "convierte", "convertir",
+            "guardar", "genera", "crear", "haz", "plano", "archivo",
         ]):
             from core.paths import SANDBOX_DWG as sandbox_dwg
             m_path = re.search(r'([A-Za-z]:\\[^\s]+\.(?:dxf|dwg)|[^\s]+\.(?:dxf|dwg))', t)
