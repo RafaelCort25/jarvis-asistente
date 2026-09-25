@@ -617,7 +617,7 @@ Renderizado de STEP a PNG.
 - "Renderiza el último step" → `blender.render_step`
 - "Haz un render del Sheraton" → `blender.render_step` con último STEP
 - "Muéstrame el modelo en 3D" → `blender.render_step`
-
+**Nota (CAD-4b):** la acción `render_views` genera 3 vistas ortográficas (planta/fachada/corte). La fachada y el corte funcionan correctamente; la planta tiene un bug conocido de orientación de cámara. Pendiente de polish en una sesión futura. Para visualización 3D completa, usar el IFC (abrible en Revit/ArchiCAD o viewer.ifcopenshell.org).
 ---
 
 ### `dwg` 📐
