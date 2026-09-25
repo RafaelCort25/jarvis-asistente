@@ -40,3 +40,5 @@ test_*.py
 .onboarding_done
 .onboarding_done
 .onboarding_done
+*.bak
+requirements.txt.bak
