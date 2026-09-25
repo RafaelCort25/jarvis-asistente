@@ -38,6 +38,7 @@ from skills.macro import MacroSkill
 from skills.n8n import N8nSkill
 from skills.gmail import GmailSkill
 from skills.canva import CanvaSkill
+from skills.freecad import FreeCadSkill
 
 
 NUM_MAP = {
@@ -83,6 +84,7 @@ class Router:
             "n8n": N8nSkill(),
             "gmail": GmailSkill(),
             "canva": CanvaSkill(),
+            "freecad": FreeCadSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -477,6 +479,86 @@ class Router:
             "login canva", "inicia canva",
         ]):
             return [{"skill": "canva", "action": "authorize", "params": {}}]
+
+
+                # ═══════════════════════════════════════════════════════════════════
+        # FREECAD: geometria y planos
+        # ═══════════════════════════════════════════════════════════════════
+
+        # Nuevo documento
+        if any(p in t for p in [
+            "nuevo plano", "nuevo documento freecad", "nuevo dibujo cad",
+            "crea un plano nuevo",
+        ]):
+            return [{"skill": "freecad", "action": "new_document", "params": {}}]
+
+        # Listar objetos
+        if any(p in t for p in [
+            "que hay en el plano", "lista los objetos del plano", "que objetos tengo",
+            "objetos del dibujo",
+        ]):
+            return [{"skill": "freecad", "action": "list_objects", "params": {}}]
+
+        # Rectangulo
+        m = re.search(
+            r'\b(?:dibuja|hazme|crea|agrega|anade|añade)\s+(?:un\s+)?(?:rectangulo|rectángulo|cuadrado)\s+(?:de\s+)?(\d+(?:\.\d+)?)\s*(?:x|por)\s*(\d+(?:\.\d+)?)',
+            text, re.IGNORECASE,
+        )
+        if m:
+            ancho = float(m.group(1))
+            alto = float(m.group(2))
+            return [{
+                "skill": "freecad",
+                "action": "add_rectangle",
+                "params": {"x1": 0, "y1": 0, "x2": ancho, "y2": alto, "label": "Rectangulo"},
+            }]
+
+        # Circulo
+        m = re.search(
+            r'\b(?:dibuja|hazme|crea|agrega|anade|añade)\s+(?:un\s+)?(?:circulo|círculo|columna)\s+(?:de\s+)?(?:radio\s+)?(\d+(?:\.\d+)?)',
+            text, re.IGNORECASE,
+        )
+        if m:
+            r = float(m.group(1))
+            return [{
+                "skill": "freecad",
+                "action": "add_circle",
+                "params": {"cx": 0, "cy": 0, "radius": r, "label": "Circulo"},
+            }]
+
+        # Linea / muro
+        m = re.search(
+            r'\b(?:dibuja|hazme|crea|agrega|anade|añade)\s+(?:un\s+)?(?:linea|línea|muro)\s+(?:de\s+)?(\d+(?:\.\d+)?)',
+            text, re.IGNORECASE,
+        )
+        if m:
+            largo = float(m.group(1))
+            return [{
+                "skill": "freecad",
+                "action": "add_line",
+                "params": {"x1": 0, "y1": 0, "z1": 0, "x2": largo, "y2": 0, "z2": 0, "label": "Linea"},
+            }]
+
+        # Exportar DXF
+        if any(p in t for p in [
+            "exporta el plano a dxf", "exporta a dxf", "guardar como dxf",
+            "exporta el plano a autocad",
+        ]):
+            return [{
+                "skill": "freecad",
+                "action": "export_dxf",
+                "params": {"path": ""},
+            }]
+
+        # Exportar PDF
+        if any(p in t for p in [
+            "exporta el plano a pdf", "exporta a pdf el plano cad",
+        ]):
+            return [{
+                "skill": "freecad",
+                "action": "export_pdf",
+                "params": {"path": ""},
+            }]
 
 
             

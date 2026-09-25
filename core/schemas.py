@@ -194,6 +194,50 @@ SKILLS_VALIDAS = {
             },
         },
 
+                "freecad": {
+            "new_document": {"name": {"type": "string"}},
+            "add_rectangle": {
+                "x1": {"type": "number"},
+                "y1": {"type": "number"},
+                "x2": {"type": "number"},
+                "y2": {"type": "number"},
+                "label": {"type": "string"},
+            },
+            "add_line": {
+                "x1": {"type": "number"},
+                "y1": {"type": "number"},
+                "z1": {"type": "number"},
+                "x2": {"type": "number"},
+                "y2": {"type": "number"},
+                "z2": {"type": "number"},
+                "label": {"type": "string"},
+            },
+            "add_circle": {
+                "cx": {"type": "number"},
+                "cy": {"type": "number"},
+                "radius": {"type": "number"},
+                "label": {"type": "string"},
+            },
+            "add_text": {
+                "x": {"type": "number"},
+                "y": {"type": "number"},
+                "text": {"type": "string"},
+                "label": {"type": "string"},
+            },
+            "add_wall": {
+                "x1": {"type": "number"},
+                "y1": {"type": "number"},
+                "x2": {"type": "number"},
+                "y2": {"type": "number"},
+                "label": {"type": "string"},
+            },
+            "list_objects": {},
+            "export_dxf": {"path": {"type": "string"}},
+            "export_pdf": {"path": {"type": "string"}},
+            "save_as": {"path": {"type": "string"}},
+            "clear_workspace": {},
+        },
+
     "vision": {
         "describe_screen": {},
         "explain_screen_code": {},

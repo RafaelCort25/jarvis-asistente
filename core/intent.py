@@ -148,6 +148,15 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "muestra el diseno X" -> canva.get_design (id = "X")
   - "conecta canva" -> canva.authorize
   - NUNCA uses browser.* para abrir canva, usa la skill canva.*
+  - FREECAD (planos/dibujos CAD):
+  - "nuevo plano" -> freecad.new_document
+  - "dibuja un rectangulo de 4x3" -> freecad.add_rectangle (x1=0, y1=0, x2=4, y2=3, label="Rectangulo")
+  - "dibuja un circulo de radio 0.5" -> freecad.add_circle (cx=0, cy=0, radius=0.5, label="Circulo")
+  - "dibuja un muro de 10" -> freecad.add_line (x1=0, y1=0, z1=0, x2=10, y2=0, z2=0, label="Linea")
+  - "que hay en el plano" -> freecad.list_objects
+  - "exporta el plano a dxf" -> freecad.export_dxf
+  - "exporta el plano a pdf" -> freecad.export_pdf
+  - NUNCA uses dev.* ni terminal.* para CAD, usa freecad.*
 
 
 

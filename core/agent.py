@@ -99,6 +99,25 @@ SKILLS DISPONIBLES:
 52. canva.list_assets() - lista tus imagenes subidas
 53. canva.upload_asset_from_url(url, name) - sube una imagen desde URL
 54. canva.authorize() - conecta tu cuenta (solo la primera vez)
+=== FREECAD (planos y dibujos CAD) ===
+55. freecad.new_document(name) - crea un documento CAD nuevo
+56. freecad.add_rectangle(x1, y1, x2, y2, label) - rectangulo
+57. freecad.add_line(x1, y1, z1, x2, y2, z2, label) - linea
+58. freecad.add_circle(cx, cy, radius, label) - circulo
+59. freecad.add_text(x, y, text, label) - texto en el plano
+60. freecad.add_wall(x1, y1, x2, y2, label) - muro simple (alias de add_line)
+61. freecad.list_objects() - lista objetos del plano actual
+62. freecad.export_dxf(path) - exporta a DXF (compatible con AutoCAD)
+63. freecad.export_pdf(path) - exporta a PDF
+64. freecad.save_as(path) - guarda como .FCStd
+65. freecad.clear_workspace() - borra el workspace
+
+IMPORTANTE FREECAD:
+- Cada accion tarda 2-4s porque abre freecadcmd como subproceso. NO encadenes muchas
+  acciones seguidas si no es necesario.
+- El resultado final se exporta a DXF y se puede abrir en AutoCAD, LibreCAD, DraftSight.
+- Si el usuario pide "un plano de una casa de X", encadena new_document + varios
+  add_rectangle + export_dxf en pasos separados (maximo 3-4 objetos por tarea).
 
 
 REGLAS:
