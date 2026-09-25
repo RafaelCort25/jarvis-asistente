@@ -129,6 +129,8 @@ class DwgSkill(Skill):
     description = "Lee, convierte y analiza planos DWG/DXF"
 
     def run(self, action, params):
+        if action == "add_hatch":
+            return self.add_hatch(params.get("path", ""), params.get("output", ""))
         if action == "convert_to_dxf":
             return self._convert(params.get("path", ""), "DXF")
         if action == "convert_to_dwg":
@@ -649,6 +651,92 @@ class DwgSkill(Skill):
             except Exception:
                 continue
         return segmentos
+    def add_hatch(self, path, output=""):
+        """Anade hatch (rayado) a los muros de un DXF.
+
+        Lee la capa MUROS, detecta polilineas cerradas de muros y las rellena
+        con patron ANSI31 (rayado diagonal) en una capa nueva 'Nitro_Hatch'.
+        """
+        if not path:
+            return {"thought": "", "display": "Falta la ruta.", "voice": "Falta la ruta."}
+
+        doc, err = _abrir_dxf(path)
+        if err:
+            return {"thought": "Error", "display": err, "voice": "Error."}
+
+        msp = doc.modelspace()
+
+        # Buscar capas de muros
+        capas_muro = [l.dxf.name for l in doc.layers if 'muro' in l.dxf.name.lower()]
+        if not capas_muro:
+            return {
+                "thought": "Sin capa MUROS",
+                "display": "No encontre capas con 'muro' en el nombre.",
+                "voice": "Sin capa de muros.",
+            }
+
+        # Crear capa de hatch
+        if "Nitro_Hatch" not in doc.layers:
+            doc.layers.add(name="Nitro_Hatch", color=8)
+
+        # Buscar polilineas y circulos cerrados en capa MUROS
+        n_hatch = 0
+        for entidad in msp:
+            try:
+                if entidad.dxf.layer not in capas_muro:
+                    continue
+                tipo = entidad.dxftype()
+                # Solo polilineas cerradas
+                if tipo == "LWPOLYLINE" and entidad.closed:
+                    hatch = msp.add_hatch(color=8)
+                    hatch.dxf.layer = "Nitro_Hatch"
+                    hatch.set_pattern_fill("ANSI31", scale=0.5)
+                    hatch.paths.add_polyline_path(
+                        list(entidad.get_points("xy")),
+                        is_closed=True,
+                    )
+                    n_hatch += 1
+                elif tipo == "CIRCLE":
+                    center = entidad.dxf.center
+                    radius = entidad.dxf.radius
+                    hatch = msp.add_hatch(color=8)
+                    hatch.dxf.layer = "Nitro_Hatch"
+                    hatch.set_pattern_fill("ANSI31", scale=0.5)
+                    hatch.paths.add_edge_path().add_arc(
+                        center=center,
+                        radius=radius,
+                        start_angle=0,
+                        end_angle=360,
+                    )
+                    n_hatch += 1
+            except Exception as e:
+                print(f"[DWG] Error hatch: {e}")
+                continue
+
+        if n_hatch == 0:
+            return {
+                "thought": "Sin formas para hatch",
+                "display": "No encontre polilineas cerradas ni circulos en la capa MUROS.",
+                "voice": "Sin formas para rellenar.",
+            }
+
+        if not output:
+            output = str(SANDBOX / f"{Path(path).stem}_hatch_{uuid.uuid4().hex[:6]}.dxf")
+
+        doc.saveas(output)
+
+        return {
+            "thought": f"{n_hatch} hatches anadidos",
+            "display": (
+                f"Hatch agregado a muros.\n"
+                f" Capas usadas: {', '.join(capas_muro)}\n"
+                f" Formas rellenadas: {n_hatch}\n"
+                f" Patron: ANSI31 (rayado diagonal)\n"
+                f" Capa nueva: Nitro_Hatch\n"
+                f" Guardado en: {output}"
+            ),
+            "voice": f"{n_hatch} muros rellenados con hatch.",
+        }
 
     def _exportar_step(self, segmentos, output_path, altura, grosor, prefijo):
         """Exporta segmentos a STEP usando FreeCAD."""

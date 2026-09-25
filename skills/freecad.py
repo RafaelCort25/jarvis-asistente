@@ -220,6 +220,13 @@ class FreeCadSkill(Skill):
     description = "Crea geometria 2D/3D y exporta a DXF/PDF con FreeCAD"
 
     def run(self, action, params):
+        if action == "add_room_labels":
+            return self._add_room_labels(params.get("labels", []))
+        if action == "add_level_dimensions":
+            return self._add_level_dimensions(
+                float(params.get("height", 3.0)),
+                int(params.get("num_floors", 1)), 
+                )
         if action == "new_document":
             return self._new_document(params.get("name", "NitroWorkspace"))
         if action == "add_rectangle":
@@ -467,6 +474,109 @@ class FreeCadSkill(Skill):
             "thought": "Guardado",
             "display": f"Guardado como FCStd.\n  Ruta: {out_path}",
             "voice": "Guardado.",
+        }
+    def _add_room_labels(self, labels):
+        """Anade textos 3D sobre el plano (etiquetas de ambientes).
+
+        labels: lista de dicts [{"x": 5, "y": 3, "text": "SALA"}, ...]
+        """
+        if not labels:
+            return {"thought": "", "display": "Falta la lista de etiquetas.", "voice": "Faltan etiquetas."}
+        if not confirmation.require("freecad", "add_room_labels", f"Anadir {len(labels)} etiquetas de ambientes"):
+            return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
+
+        # Construir el script
+        lineas = [
+            "import FreeCAD",
+            "import Draft",
+            "import os",
+            f"path = r'{str(WORKSPACE).replace(chr(92), chr(47))}'",
+            "if os.path.exists(path):",
+            "    doc = FreeCAD.openDocument(path)",
+            "else:",
+            "    doc = FreeCAD.newDocument('NitroWorkspace')",
+            "etiquetas = [",
+        ]
+        for lab in labels:
+            x = float(lab.get("x", 0))
+            y = float(lab.get("y", 0))
+            z = float(lab.get("z", 1.5))
+            txt = str(lab.get("text", "")).replace("'", "\\'").replace('"', '\\"')
+            lineas.append(f"    ({x}, {y}, {z}, '{txt}'),")
+        lineas.extend([
+            "]",
+            "for i, (x, y, z, txt) in enumerate(etiquetas):",
+            "    try:",
+            "        pos = FreeCAD.Vector(x, y, z)",
+            "        t = Draft.make_text(txt, pos)",
+            "        t.Label = 'Etiqueta_' + str(i)",
+            "    except Exception as e:",
+            "        print('WARN etiqueta ' + str(i) + ': ' + str(e))",
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_LABELS')",
+        ])
+        script = "\n".join(lineas)
+        stdout, stderr, err = _run_freecad(script)
+        if err:
+            return {"thought": "Error", "display": err, "voice": "Error."}
+        if "OK_LABELS" not in (stdout or ""):
+            return {"thought": "Error", "display": f"Fallo: {(stdout or '')[:300]}", "voice": "Error."}
+        return {
+            "thought": f"{len(labels)} etiquetas anadidas",
+            "display": f"Etiquetas agregadas al plano.\n Total: {len(labels)}",
+            "voice": f"{len(labels)} etiquetas agregadas.",
+        }
+
+    def _add_level_dimensions(self, height=3.0, num_floors=1):
+        """Anade cotas de nivel (N.P.T.) a la fachada del edificio."""
+        if height <= 0 or num_floors <= 0:
+            return {"thought": "", "display": "Altura y pisos deben ser > 0.", "voice": "Datos invalidos."}
+        if not confirmation.require("freecad", "add_level_dimensions", f"Anadir {num_floors + 1} cotas de nivel"):
+            return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
+
+        altura_piso = height / num_floors
+        niveles = [i * altura_piso for i in range(num_floors + 1)]
+
+        lineas = [
+            "import FreeCAD",
+            "import Draft",
+            "import os",
+            f"path = r'{str(WORKSPACE).replace(chr(92), chr(47))}'",
+            "if os.path.exists(path):",
+            "    doc = FreeCAD.openDocument(path)",
+            "else:",
+            "    doc = FreeCAD.newDocument('NitroWorkspace')",
+            f"niveles = {niveles}",
+            "x_ref = 2.0",
+            "y_ref = -2.0",
+            "for i, z in enumerate(niveles):",
+            "    try:",
+            "        txt = 'N.P.T. +{:.2f}'.format(z)",
+            "        pos = FreeCAD.Vector(x_ref, y_ref, z)",
+            "        t = Draft.make_text(txt, pos)",
+            "        t.Label = 'Nivel_' + str(i)",
+            "    except Exception as e:",
+            "        print('WARN nivel ' + str(i) + ': ' + str(e))",
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_LEVELS')",
+        ]
+        script = "\n".join(lineas)
+        stdout, stderr, err = _run_freecad(script)
+        if err:
+            return {"thought": "Error", "display": err, "voice": "Error."}
+        if "OK_LEVELS" not in (stdout or ""):
+            return {"thought": "Error", "display": f"Fallo: {(stdout or '')[:300]}", "voice": "Error."}
+        return {
+            "thought": f"{len(niveles)} cotas de nivel anadidas",
+            "display": (
+                f"Cotas de nivel agregadas.\n"
+                f" Altura total: {height}m\n"
+                f" Pisos: {num_floors}\n"
+                f" Niveles: {', '.join(f'+{n:.2f}' for n in niveles)}"
+            ),
+            "voice": f"{len(niveles)} cotas de nivel agregadas.",
         }
 
     def _clear_workspace(self):
