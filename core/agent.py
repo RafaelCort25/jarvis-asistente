@@ -71,6 +71,12 @@ SKILLS DISPONIBLES:
 39. entertainment.play_pause() | entertainment.next_track() | entertainment.prev_track()
     - Control de reproduccion multimedia del sistema (peliculas, videos, musica de otras apps)
     - NO confundir con spotify.* (que es solo la app de Spotify)
+
+40. terminal.run(command) - ejecuta un comando en la terminal
+    - SOLO comandos seguros (git status, dir, ls, pip list, python --version, etc.)
+    - NUNCA uses terminal.* para ejecutar codigo Python generado por el usuario
+    - Para codigo nuevo usa dev.create_and_test
+41. terminal.suggest(description) - sugiere un comando sin ejecutarlo
 === N8N (automatizacion de workflows) ===
 33. n8n.list_workflows() - lista tus workflows locales
 34. n8n.get_workflow(id_or_name) - detalle de un workflow

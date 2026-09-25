@@ -1,16 +1,23 @@
-﻿import signal
+﻿"""Router principal de JARVIS/Nitro.
+
+Responsabilidades:
+- Recibir texto del usuario
+- Detectar comandos rapidos (quick_match) sin LLM
+- Detectar comandos complejos -> agente ReAct
+- Detectar razonamiento puro -> brain.chat
+- Detectar multi-objetivo -> agente
+- Ejecutar skills con timeout y captura de errores
+"""
+
+import re
+import signal
 import threading
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 
-# Timeout maximo por skill (segundos)
-SKILL_TIMEOUT = 180
-
-# Pool global reutilizable
-_executor = ThreadPoolExecutor(max_workers=4)
-import re
-import unicodedata
 from core.intent import IntentClassifier
 from core.agent import Agent
+
 from skills.desktop import DesktopSkill
 from skills.browser import BrowserSkill
 from skills.entertainment import EntertainmentSkill
@@ -41,6 +48,13 @@ from skills.canva import CanvaSkill
 from skills.freecad import FreeCadSkill
 from skills.maps import MapsSkill
 from skills.blender import BlenderSkill
+
+
+# Timeout maximo por skill (segundos)
+SKILL_TIMEOUT = 180
+
+# Pool global reutilizable
+_executor = ThreadPoolExecutor(max_workers=4)
 
 
 NUM_MAP = {
@@ -120,18 +134,18 @@ class Router:
         if len(t) < 10:
             return False
 
+        # Normalizar acentos ANTES de comprobar separadores
+        t = unicodedata.normalize("NFD", t)
+        t = "".join(c for c in t if unicodedata.category(c) != "Mn")
+
         # Comandos compuestos con conectores -> agente
         separadores = [
             " y luego ", " luego ", " y despues ", " despues de eso ",
             " y tambien ", " y ademas ", " seguido de ",
-            " y por ultimo ", " y por último ",
+            " y por ultimo ", " y por ultimo ",
         ]
         if any(sep in f" {t} " for sep in separadores):
             return True
-
-        # Normalizar acentos
-        t = unicodedata.normalize("NFD", t)
-        t = "".join(c for c in t if unicodedata.category(c) != "Mn")
 
         # Si es un comando simple conocido, NO es complejo
         simple_patterns = [
@@ -178,6 +192,7 @@ class Router:
                 return True
 
         return False
+
     def _is_multi_objetivo(self, text):
         """Detecta si la frase tiene 2+ objetivos unidos por 'y'/'tambien'/'ademas'."""
         t = text.lower().strip()
@@ -196,7 +211,6 @@ class Router:
             return False
 
         # Asegurar que cada parte sustancial tenga un verbo o intencion clara
-        # (evita "manzana y pera y uva" que son sustantivos simples)
         intenciones = [
             "abre", "abrir", "cierra", "cerrar",
             "busca", "buscar", "muestra", "muestrame",
@@ -208,7 +222,6 @@ class Router:
             "reproduce", "revisa", "revisar",
             "limpia", "vacia", "borra", "elimina",
             "convierte", "traduce", "exporta",
-            # sustantivos "de consulta" que también cuentan como intención
             "espacio", "disco", "hora", "fecha", "clima",
             "programas", "arranca", "inicia", "archivos",
             "notas", "documentos", "apuntes", "pdfs",
@@ -220,6 +233,7 @@ class Router:
                 count_con_intencion += 1
 
         return count_con_intencion >= 2
+
     def _is_pure_reasoning(self, text):
         """Detecta frases de razonamiento puro que deben ir al chat, no a skills."""
         t = text.lower().strip()
@@ -251,10 +265,13 @@ class Router:
         ]
         return any(re.search(p, t) for p in patterns)
 
+    # ─── QUICK MATCH ────────────────────────────────────────────────────────
+
     def _quick_match(self, text):
         """Detecta comandos obvios sin llamar al LLM."""
         t = text.lower().strip()
-                # ═══════════════════════════════════════════════════════════════════
+
+        # ═══════════════════════════════════════════════════════════════════
         # N8N: workflows y automatizacion
         # ═══════════════════════════════════════════════════════════════════
 
@@ -312,7 +329,8 @@ class Router:
             name = m.group(1).strip(" .,!?¡¿")
             if name:
                 return [{"skill": "n8n", "action": "delete_workflow", "params": {"id_or_name": name}}]
-                    # Buscar templates en n8n.io
+
+        # Buscar templates en n8n.io
         m = re.search(
             r'\b(?:busca|buscar|encuentra)\s+(?:templates?|plantillas?|workflows?)\s+(?:de\s+|sobre\s+|para\s+)?(.+?)(?:\s+en\s+n8n)?$',
             t,
@@ -340,7 +358,8 @@ class Router:
         )
         if m:
             return [{"skill": "n8n", "action": "import_template", "params": {"id": m.group(1), "name": ""}}]
-                # Crear workflow nuevo con LLM
+
+        # Crear workflow nuevo con LLM
         m = re.search(
             r'\b(?:crea|crear|genera|generar|hazme|haz)\s+(?:un\s+|el\s+)?workflow\s+(?:en\s+n8n\s+)?(?:que\s+|para\s+|de\s+)?(.+)$',
             t,
@@ -350,8 +369,8 @@ class Router:
             desc = m.group(1).strip(" .,!?¡¿")
             if desc:
                 return [{"skill": "n8n", "action": "create_workflow", "params": {"description": desc, "name": ""}}]
+
         # N8N BUILDER: frases que piden un workflow complejo (chatbot, automatizacion, etc.)
-        # Estas van al AGENTE, no al quick_match (porque necesitan preguntar antes)
         m = re.search(
             r'\b(?:crea|crear|hazme|haz|genera|generar)\s+(?:un\s+|una\s+)?'
             r'(chatbot|bot|asistente virtual|automatizacion|automatización|flujo complejo|workflow complejo)\b',
@@ -361,7 +380,7 @@ class Router:
         if m:
             return "__N8N_BUILDER__"
 
-                # ═══════════════════════════════════════════════════════════════════
+        # ═══════════════════════════════════════════════════════════════════
         # GMAIL: correos
         # ═══════════════════════════════════════════════════════════════════
 
@@ -401,7 +420,6 @@ class Router:
         )
         if m:
             to = m.group(1).strip(" .,!?¡¿")
-            # Extraer asunto y cuerpo si vienen despues
             resto = t[m.end():].strip()
             asunto = ""
             cuerpo = resto
@@ -419,7 +437,7 @@ class Router:
         if m:
             return [{"skill": "gmail", "action": "read", "params": {"uid": m.group(1)}}]
 
-                # ═══════════════════════════════════════════════════════════════════
+        # ═══════════════════════════════════════════════════════════════════
         # CANVA: disenos
         # ═══════════════════════════════════════════════════════════════════
 
@@ -441,7 +459,6 @@ class Router:
                 return [{"skill": "canva", "action": "get_design", "params": {"id": did}}]
 
         # Crear diseno
-                # Crear diseno
         m = re.search(
             r'\b(?:crea|crear|hazme|haz|genera|generar)\s+(?:un\s+|una\s+)?'
             r'(?:post\s+de\s+|publicacion\s+de\s+)?'
@@ -460,7 +477,6 @@ class Router:
                 }]
 
         # Exportar diseno
-                # Exportar diseno
         m = re.search(
             r'\b(?:exporta|exportar)\s+(?:el\s+)?diseno\s+(\S+?)(?:\s+(?:a|en|como)\s+(png|jpg|jpeg|pdf|pptx|gif|mp4))?$',
             text, re.IGNORECASE,
@@ -484,8 +500,7 @@ class Router:
         ]):
             return [{"skill": "canva", "action": "authorize", "params": {}}]
 
-
-                # ═══════════════════════════════════════════════════════════════════
+        # ═══════════════════════════════════════════════════════════════════
         # FREECAD: geometria y planos
         # ═══════════════════════════════════════════════════════════════════
 
@@ -564,7 +579,7 @@ class Router:
                 "params": {"path": ""},
             }]
 
-                # ═══════════════════════════════════════════════════════════════════
+        # ═══════════════════════════════════════════════════════════════════
         # BLENDER: prioridad si pide "render" (antes que Maps)
         # ═══════════════════════════════════════════════════════════════════
         if any(p in t for p in ["haz un render", "hazme un render", "render del", "render de el", "render de la"]):
@@ -577,9 +592,69 @@ class Router:
                 return [{"skill": "blender", "action": "render_step", "params": {"step_path": str(steps[0]), "output": "", "cam_angulo": 45}}]
 
         # ═══════════════════════════════════════════════════════════════════
-        # MAPS: buscar edificios reales en OpenStreetMap
+        # SCHEDULER: tareas programadas
         # ═══════════════════════════════════════════════════════════════════
-                # ═══════════════════════════════════════════════════════════════════
+
+        # Programar tarea diaria
+        m = re.search(
+            r'\b(?:todos\s+los\s+dias?|cada\s+dia)\s+a\s+las?\s+(\d{1,2})(?::(\d{2}))?\s*(?:h|hrs?|horas?)?\s+(?:haz|hazme|ejecuta|corre|abre|mandame|envia)\s+(.+)$',
+            text, re.IGNORECASE,
+        )
+        if m:
+            hora = int(m.group(1))
+            minuto = int(m.group(2) or 0)
+            tarea = m.group(3).strip(" .,!?¡¿")
+            if tarea and 0 <= hora < 24 and 0 <= minuto < 60:
+                return [{"skill": "scheduler", "action": "add_daily",
+                         "params": {"hour": hora, "minute": minuto, "task": tarea}}]
+
+        # Programar tarea una vez
+        m = re.search(
+            r'\b(?:en|dentro\s+de)\s+(\d+)\s*(?:minutos?|min|m|horas?|h)\s+(?:haz|hazme|ejecuta|corre|abre|mandame|envia)\s+(.+)$',
+            text, re.IGNORECASE,
+        )
+        if m:
+            cantidad = int(m.group(1))
+            tarea = m.group(2).strip(" .,!?¡¿")
+            return [{"skill": "scheduler", "action": "add_once",
+                     "params": {"minutes": cantidad, "task": tarea}}]
+
+        # Listar tareas programadas
+        if any(p in t for p in [
+            "que tareas tengo programadas", "lista mis tareas programadas",
+            "mis tareas programadas", "que tengo programado",
+        ]):
+            return [{"skill": "scheduler", "action": "list", "params": {}}]
+
+        # Cancelar tarea programada
+        if any(p in t for p in [
+            "cancela la tarea programada", "borra la tarea programada",
+            "elimina la tarea programada",
+        ]):
+            return [{"skill": "scheduler", "action": "cancel", "params": {}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+
+
+        # VISION: analizar pantalla
+        # ═══════════════════════════════════════════════════════════════════
+        if any(p in t for p in [
+            "que hay en mi pantalla", "que se ve en mi pantalla",
+            "describe mi pantalla", "describe lo que ves",
+            "que estoy viendo", "mira mi pantalla",
+            "analiza mi pantalla",
+        ]):
+            return [{"skill": "vision", "action": "describe_screen", "params": {}}]
+
+        if any(p in t for p in [
+            "explica el codigo de mi pantalla", "explica lo que se ve",
+            "explícame el código", "explica este codigo",
+            "que hace este codigo en pantalla",
+        ]):
+            return [{"skill": "vision", "action": "explain_screen_code", "params": {}}]
+
+
+        # ═══════════════════════════════════════════════════════════════════
         # MAPS: buscar edificios reales en OpenStreetMap
         # ═══════════════════════════════════════════════════════════════════
 
@@ -594,7 +669,6 @@ class Router:
                 return [{"skill": "maps", "action": "get_building", "params": {"query": q}}]
 
         # Modelar un edificio real
-                # Modelar un edificio real
         m = re.search(
             r'\b(?:modela|modelar|hazme|haz|crea|genera|disena|diseña)\s+'
             r'(?:(?:un\s+)?(?:modelo|proyecto|edificio|plano)\s+)?'
@@ -617,21 +691,19 @@ class Router:
             if q:
                 return [{"skill": "maps", "action": "search", "params": {"query": q}}]
 
-                    # ═══════════════════════════════════════════════════════════════════
-        # BLENDER: render 3D
+        # ═══════════════════════════════════════════════════════════════════
+        # BLENDER: render 3D (ultimo step, muestrame)
         # ═══════════════════════════════════════════════════════════════════
 
-        # Renderizar el ultimo STEP generado
         if any(p in t for p in [
             "renderiza el ultimo", "renderiza el último", "render del ultimo",
             "renderiza este step", "renderiza este modelo",
             "muestrame en 3d", "muestrame el modelo en 3d", "muestrame el 3d",
             "ver en 3d", "visualiza el 3d", "visualizar el modelo",
-            "renderiza en blender", "haz un render", "hazme un render",
+            "renderiza en blender",
         ]):
             from pathlib import Path
             sandbox_fc = Path(r"C:\JARVIS\sandbox\freecad")
-            # Priorizar detallados, luego simples
             detallados = sorted(sandbox_fc.glob("detallado_*.step"), key=lambda p: p.stat().st_mtime, reverse=True)
             simples = sorted(sandbox_fc.glob("edificio_*.step"), key=lambda p: p.stat().st_mtime, reverse=True)
             steps = detallados + simples
@@ -647,9 +719,10 @@ class Router:
             step_path = m.group(1).strip(" .,!?¡¿")
             return [{"skill": "blender", "action": "render_step", "params": {"step_path": step_path, "output": "", "cam_angulo": 45}}]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # MACRO: grabar/reproducir secuencias
+        # ═══════════════════════════════════════════════════════════════════
 
-            
-                # MACRO: grabar/reproducir secuencias
         # Empezar a grabar
         m = re.search(
             r'\b(?:empieza|empezar|inicia|iniciar|comienza|comenzar)\s+(?:a\s+)?grabar\s+(?:el\s+|un\s+|la\s+)?(?:macro\s+)?(.+)$',
@@ -696,7 +769,10 @@ class Router:
             name = m.group(1).strip(" .,!?¡¿")
             if name:
                 return [{"skill": "macro", "action": "delete", "params": {"name": name}}]
-                    # ABRIR APP CONOCIDA (va antes que terminal/clasificador)
+
+        # ═══════════════════════════════════════════════════════════════════
+        # ABRIR APP CONOCIDA (va antes que terminal/clasificador)
+        # ═══════════════════════════════════════════════════════════════════
         m = re.search(
             r'\b(?:abre|abrir|lanza|inicia|ejecuta)\s+(?:la\s+|el\s+)?'
             r'(brave|chrome|notepad|bloc\s+de\s+notas|bloc\s+de\s+nota|'
@@ -706,7 +782,6 @@ class Router:
         )
         if m:
             raw_app = m.group(1).lower().strip()
-            # Normalizar variantes
             app_map = {
                 "bloc de notas": "notepad",
                 "bloc de nota": "notepad",
@@ -714,12 +789,11 @@ class Router:
                 "explorer": "explorador",
             }
             app = app_map.get(raw_app, raw_app)
-            # Solo devolver si es app valida en el schema
             if app in ("brave", "chrome", "notepad", "calculadora", "explorador", "paint", "cmd", "spotify"):
                 return [{"skill": "desktop", "action": "open_app", "params": {"app": app}}]
 
         # ═══════════════════════════════════════════════════════════════════
-        # COMBO: RAG -> Word (PRIORIDAD ALTA: antes que Office / RAG básico)
+        # COMBO: RAG -> Word (PRIORIDAD ALTA: antes que Office / RAG basico)
         # ═══════════════════════════════════════════════════════════════════
         if re.search(r'\b(?:word|docx|documento|informe|reporte)\b', t) and any(p in t for p in [
             "segun mi", "segun mis", "de mi cv", "de mi curriculum", "de mis apuntes",
@@ -730,7 +804,11 @@ class Router:
                 "action": "ask_to_word",
                 "params": {"query": text, "title": ""},
             }]
-                # EDUCATION: PSeInt, conversion, diagramas
+
+        # ═══════════════════════════════════════════════════════════════════
+        # EDUCATION: PSeInt, conversion, diagramas
+        # ═══════════════════════════════════════════════════════════════════
+
         # PSeInt
         m = re.search(
             r'\b(?:hazme|genera|crea|escribe)\s+(?:un\s+|una\s+)?(?:algoritmo|pseudocodigo|pseudocódigo|pseint)\s+(?:de\s+|para\s+|que\s+)?(.+)$',
@@ -763,7 +841,6 @@ class Router:
                 kind = "state"
             elif re.search(r'\ber\b', t) or "entidad" in t or "entidades" in t:
                 kind = "er"
-            # "flujo" o "flowchart" -> se queda como default
             if desc:
                 return [{
                     "skill": "education",
@@ -813,7 +890,7 @@ class Router:
                         "params": {"prompt": prompt, "count": count, "title": ""},
                     }]
 
-            # Variante principal: "genera [N] [art] {sustantivo_visual} {detalle} y hazme..."
+            # Variante principal
             m = re.search(
                 r'\b(?:genera|crea|dibuja)\s+(?:(\d+)\s+)?(?:(?:un|una|el|la|los|las|mi|mis)\s+)?(imagen(?:es)?|logo(?:s)?|foto(?:s)?|dibujo(?:s)?|ilustracion(?:es)?|diseno(?:s)?|diseño(?:s)?)\s+(.+?)\s+(?:y\s+)?(?:hazme|crea|genera|mete|pon)\b',
                 t,
@@ -832,7 +909,7 @@ class Router:
                     }]
 
         # ═══════════════════════════════════════════════════════════════════
-        # COMBOS DEV (deben ir PRIMERO, antes de office para evitar intersecciones)
+        # COMBOS DEV (antes de office para evitar intersecciones)
         # ═══════════════════════════════════════════════════════════════════
 
         # Combo: revisar codigo -> Excel con bugs
@@ -875,11 +952,8 @@ class Router:
 
         # ═══════════════════════════════════════════════════════════════════
         # PRIORIDAD MAXIMA: si la frase EMPIEZA con verbo de edicion, es edit.
-        # Esto evita que "modifica el titulo para que no diga Convertir a PDF"
-        # se confunda con la skill de PDF.
         # ═══════════════════════════════════════════════════════════════════
         if re.match(r'^(?:modifica|edita|actualiza|corrige)\b', t):
-            # Extraer path explicito si hay
             path = ""
             m_path = re.search(
                 r'([A-Za-z]:\\[^\s]+\.\w{2,5}|[^\s]+\.(?:docx|xlsx|txt|pdf|py|md|csv))',
@@ -888,7 +962,6 @@ class Router:
             if m_path:
                 path = m_path.group(1)
 
-            # Extraer la instruccion (todo despues del verbo inicial)
             m_instr = re.sub(r'^(?:modifica|edita|actualiza|corrige)\s+', '', t)
             m_instr = m_instr.strip(" .,!?¡¿")
 
@@ -913,7 +986,7 @@ class Router:
             if text_to_copy:
                 return [{"skill": "clipboard", "action": "write", "params": {"text": text_to_copy}}]
 
-        # Hora y fecha (respuesta directa, sin LLM)
+        # Hora y fecha
         if any(p in t for p in [
             "que hora es", "que hora tienes", "dime la hora", "dame la hora",
             "hora actual", "hora es",
@@ -926,7 +999,7 @@ class Router:
         ]):
             return [{"skill": "system", "action": "date", "params": {}}]
 
-                # ═══════════════════════════════════════════════════════════════════
+        # ═══════════════════════════════════════════════════════════════════
         # SYSTEM: discos, limpieza, startup, archivos grandes
         # ═══════════════════════════════════════════════════════════════════
 
@@ -983,7 +1056,6 @@ class Router:
         ]):
             return [{"skill": "system", "action": "list_startup", "params": {}}]
 
-
         # Terminal: comando explicito con "ejecuta" + prefijos conocidos
         m = re.search(r'\b(?:ejecuta|corre|lanza|haz)\s+(?:el\s+comando\s+|en\s+terminal\s+)?(.+)$', t)
         if m:
@@ -994,7 +1066,7 @@ class Router:
             ]):
                 return [{"skill": "terminal", "action": "run", "params": {"command": cmd}}]
 
-        # Git rapido (frases muy comunes, tolerante a variaciones)
+        # Git rapido
         git_quick = [
             (["git status", "estado del repo", "que cambios tengo", "que hay sin commitear", "estado de git"], "status", {}),
             (["git diff", "muestrame los cambios", "que modifique", "que cambie"], "diff", {}),
@@ -1012,20 +1084,17 @@ class Router:
         # ═══════════════════════════════════════════════════════════════════
 
         # 1. INDEXAR: "indexa X", "aprende X", "procesa X"
-        #    Variante A: "indexa el archivo/pdf/documento X"
         m = re.search(
             r'\b(?:indexa|aprende|procesa|ingesta|guarda)\s+(?:el\s+|la\s+)?(?:archivo|pdf|documento|carpeta)\s+(.+)$',
             t,
         )
         if m:
             path = m.group(1).strip(" .,!?¡¿")
-            # Limpiar "en X" del final si existe
             path = re.sub(r'\s+en\s+.*$', '', path).strip()
             if path:
                 action = "index_folder" if "carpeta" in t else "index_file"
                 return [{"skill": "docs", "action": action, "params": {"path": path}}]
 
-        #    Variante B: "indexa mi cv", "indexa mi curriculum", "aprende mis apuntes"
         m = re.search(
             r'\b(?:indexa|aprende|procesa|ingesta)\s+(?:mi|mis|el|la)\s+(cv|curriculum|currículum|apuntes|documentos|pdfs|notas)\b',
             t,
@@ -1100,6 +1169,7 @@ class Router:
         ]
         if any(p in t for p in docs_ask_triggers):
             return [{"skill": "docs", "action": "ask", "params": {"query": text}}]
+
         # Spotify
         m = re.search(r'\b(?:pon|ponme|reproduce|quiero\s+escuchar)\s+(.+?)\s+en\s+spotify\b', t)
         if m:
@@ -1118,7 +1188,7 @@ class Router:
         if any(p in t for p in ["pausa la musica", "pausa la cancion", "para la musica"]):
             return [{"skill": "spotify", "action": "pause", "params": {}}]
 
-        # "pon X" -> YouTube (excluye alarmas, volumen, etc.)
+        # "pon X" -> YouTube
         m = re.search(r'\b(?:pon|pong|ponme|pongme|reproduce|reprodus|ponle|quiero escuchar|quiero oir|escuchar)\s+(.+)$', t)
         if m:
             q = m.group(1).strip(" .,!?¡¿")
@@ -1178,7 +1248,7 @@ class Router:
         if any(p in t for p in ["que pdfs tengo", "lista mis pdfs", "pdfs generados"]):
             return [{"skill": "pdf", "action": "list", "params": {}}]
 
-                                # Imagenes: generar
+        # Imagenes: generar
         m = re.search(
             r'\b(?:genera|crea|hazme|dibuja|imagina)\s+(?:(\d+)\s+)?(?:una?s?\s+|el\s+|la\s+|los\s+|las\s+)?(imagen(?:es)?|foto(?:s)?|dibujo(?:s)?|ilustracion(?:es)?|logo(?:s)?|moodboard|propuesta(?:s)?|opciones?(?:\s+visuales?)?|variantes?|estilos?(?:\s+visuales?)?|diseno(?:s)?|diseño(?:s)?)\s+(?:(de|sobre|con|para)\s+)?(.+)$',
             t,
@@ -1188,7 +1258,6 @@ class Router:
             sustantivo = m.group(2).strip()
             preposicion = m.group(3) if m.group(3) else ""
             detalle = m.group(4).strip(" .,!?¡¿")
-            # Reconstruir el prompt completo con el sustantivo y la preposicion
             if preposicion:
                 prompt = f"{sustantivo} {preposicion} {detalle}".strip()
             else:
@@ -1302,7 +1371,6 @@ class Router:
             }]
 
         # Edit: modificar archivo
-        # Detectar si menciona un archivo con extension o carpeta uploads
         es_edicion = any(w in t for w in ["modifica", "edita", "actualiza", "corrige", "cambia"])
         menciona_archivo = (
             "uploads" in t
@@ -1316,7 +1384,6 @@ class Router:
             or "/" in t
         )
         if es_edicion and menciona_archivo:
-            # Extraer path explicito si existe
             path = ""
             m_path = re.search(
                 r'([A-Za-z]:\\[^\s]+\.\w{2,5}|[^\s]+\.(?:docx|xlsx|txt|pdf|py|md|csv))',
@@ -1324,7 +1391,6 @@ class Router:
             )
             if m_path:
                 path = m_path.group(1)
-            # Extraer la instruccion: todo despues de "cambiando" / "por" / "que diga"
             m_instr = re.search(
                 r'\b(?:cambiando|reemplazando|para\s+que\s+diga|que\s+diga|cambia)\s+(.+)$',
                 t,
@@ -1335,7 +1401,6 @@ class Router:
                 if path:
                     instruction = f"cambia {instruction}"
             else:
-                # Fallback: usar la frase completa
                 instruction = text
             return [{
                 "skill": "edit",
@@ -1364,7 +1429,6 @@ class Router:
         ]):
             return [{"skill": "edit", "action": "list_uploads", "params": {}}]
 
-                      
         # Dev: crear y probar (ciclo completo)
         m = re.search(
             r'\b(?:crea|genera|escribe)\s+(?:un\s+|una\s+)?(?:archivo|script|programa|funcion)?\s*(.+?)\s+(?:en|como)\s+(.+)\b',
@@ -1375,29 +1439,20 @@ class Router:
             desc = m.group(1).strip()
             path = m.group(2).strip()
 
-            # Normalizar separadores dictados
             path = path.replace("barra", "/").replace("slash", "/")
-
-            # Normalizar extensiones dictadas
             path = re.sub(r'\bpunto\s+py\b', '.py', path)
             path = re.sub(r'\bpunto\s+js\b', '.js', path)
             path = re.sub(r'\bpunto\s+java\b', '.java', path)
-
-            # Quitar puntuacion y colapsar espacios
             path = re.sub(r'[,;]', '', path)
             path = re.sub(r'\s+', ' ', path).strip()
             path = path.strip(".,!?¡¿ ")
-
-            # Colapsar espacios alrededor de separadores
             path = re.sub(r'\s*/\s*', '/', path)
             path = re.sub(r'\s*\.\s*', '.', path)
 
-            # Si todavia tiene espacios ("sandbox division.py"), asumir "sandbox/division.py"
             if " " in path:
                 partes = path.split()
                 path = partes[0] + "/" + "".join(partes[1:])
 
-            # Corregir extensiones incompletas
             if path.endswith(".p"):
                 path = path[:-2] + ".py"
             elif path.endswith(".j"):
@@ -1416,7 +1471,8 @@ class Router:
                     "action": "create_and_test",
                     "params": {"description": desc, "language": lang, "path": path},
                 }]
-                    # ═══════════════════════════════════════════════════════════════════
+
+        # ═══════════════════════════════════════════════════════════════════
         # ENTERTAINMENT: control de reproduccion multimedia
         # ═══════════════════════════════════════════════════════════════════
         if any(p in t for p in [
@@ -1469,19 +1525,14 @@ class Router:
         # ═══════════════════════════════════════════════════════════════════
         # PRODUCTIVITY: notas
         # ═══════════════════════════════════════════════════════════════════
-        if any(p in t for p in [
-            "guarda una nota", "guarda nota", "anota que",
-            "toma nota de", "apunta que", "apunta esto",
-        ]):
-            # Extraer el texto de la nota
-            m = re.search(
-                r'\b(?:guarda una nota|guarda nota|anota que|toma nota de|apunta que|apunta esto)\s*(?::|que)?\s*(.+)$',
-                text, re.IGNORECASE,
-            )
-            if m:
-                nota = m.group(1).strip(" .,!?¡¿")
-                if nota:
-                    return [{"skill": "productivity", "action": "save_note", "params": {"text": nota}}]
+        m = re.search(
+            r'\b(?:guarda una nota|guarda nota|anota que|toma nota de|apunta que|apunta esto)(?:\s+que\s+diga)?\s*:?\s*(.+)$',
+            text, re.IGNORECASE,
+        )
+        if m:
+            nota = m.group(1).strip(" .,!?¡¿")
+            if nota:
+                return [{"skill": "productivity", "action": "save_note", "params": {"text": nota}}]
 
         if any(p in t for p in [
             "lee mis notas", "leeme las notas", "muestra mis notas",
@@ -1523,7 +1574,7 @@ class Router:
         # WEATHER: clima
         # ═══════════════════════════════════════════════════════════════════
         m = re.search(
-            r'\b(?:que\s+clima|clima\s+en|como\s+esta\s+el\s+clima\s+en|temperatura\s+en)\s+([a-zA-Záéíóúñ\s]+?)(?:\s+hoy|\s+ahora|\?|$|\.)',
+            r'\b(?:que\s+clima(?:\s+hace)?(?:\s+en)?|clima\s+en|como\s+esta\s+el\s+clima\s+en|temperatura\s+en)\s+([a-zA-Záéíóúñ][a-zA-Záéíóúñ\s]*?)(?:\s+hoy|\s+ahora|\?|$|\.)',
             text, re.IGNORECASE,
         )
         if m:
@@ -1535,7 +1586,6 @@ class Router:
             "que clima hace", "como esta el clima", "va a llover",
         ]):
             return [{"skill": "weather", "action": "current", "params": {"city": ""}}]
-
         return None
 
     def _normalize(self, result):
@@ -1558,7 +1608,8 @@ class Router:
 
     def route(self, text):
         browser = self.skills["browser"]
-                # 0. ¿Hay pregunta pendiente del agente?
+
+        # 0. ¿Hay pregunta pendiente del agente?
         try:
             if self.agent.has_pending_question():
                 if self._is_cancel(text):
@@ -1600,8 +1651,7 @@ class Router:
         ]):
             return None, True
 
-        # 3. Pre-clasificador rapido (regex)
-                # 3. Multi-objetivo explicito -> AGENTE PRIMERO (antes que quick_match)
+        # 3. Multi-objetivo explicito -> AGENTE PRIMERO (antes que quick_match)
         if self._is_multi_objetivo(text):
             try:
                 agent_result = self.agent.run(text, self.skills)
@@ -1612,7 +1662,6 @@ class Router:
                 pass
 
         # 4. Pre-clasificador rapido (regex)
-                # 4. Pre-clasificador rapido (regex)
         try:
             quick = self._quick_match(text)
         except Exception as e:
@@ -1620,7 +1669,6 @@ class Router:
             quick = None
 
         if quick == "__N8N_BUILDER__":
-            # Workflow complejo: va al agente para que pregunte paso a paso
             try:
                 agent_result = self.agent.run(text, self.skills)
                 return agent_result, False
@@ -1640,7 +1688,7 @@ class Router:
             except Exception as e:
                 print(f"[ROUTER] Error en agente: {e}")
                 return {"voice": "El agente fallo.", "display": f"Error del agente: {e}", "thought": ""}, False
-        # 5. LLM clasificador normal
+        # 7. LLM clasificador normal
         else:
             try:
                 intent = self.classifier.classify(text)
@@ -1672,7 +1720,6 @@ class Router:
             if skill_name == "docs" and action == "ask":
                 params = {"query": text}
 
-            # Ejecucion con timeout + try/except
             result = self._safe_run(skill, action, params)
             if result:
                 results.append(self._normalize(result))
@@ -1708,8 +1755,9 @@ class Router:
             print(f"[ROUTER] Error en {skill_name}.{action}: {e}")
             import traceback
             traceback.print_exc()
+            # FIX: sin , False — debe devolver solo un dict
             return {
                 "voice": f"Error en {skill_name}.",
                 "display": f"Error ejecutando {skill_name}.{action}: {e}",
                 "thought": "",
-            }, False
+            }

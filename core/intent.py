@@ -192,6 +192,11 @@ REGLAS DOCS (importante, revisar antes de dev):
 - WEATHER:
   - "que clima hace en Lima" -> weather.current (city = "Lima")
   - "como esta el clima en Cusco" -> weather.current (city = "Cusco")
+  - DESKTOP:
+  - "abre Chrome", "abre notepad", "abre la calculadora" -> desktop.open_app (app = "chrome"|"notepad"|...)
+  - "abre la carpeta descargas" -> desktop.open_folder (path = "descargas")
+  - "sube el volumen", "baja el volumen" -> desktop.volume_up / desktop.volume_down
+  - "silencia" -> desktop.mute
 
 
 
