@@ -37,3 +37,4 @@ test_*.py
 .env.n8n*
 .env.gmail*
 .env.canva*
+.onboarding_done
