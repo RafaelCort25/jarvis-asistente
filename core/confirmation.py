@@ -72,6 +72,17 @@ RISK_LEVELS = {
     ("gmail", "count_unread"): "low",
     ("gmail", "send"): "medium",
 
+
+        # Canva
+    ("canva", "authorize"): "low",
+    ("canva", "whoami"): "low",
+    ("canva", "list_designs"): "low",
+    ("canva", "get_design"): "low",
+    ("canva", "list_assets"): "low",
+    ("canva", "create_design"): "medium",
+    ("canva", "export_design"): "low",
+    ("canva", "upload_asset_from_url"): "medium",
+
     # Files
     ("files", "find_file"): "low",
     ("files", "list_folder"): "low",

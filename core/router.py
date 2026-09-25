@@ -37,6 +37,8 @@ from skills.education import EducationSkill
 from skills.macro import MacroSkill
 from skills.n8n import N8nSkill
 from skills.gmail import GmailSkill
+from skills.canva import CanvaSkill
+
 
 NUM_MAP = {
     "1": 1, "uno": 1, "primero": 1, "primer": 1, "la primera": 1, "el primero": 1,
@@ -80,6 +82,7 @@ class Router:
             "macro": MacroSkill(),
             "n8n": N8nSkill(),
             "gmail": GmailSkill(),
+            "canva": CanvaSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -409,6 +412,71 @@ class Router:
         m = re.search(r'\b(?:lee|abre|muestra)\s+(?:el\s+)?correo\s+(\d+)\b', t)
         if m:
             return [{"skill": "gmail", "action": "read", "params": {"uid": m.group(1)}}]
+
+                # ═══════════════════════════════════════════════════════════════════
+        # CANVA: disenos
+        # ═══════════════════════════════════════════════════════════════════
+
+        # Listar disenos
+        if any(p in t for p in [
+            "que disenos tengo", "mis disenos", "disenos en canva",
+            "lista mis disenos", "muestra mis disenos", "lista disenos",
+        ]):
+            return [{"skill": "canva", "action": "list_designs", "params": {"limit": 10}}]
+
+        # Ver detalle de un diseno
+        m = re.search(
+            r'\b(?:muestra|detalle|detalles|info|ver)\s+(?:el\s+|del\s+)?diseno\s+(\S+)',
+            text, re.IGNORECASE,
+        )
+        if m:
+            did = m.group(1).strip(" .,!?¡¿")
+            if did:
+                return [{"skill": "canva", "action": "get_design", "params": {"id": did}}]
+
+        # Crear diseno
+                # Crear diseno
+        m = re.search(
+            r'\b(?:crea|crear|hazme|haz|genera|generar)\s+(?:un\s+|una\s+)?'
+            r'(?:post\s+de\s+|publicacion\s+de\s+)?'
+            r'(instagram|facebook|twitter|youtube|thumbnail|presentacion|documento|doc|poster|flyer|post)\s+'
+            r'(?:para\s+|de\s+|sobre\s+)?(.+)$',
+            t, re.IGNORECASE,
+        )
+        if m:
+            tipo = m.group(1).strip()
+            desc = m.group(2).strip(" .,!?¡¿")
+            if desc:
+                return [{
+                    "skill": "canva",
+                    "action": "create_design",
+                    "params": {"design_type": tipo, "title": desc[:50]},
+                }]
+
+        # Exportar diseno
+                # Exportar diseno
+        m = re.search(
+            r'\b(?:exporta|exportar)\s+(?:el\s+)?diseno\s+(\S+?)(?:\s+(?:a|en|como)\s+(png|jpg|jpeg|pdf|pptx|gif|mp4))?$',
+            text, re.IGNORECASE,
+        )
+        if m:
+            did = m.group(1).strip(" .,!?¡¿")
+            fmt = (m.group(2) or "png").lower()
+            if fmt == "jpeg":
+                fmt = "jpg"
+            if did:
+                return [{
+                    "skill": "canva",
+                    "action": "export_design",
+                    "params": {"id": did, "format": fmt},
+                }]
+
+        # Autorizar
+        if any(p in t for p in [
+            "conecta canva", "conectar canva", "autoriza canva", "autorizar canva",
+            "login canva", "inicia canva",
+        ]):
+            return [{"skill": "canva", "action": "authorize", "params": {}}]
 
 
             

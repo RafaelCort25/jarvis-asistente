@@ -87,6 +87,18 @@ SKILLS DISPONIBLES:
 45. gmail.search(query) - busca correos por asunto o remitente
 46. gmail.send(to, subject, body) - envia un correo
 47. gmail.count_unread() - cuantos correos sin leer
+=== CANVA (diseno grafico) ===
+48. canva.list_designs(limit) - lista disenos existentes
+49. canva.get_design(id) - detalle de un diseno
+50. canva.create_design(design_type, title) - crea un diseno nuevo
+    design_type SOLO puede ser: "doc"|"email"|"presentation"|"whiteboard"
+    IMPORTANTE: Canva NO permite crear "post de instagram" ni "poster" en blanco via API.
+    Si el usuario pide un post de instagram, crea un "doc" y avisale que cambie el tipo en Canva.
+51. canva.export_design(id, format) - exporta un diseno
+    format: "png"|"jpg"|"pdf"|"pptx"|"mp4"
+52. canva.list_assets() - lista tus imagenes subidas
+53. canva.upload_asset_from_url(url, name) - sube una imagen desde URL
+54. canva.authorize() - conecta tu cuenta (solo la primera vez)
 
 
 REGLAS:
@@ -183,6 +195,11 @@ Esas acciones pertenecen SOLO a la skill n8n.
 Si el usuario menciona correos, emails, gmail, "lee mis correos", "envia un correo",
 "cuantos correos tengo":
    -> USA SOLO las skills gmail.* (nunca browser.*, nunca dev.*)
+Si el usuario menciona canva, disenos, "crea un post", "crea una presentacion",
+"exporta el diseno X":
+   -> USA SOLO las skills canva.* (nunca browser.*, nunca image.*)
+   -> Para crear disenos nuevos usa canva.create_design, no image.generate
+   
 
 
 VERIFICACION OBLIGATORIA ANTES DE "final_answer":

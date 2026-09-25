@@ -174,6 +174,26 @@ SKILLS_VALIDAS = {
             "count_unread": {},
         },
 
+    "canva": {
+            "authorize": {},
+            "whoami": {},
+            "list_designs": {"limit": {"type": "integer", "minimum": 1, "maximum": 100}},
+            "get_design": {"id": {"type": "string"}},
+            "create_design": {
+                "design_type": {"type": "string"},
+                "title": {"type": "string"},
+            },
+            "export_design": {
+                "id": {"type": "string"},
+                "format": {"type": "string"},
+            },
+            "list_assets": {},
+            "upload_asset_from_url": {
+                "url": {"type": "string"},
+                "name": {"type": "string"},
+            },
+        },
+
     "vision": {
         "describe_screen": {},
         "explain_screen_code": {},

@@ -140,6 +140,14 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "envia un correo a X@Y.com diciendo Z" -> gmail.send (to = X@Y.com, subject = "", body = Z)
   - "lee el correo 30635" -> gmail.read (uid = "30635")
   - NUNCA uses browser.* ni dev.* para leer correos
+  - CANVA:
+  - "que disenos tengo en canva", "lista mis disenos" -> canva.list_designs (limit = 10)
+  - "crea un post de instagram sobre X" -> canva.create_design (design_type = "instagram", title = "X")
+  - "crea una presentacion sobre X" -> canva.create_design (design_type = "presentacion", title = "X")
+  - "exporta el diseno X a pdf" -> canva.export_design (id = "X", format = "pdf")
+  - "muestra el diseno X" -> canva.get_design (id = "X")
+  - "conecta canva" -> canva.authorize
+  - NUNCA uses browser.* para abrir canva, usa la skill canva.*
 
 
 
