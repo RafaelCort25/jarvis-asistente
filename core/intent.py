@@ -168,6 +168,10 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "renderiza este archivo X.step" -> blender.render_step (step_path = X.step)
   - "muestrame el modelo en 3d" -> blender.render_step
   - NUNCA uses browser.* ni dev.* para renderizar
+  - DWG (cuadro de superficies):
+  - "cuadro de superficies del plano X" -> dwg.cuadro_superficies_excel (path = ruta del DXF)
+  - "lista los ambientes del plano" -> dwg.extract_rooms_with_areas (path = ruta)
+  - "que ambientes hay en el plano X" -> dwg.extract_rooms_with_areas
   - ENTERTAINMENT:
   - "pausa la pelicula", "play", "continua la pelicula" -> entertainment.play_pause
   - "siguiente cancion" -> entertainment.next_track

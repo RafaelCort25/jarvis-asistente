@@ -77,6 +77,10 @@ SKILLS DISPONIBLES:
     - NUNCA uses terminal.* para ejecutar codigo Python generado por el usuario
     - Para codigo nuevo usa dev.create_and_test
 41. terminal.suggest(description) - sugiere un comando sin ejecutarlo
+42. dwg.cuadro_superficies_excel(path, output, titulo) - genera Excel con cuadro de superficies
+    - Lee un DXF, extrae los ambientes cerrados y sus areas, y crea un xlsx
+    - path: ruta del DXF en sandbox/dwg/
+43. dwg.extract_rooms_with_areas(path) - lista ambientes con areas (sin generar Excel)
 === N8N (automatizacion de workflows) ===
 33. n8n.list_workflows() - lista tus workflows locales
 34. n8n.get_workflow(id_or_name) - detalle de un workflow

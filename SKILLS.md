@@ -492,6 +492,39 @@ Automatización de workflows con n8n.
 ---
 
 ## Integraciones Externas
+### `dwg` 📐
+Lectura, análisis y generación de planos DWG/DXF.
+
+| Acción | Riesgo | Parámetros | Descripción |
+|---|---|---|---|
+| `convert_to_dxf` | 🟡 | `path` | DWG → DXF |
+| `convert_to_dwg` | 🟡 | `path` | DXF → DWG |
+| `analyze` | 🟢 | `path` | Estadísticas del plano |
+| `list_layers` | 🟢 | `path` | Capas |
+| `list_texts` | 🟢 | `path` | Textos limpios |
+| `list_blocks` | 🟢 | `path` | Bloques |
+| `list_rooms` | 🟢 | `path` | Ambientes (por textos) |
+| `info` | 🟢 | `path` | Dimensiones |
+| `extract_layer` | 🟢 | `path`, `layer_name` | Extrae capa a DXF limpio |
+| `annotate` | 🟡 | `path`, `output`, `offset` | Acotado automático |
+| `extract_walls_3d` | 🟡 | `path`, `height` | Muros a STEP |
+| `extract_all_layers_3d` | 🟡 | `path`, `output` | Todas las capas a STEP |
+| `add_hatch` | 🟡 | `path`, `output` | Relleno rayado de muros (ANSI31) |
+| `extract_rooms_with_areas` | 🟢 | `path` | Lista ambientes con sus áreas en m² |
+| `cuadro_superficies_excel` | 🟡 | `path`, `output`, `titulo` | Genera Excel con cuadro de superficies |
+
+**Requiere:** ODA File Converter + shapely + openpyxl.
+
+**Límite conocido:** la extracción automática de ambientes funciona con planos bien dibujados (muros cerrados). Planos con gaps de puertas grandes requieren detección manual.
+
+**Ejemplos:**
+- "Analiza mi_plano.dwg" → `dwg.analyze`
+- "Lista los ambientes del plano" → `dwg.extract_rooms_with_areas`
+- "Cuadro de superficies del plano test_plan_fixture" → `dwg.cuadro_superficies_excel`
+- "Acota el plano" → `dwg.annotate`
+- "Convierte los muros a 3D" → `dwg.extract_walls_3d`
+
+---
 
 ### `canva` 🎨
 Diseño gráfico con Canva.
@@ -603,6 +636,8 @@ Lectura y análisis de planos DWG/DXF.
 | `extract_walls_3d` | 🟡 | `path`, `height` | Muros a STEP |
 | `extract_all_layers_3d` | 🟡 | `path`, `output` | Todas las capas a STEP |
 | `add_hatch` | 🟡 | `path`, `output` | Relleno rayado de muros (ANSI31) |
+| `extract_rooms_with_areas` | 🟢 | `path` | Lista ambientes con sus áreas en m² |
+| `cuadro_superficies_excel` | 🟡 | `path`, `output`, `titulo` | Genera Excel con cuadro de superficies |
 
 **Requiere:** ODA File Converter instalado.
 
@@ -657,6 +692,9 @@ Checklist para que una skill quede 100% integrada:
 
 ---
 
-**Total:** 30 skills · 4 combos · n8n 100% · Gmail 100% · Canva 100% · Maps 100% · FreeCAD 100% · Blender 100% · DWG 100%.
+**Total:** 31 skills · 4 combos · n8n 100% · Gmail 100% · Canva 100% · Maps 100% · FreeCAD 100% · Blender 100% · DWG 100%.
+
+Estado: **Bloque 1 (auditoría) CERRADO** · **CAD-1 CERRADO** · **CAD-2 CERRADO**.
+Próximo: CAD-3 (IFC export + puertas/ventanas reales).
 
 Estado: **Bloque 1 (auditoría) CERRADO.** Próximo: Bloque 2 (portabilidad + onboarding + .exe).

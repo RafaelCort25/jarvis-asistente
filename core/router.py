@@ -48,6 +48,7 @@ from skills.canva import CanvaSkill
 from skills.freecad import FreeCadSkill
 from skills.maps import MapsSkill
 from skills.blender import BlenderSkill
+from skills.dwg import DwgSkill
 
 
 # Timeout maximo por skill (segundos)
@@ -103,6 +104,8 @@ class Router:
             "freecad": FreeCadSkill(),
             "maps": MapsSkill(),
             "blender": BlenderSkill(),
+            "dwg": DwgSkill(),
+            
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -500,6 +503,48 @@ class Router:
         ]):
             return [{"skill": "canva", "action": "authorize", "params": {}}]
 
+                # ═══════════════════════════════════════════════════════════════════
+        # DWG: cuadro de superficies y analisis de planos
+        # ═══════════════════════════════════════════════════════════════════
+
+        # Extraer ambientes con areas
+        if any(p in t for p in [
+            "ambientes del plano", "lista los ambientes", "que ambientes hay",
+            "extrae los ambientes",
+        ]):
+            from core.paths import SANDBOX_DWG as sandbox_dwg
+            # Extraer path si existe
+            m_path = re.search(r'([A-Za-z]:\\[^\s]+\.(?:dxf|dwg)|[^\s]+\.(?:dxf|dwg))', t)
+            if m_path:
+                path = m_path.group(1)
+            else:
+                # Usar el DXF mas reciente (excluyendo el fixture)
+                candidatos = sorted(
+                    sandbox_dwg.glob("*.dxf"),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                )
+                path = str(candidatos[0]) if candidatos else ""
+            return [{"skill": "dwg", "action": "extract_rooms_with_areas",
+                     "params": {"path": path}}]
+
+        m = re.search(
+            r'\b(?:cuadro\s+de\s+superficies|tabla\s+de\s+areas|tabla\s+de\s+superficies|resumen\s+de\s+areas)\s+(?:de|del|para)\s+(?:el\s+|la\s+)?(?:plano\s+|archivo\s+|dxf\s+)?(.+)$',
+            t, re.IGNORECASE,
+        )
+        if m:
+            archivo = m.group(1).strip(" .,!?¡¿")
+            # Quitar extensiones previas
+            archivo = re.sub(r'\.(dxf|dwg)$', '', archivo, flags=re.IGNORECASE)
+            # Buscar en sandbox/dwg
+            from core.paths import SANDBOX_DWG as sandbox_dwg
+            candidatos = list(sandbox_dwg.glob(f"*{archivo}*.dxf")) + list(sandbox_dwg.glob(f"*{archivo}*.dwg"))
+            if candidatos:
+                path = str(sorted(candidatos, key=lambda p: p.stat().st_mtime, reverse=True)[0])
+            else:
+                path = archivo + ".dxf"
+            return [{"skill": "dwg", "action": "cuadro_superficies_excel",
+                     "params": {"path": path, "output": "", "titulo": "Cuadro de Superficies"}}]
         # ═══════════════════════════════════════════════════════════════════
         # FREECAD: geometria y planos
         # ═══════════════════════════════════════════════════════════════════

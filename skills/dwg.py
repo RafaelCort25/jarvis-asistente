@@ -131,6 +131,12 @@ class DwgSkill(Skill):
     description = "Lee, convierte y analiza planos DWG/DXF"
 
     def run(self, action, params):
+        if action == "cuadro_superficies_excel":
+            return self.cuadro_superficies_excel(
+                    params.get("path", ""),
+                    params.get("output", ""),
+                    params.get("titulo", "Cuadro de Superficies"),
+                )
         if action == "extract_rooms_with_areas":
             return self.extract_rooms_with_areas(params.get("path", ""))
         if action == "add_hatch":
@@ -858,9 +864,29 @@ class DwgSkill(Skill):
             }
 
         # 2. Unir lineas que se tocan (tolerancia ~1cm) y polygonizar
+                # 2. Unir lineas + aplicar buffer para cerrar gaps (puertas/ventanas)
         try:
-            merged = unary_union(lineas)
-            poligonos = list(polygonize(merged))
+            # Buffer trick: pequeno buffer cierra gaps de hasta 2x el valor
+            lineas_buf = [l.buffer(0.3) for l in lineas]
+            merged = unary_union(lineas_buf)
+            # polygonize trabaja con lineas; extraemos los anillos del resultado
+            poligonos = []
+            if hasattr(merged, "geoms"):
+                for g in merged.geoms:
+                    if g.geom_type == "Polygon":
+                        # Reducir el buffer para recuperar el area real
+                        p_real = g.buffer(-0.3)
+                        if p_real.geom_type == "Polygon" and p_real.area > 0.5:
+                            poligonos.append(p_real)
+                    elif g.geom_type == "MultiPolygon":
+                        for sub in g.geoms:
+                            p_real = sub.buffer(-0.3)
+                            if p_real.geom_type == "Polygon" and p_real.area > 0.5:
+                                poligonos.append(p_real)
+            # Fallback al metodo clasico si el buffer no devolvio nada
+            if not poligonos:
+                merged2 = unary_union(lineas)
+                poligonos = list(polygonize(merged2))
         except Exception as e:
             return {
                 "thought": "Error polygonizando",
@@ -907,20 +933,62 @@ class DwgSkill(Skill):
             }
 
         # 4. Emparejar cada texto con su poligono contenedor
+                # 3b. Deduplicar textos (mismo texto + posicion redondeada = duplicado)
+        textos_unicos = {}
+        for t in textos:
+            clave = (t["texto"], round(t["x"], 1), round(t["y"], 1))
+            if clave not in textos_unicos:
+                textos_unicos[clave] = t
+        textos = list(textos_unicos.values())
+
+        # 3c. Filtrar poligonos muy pequenos (ruido de esquinas)
+        poligonos_filtrados = [p for p in poligonos if p.area > 0.2]
+        if poligonos_filtrados:
+            poligonos = poligonos_filtrados
+
+        # 4. Emparejar cada texto con su poligono contenedor (con fallback de buffer)
         ambientes = []
+        no_match = []
         for t in textos:
             punto = Point(t["x"], t["y"])
+            encontrado = False
+            # Intento 1: el punto esta dentro del poligono
             for poly in poligonos:
                 if poly.contains(punto):
-                    area = poly.area
-                    # Asumimos que DXF esta en metros; si fuera mm, dividir por 1e6
                     ambientes.append({
                         "texto": t["texto"],
                         "x": round(t["x"], 2),
                         "y": round(t["y"], 2),
-                        "area_m2": round(area, 2),
+                        "area_m2": round(poly.area, 2),
                     })
+                    encontrado = True
                     break
+            # Intento 2: buffer de 0.5m (por si el texto esta pegado al muro)
+            if not encontrado:
+                for poly in poligonos:
+                    if poly.buffer(2.0).contains(punto):
+                        ambientes.append({
+                            "texto": t["texto"],
+                            "x": round(t["x"], 2),
+                            "y": round(t["y"], 2),
+                            "area_m2": round(poly.area, 2),
+                        })
+                        encontrado = True
+                        break
+            if not encontrado:
+                no_match.append(t["texto"])
+
+        # 4b. Deduplicar ambientes (mismo texto + misma area = duplicado)
+        ambientes_unicos = {}
+        for a in ambientes:
+            clave = (a["texto"], round(a["area_m2"], 1))
+            if clave not in ambientes_unicos:
+                ambientes_unicos[clave] = a
+            else:
+                # Si viene duplicado, mantener el de menor area (suele ser el correcto)
+                if a["area_m2"] < ambientes_unicos[clave]["area_m2"]:
+                    ambientes_unicos[clave] = a
+        ambientes = list(ambientes_unicos.values())
 
         if not ambientes:
             return {
@@ -947,10 +1015,12 @@ class DwgSkill(Skill):
         # Total
         total = round(sum(a["area_m2"] for a in ambientes), 2)
 
-        # Construir display
+                # Construir display
         lineas_display = [
             f"Ambientes detectados: {len(ambientes)}",
             f"Poligonos cerrados: {len(poligonos)}",
+            f"Textos totales: {len(textos)}",
+            f"Textos sin match: {len(no_match)}",
             f"Total area: {total} m2",
             f"Escala: {escala}",
             "",
@@ -958,9 +1028,139 @@ class DwgSkill(Skill):
         ]
         for a in ambientes:
             lineas_display.append(f"  {a['area_m2']:>8.2f} m2   {a['texto']}")
+        if no_match:
+            lineas_display.append("")
+            lineas_display.append(f"Textos sin ambiente (primeros 10):")
+            for t in no_match[:10]:
+                lineas_display.append(f"  - {t}")
 
         return {
             "thought": f"{len(ambientes)} ambientes, {total} m2",
             "display": "\n".join(lineas_display),
             "voice": f"Detecte {len(ambientes)} ambientes con un total de {total} metros cuadrados.",
+        }
+    def cuadro_superficies_excel(self, path, output="", titulo="Cuadro de Superficies"):
+        """Lee un DXF, extrae ambientes y genera un Excel con el cuadro de superficies."""
+        if not path:
+            return {"thought": "", "display": "Falta la ruta.", "voice": "Falta la ruta."}
+
+        # 1. Extraer ambientes
+        resultado = self.extract_rooms_with_areas(path)
+        if "Ambientes detectados: 0" in resultado.get("display", ""):
+            return {
+                "thought": "Sin ambientes",
+                "display": "No se detectaron ambientes en el plano.",
+                "voice": "Sin ambientes.",
+            }
+
+        # Parsear la salida del display
+        ambientes = []
+        for linea in resultado["display"].splitlines():
+            parts = linea.strip().split(maxsplit=2)
+            if len(parts) == 3 and parts[1] == "m2":
+                try:
+                    area = float(parts[0])
+                    nombre = parts[2]
+                    ambientes.append({"nombre": nombre, "area_m2": area})
+                except ValueError:
+                    continue
+
+        if not ambientes:
+            return {
+                "thought": "Sin ambientes parseables",
+                "display": "No pude parsear los ambientes del resultado.",
+                "voice": "Error.",
+            }
+
+        # 2. Generar Excel
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+        except ImportError:
+            return {
+                "thought": "Falta openpyxl",
+                "display": "openpyxl no instalado. Ejecuta: pip install openpyxl",
+                "voice": "Falta dependencia.",
+            }
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Cuadro de Superficies"
+
+        # Estilos
+        header_font = Font(bold=True, size=12, color="FFFFFF")
+        header_fill = PatternFill(start_color="2F4F7F", end_color="2F4F7F", fill_type="solid")
+        border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin"),
+        )
+        center = Alignment(horizontal="center", vertical="center")
+
+        # Título
+        ws.merge_cells("A1:C1")
+        ws["A1"] = titulo
+        ws["A1"].font = Font(bold=True, size=14)
+        ws["A1"].alignment = center
+
+        # Headers
+        headers = ["Ambiente", "Área (m²)", "% del total"]
+        for col, h in enumerate(headers, start=1):
+            cell = ws.cell(row=3, column=col, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = center
+            cell.border = border
+
+        # Total
+        total = sum(a["area_m2"] for a in ambientes)
+
+        # Filas
+        for i, a in enumerate(ambientes, start=4):
+            pct = (a["area_m2"] / total * 100) if total > 0 else 0
+            ws.cell(row=i, column=1, value=a["nombre"]).border = border
+            ws.cell(row=i, column=2, value=round(a["area_m2"], 2)).border = border
+            ws.cell(row=i, column=3, value=round(pct, 1)).border = border
+            ws.cell(row=i, column=2).number_format = "0.00"
+            ws.cell(row=i, column=3).number_format = "0.0\"%\""
+
+        # Fila total
+        fila_total = 4 + len(ambientes)
+        ws.cell(row=fila_total, column=1, value="TOTAL").font = Font(bold=True)
+        ws.cell(row=fila_total, column=2, value=round(total, 2)).font = Font(bold=True)
+        ws.cell(row=fila_total, column=2).number_format = "0.00"
+        ws.cell(row=fila_total, column=3, value=100).font = Font(bold=True)
+        for col in range(1, 4):
+            ws.cell(row=fila_total, column=col).border = border
+            ws.cell(row=fila_total, column=col).fill = PatternFill(
+                start_color="E0E0E0", end_color="E0E0E0", fill_type="solid"
+            )
+
+        # Ancho de columnas
+        ws.column_dimensions["A"].width = 28
+        ws.column_dimensions["B"].width = 14
+        ws.column_dimensions["C"].width = 14
+
+        # 3. Guardar
+        if not output:
+            output = str(SANDBOX / f"cuadro_superficies_{uuid.uuid4().hex[:6]}.xlsx")
+        try:
+            wb.save(output)
+        except Exception as e:
+            return {
+                "thought": "Error guardando",
+                "display": f"Error guardando Excel: {e}",
+                "voice": "Error.",
+            }
+
+        return {
+            "thought": f"Cuadro con {len(ambientes)} ambientes",
+            "display": (
+                f"Cuadro de superficies generado.\n"
+                f" Archivo: {output}\n"
+                f" Ambientes: {len(ambientes)}\n"
+                f" Total: {total:.2f} m²"
+            ),
+            "voice": f"Cuadro de superficies con {len(ambientes)} ambientes, {total:.0f} metros cuadrados.",
         }
