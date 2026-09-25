@@ -238,6 +238,28 @@ SKILLS_VALIDAS = {
             "clear_workspace": {},
         },
 
+    "maps": {
+            "search": {"query": {"type": "string"}},
+            "get_building": {"query": {"type": "string"}},
+            "create_model": {
+                "query": {"type": "string"},
+                "output": {"type": "string"},
+                "formato": {"type": "string"},
+                "altura": {"type": "number"},
+            },
+        },
+
+    "blender": {
+            "render_step": {
+                "step_path": {"type": "string"},
+                "output": {"type": "string"},
+                "res_x": {"type": "integer"},
+                "res_y": {"type": "integer"},
+                "engine": {"type": "string"},
+                "cam_angulo": {"type": "number"},
+            },
+        },
+
     "vision": {
         "describe_screen": {},
         "explain_screen_code": {},

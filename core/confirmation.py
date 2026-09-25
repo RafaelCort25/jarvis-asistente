@@ -71,7 +71,7 @@ RISK_LEVELS = {
     ("gmail", "search"): "low",
     ("gmail", "count_unread"): "low",
     ("gmail", "send"): "medium",
-
+        
 
         # Canva
     ("canva", "authorize"): "low",
@@ -82,6 +82,24 @@ RISK_LEVELS = {
     ("canva", "create_design"): "medium",
     ("canva", "export_design"): "low",
     ("canva", "upload_asset_from_url"): "medium",
+        # FreeCAD
+    ("freecad", "new_document"): "medium",
+    ("freecad", "add_rectangle"): "low",
+    ("freecad", "add_line"): "low",
+    ("freecad", "add_circle"): "low",
+    ("freecad", "add_text"): "low",
+    ("freecad", "add_wall"): "low",
+    ("freecad", "list_objects"): "low",
+    ("freecad", "export_dxf"): "medium",
+    ("freecad", "export_pdf"): "medium",
+    ("freecad", "save_as"): "medium",
+    ("freecad", "clear_workspace"): "high",
+    # Maps / OpenStreetMap
+    ("maps", "search"): "low",
+    ("maps", "get_building"): "low",
+    ("maps", "create_model"): "medium",
+        # Blender
+    ("blender", "render_step"): "low",
 
     # Files
     ("files", "find_file"): "low",

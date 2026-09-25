@@ -39,6 +39,8 @@ from skills.n8n import N8nSkill
 from skills.gmail import GmailSkill
 from skills.canva import CanvaSkill
 from skills.freecad import FreeCadSkill
+from skills.maps import MapsSkill
+from skills.blender import BlenderSkill
 
 
 NUM_MAP = {
@@ -85,6 +87,8 @@ class Router:
             "gmail": GmailSkill(),
             "canva": CanvaSkill(),
             "freecad": FreeCadSkill(),
+            "maps": MapsSkill(),
+            "blender": BlenderSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -559,6 +563,71 @@ class Router:
                 "action": "export_pdf",
                 "params": {"path": ""},
             }]
+                # ═══════════════════════════════════════════════════════════════════
+        # MAPS: buscar edificios reales en OpenStreetMap
+        # ═══════════════════════════════════════════════════════════════════
+
+        # Info de un edificio
+        m = re.search(
+            r'\b(?:info|informacion|información|detalles|ficha)\s+de(?:l)?\s+(?:edificio\s+|lugar\s+)?(.+)$',
+            text, re.IGNORECASE,
+        )
+        if m:
+            q = m.group(1).strip(" .,!?¡¿")
+            if q:
+                return [{"skill": "maps", "action": "get_building", "params": {"query": q}}]
+
+        # Modelar un edificio real
+                # Modelar un edificio real
+        m = re.search(
+            r'\b(?:modela|modelar|hazme|haz|crea|genera|disena|diseña)\s+'
+            r'(?:(?:un\s+)?(?:modelo|proyecto|edificio|plano)\s+)?'
+            r'(?:3d\s+)?(?:de|del|como|basado\s+en)?\s*'
+            r'(?:el\s+|la\s+)?(.+)$',
+            text, re.IGNORECASE,
+        )
+        if m:
+            q = m.group(1).strip(" .,!?¡¿")
+            if q:
+                return [{"skill": "maps", "action": "create_model", "params": {"query": q, "output": "", "formato": "step", "altura": None}}]
+
+        # Buscar un edificio
+        m = re.search(
+            r'\b(?:busca|buscar|encuentra|donde esta|donde se encuentra)\s+(?:el\s+|la\s+)?(?:edificio\s+|lugar\s+)?(.+?)(?:\s+en\s+(?:el\s+)?mapa)?$',
+            text, re.IGNORECASE,
+        )
+        if m and "mapa" in t:
+            q = m.group(1).strip(" .,!?¡¿")
+            if q:
+                return [{"skill": "maps", "action": "search", "params": {"query": q}}]
+
+                    # ═══════════════════════════════════════════════════════════════════
+        # BLENDER: render 3D
+        # ═══════════════════════════════════════════════════════════════════
+
+        # Renderizar el ultimo STEP generado
+        if any(p in t for p in [
+            "renderiza el ultimo", "renderiza el último", "render del ultimo",
+            "renderiza este step", "renderiza este modelo", "muestrame en 3d",
+            "renderiza en blender", "haz un render",
+        ]):
+            from pathlib import Path
+            sandbox_fc = Path(r"C:\JARVIS\sandbox\freecad")
+            # Priorizar detallados, luego simples
+            detallados = sorted(sandbox_fc.glob("detallado_*.step"), key=lambda p: p.stat().st_mtime, reverse=True)
+            simples = sorted(sandbox_fc.glob("edificio_*.step"), key=lambda p: p.stat().st_mtime, reverse=True)
+            steps = detallados + simples
+            if steps:
+                return [{"skill": "blender", "action": "render_step", "params": {"step_path": str(steps[0]), "output": "", "cam_angulo": 45}}]
+
+        # Renderizar un STEP especifico
+        m = re.search(
+            r'\b(?:renderiza|renderizar|render)\s+(?:el\s+|este\s+|la\s+)?(?:step|archivo|modelo)\s+(.+\.step)\b',
+            text, re.IGNORECASE,
+        )
+        if m:
+            step_path = m.group(1).strip(" .,!?¡¿")
+            return [{"skill": "blender", "action": "render_step", "params": {"step_path": step_path, "output": "", "cam_angulo": 45}}]
 
 
             

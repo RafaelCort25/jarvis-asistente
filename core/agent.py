@@ -111,6 +111,30 @@ SKILLS DISPONIBLES:
 63. freecad.export_pdf(path) - exporta a PDF
 64. freecad.save_as(path) - guarda como .FCStd
 65. freecad.clear_workspace() - borra el workspace
+=== MAPS (OpenStreetMap - edificios reales) ===
+66. maps.search(query) - busca un lugar por nombre (devuelve coords)
+67. maps.get_building(query) - info de un edificio real (altura, niveles, huella)
+68. maps.create_model(query, output, formato, altura) - genera modelo 3D de un edificio real
+    - "Sheraton Lima", "Catedral de Lima", etc.
+    - formato: "step" (3D, para AutoCAD/Fusion) o "dxf" (2D)
+    - altura: opcional, si quieres forzar la altura en metros
+
+REGLAS MAPS:
+- Para "hazme un modelo 3D de X edificio" -> maps.create_model
+- Para "info del X" o "cuanto mide X" -> maps.get_building
+- Para "busca X en el mapa" -> maps.search
+- NUNCA uses browser.* ni dev.* para buscar o modelar edificios
+=== BLENDER (renderizado 3D) ===
+69. blender.render_step(step_path, output, res_x, res_y, engine, cam_angulo)
+    - Renderiza un archivo STEP a PNG de alta calidad
+    - Si no das step_path, usa el ultimo .step generado en sandbox/freecad
+    - cam_angulo: 0=frontal, 45=isometrico (default), 90=planta
+    - engine: "BLENDER_EEVEE_NEXT" (rapido) o "CYCLES" (calidad)
+
+REGLAS BLENDER:
+- Para "renderiza el ultimo" o "muestrame en 3d" -> blender.render_step sin step_path
+- Para "renderiza X.step" -> blender.render_step con step_path
+- NUNCA uses browser.* ni dev.* para renders, usa blender.*
 
 IMPORTANTE FREECAD:
 - Cada accion tarda 2-4s porque abre freecadcmd como subproceso. NO encadenes muchas

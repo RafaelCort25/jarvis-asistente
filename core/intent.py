@@ -157,6 +157,17 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "exporta el plano a dxf" -> freecad.export_dxf
   - "exporta el plano a pdf" -> freecad.export_pdf
   - NUNCA uses dev.* ni terminal.* para CAD, usa freecad.*
+  - MAPS (OpenStreetMap):
+  - "info del Sheraton Lima" -> maps.get_building (query = "Sheraton Lima")
+  - "modela el Sheraton Lima" -> maps.create_model (query = "Sheraton Lima", formato = "step")
+  - "hazme un modelo 3D de la Catedral de Lima" -> maps.create_model (query = "Catedral de Lima", formato = "step")
+  - "busca el Hotel X en el mapa" -> maps.search (query = "Hotel X")
+  - NUNCA uses browser.* ni dev.* para buscar edificios
+  - BLENDER:
+  - "renderiza el ultimo step" -> blender.render_step (step_path = el .step mas reciente en sandbox/freecad)
+  - "renderiza este archivo X.step" -> blender.render_step (step_path = X.step)
+  - "muestrame el modelo en 3d" -> blender.render_step
+  - NUNCA uses browser.* ni dev.* para renderizar
 
 
 
