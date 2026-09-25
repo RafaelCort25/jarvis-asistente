@@ -39,3 +39,4 @@ test_*.py
 .env.canva*
 .onboarding_done
 .onboarding_done
+.onboarding_done
