@@ -16,13 +16,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SANDBOX = ROOT / "sandbox" / "dwg"
 SANDBOX.mkdir(parents=True, exist_ok=True)
 
-ODA_CMD = os.environ.get(
-    "ODA_CMD",
-    r"C:\Program Files\ODA\ODAFileConverter 27.1.0\ODAFileConverter.exe"
-)
-FREECAD_CMD = os.environ.get(
-    "FREECAD_CMD", r"C:\Program Files\FreeCAD 1.1\bin\freecadcmd.exe"
-)
+from core.paths import ODA_CMD, FREECAD_CMD
+# FREECAD_CMD viene de core.paths (import de arriba)
 TIMEOUT_ODA = 120
 
 

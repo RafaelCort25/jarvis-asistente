@@ -6,9 +6,11 @@ from skills.base import Skill
 
 HOME = Path.home()
 
+from core.paths import BRAVE_CMD, CHROME_CMD
+
 APPS = {
-    "brave": r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
-    "chrome": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    "brave": BRAVE_CMD,
+    "chrome": CHROME_CMD,
     "notepad": "notepad.exe",
     "calculadora": "calc.exe",
     "explorador": "explorer.exe",

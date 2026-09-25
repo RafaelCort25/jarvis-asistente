@@ -583,13 +583,14 @@ class Router:
         # BLENDER: prioridad si pide "render" (antes que Maps)
         # ═══════════════════════════════════════════════════════════════════
         if any(p in t for p in ["haz un render", "hazme un render", "render del", "render de el", "render de la"]):
-            from pathlib import Path
-            sandbox_fc = Path(r"C:\JARVIS\sandbox\freecad")
+            from core.paths import SANDBOX_FREECAD as sandbox_fc
             detallados = sorted(sandbox_fc.glob("detallado_*.step"), key=lambda p: p.stat().st_mtime, reverse=True)
             simples = sorted(sandbox_fc.glob("edificio_*.step"), key=lambda p: p.stat().st_mtime, reverse=True)
             steps = detallados + simples
             if steps:
                 return [{"skill": "blender", "action": "render_step", "params": {"step_path": str(steps[0]), "output": "", "cam_angulo": 45}}]
+            # Sin STEPs: igual va a blender (que dara error claro)
+            return [{"skill": "blender", "action": "render_step", "params": {"step_path": "", "output": "", "cam_angulo": 45}}]
 
         # ═══════════════════════════════════════════════════════════════════
         # SCHEDULER: tareas programadas
@@ -702,8 +703,7 @@ class Router:
             "ver en 3d", "visualiza el 3d", "visualizar el modelo",
             "renderiza en blender",
         ]):
-            from pathlib import Path
-            sandbox_fc = Path(r"C:\JARVIS\sandbox\freecad")
+            from core.paths import SANDBOX_FREECAD as sandbox_fc
             detallados = sorted(sandbox_fc.glob("detallado_*.step"), key=lambda p: p.stat().st_mtime, reverse=True)
             simples = sorted(sandbox_fc.glob("edificio_*.step"), key=lambda p: p.stat().st_mtime, reverse=True)
             steps = detallados + simples

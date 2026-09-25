@@ -12,10 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SANDBOX = ROOT / "sandbox" / "blender"
 SANDBOX.mkdir(parents=True, exist_ok=True)
 
-BLENDER_CMD = os.environ.get(
-    "BLENDER_CMD",
-    r"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe"
-)
+from core.paths import BLENDER_CMD
 
 
 def _run_blender(script_code):

@@ -28,9 +28,7 @@ OVERPASS_SERVERS = [
 ]
 USER_AGENT = "Nitro-JARVIS/1.0 (personal assistant)"
 
-FREECAD_CMD = os.environ.get(
-    "FREECAD_CMD", r"C:\Program Files\FreeCAD 1.1\bin\freecadcmd.exe"
-)
+from core.paths import FREECAD_CMD
 
 
 # ─── HELPERS GEO ──────────────────────────────────────────────────────────

@@ -15,9 +15,8 @@ SANDBOX = ROOT / "sandbox" / "freecad"
 SANDBOX.mkdir(parents=True, exist_ok=True)
 WORKSPACE = SANDBOX / "workspace.FCStd"
 
-# Ruta a freecadcmd.exe (puede sobreescribirse con la variable de entorno FREECAD_CMD)
-DEFAULT_FREECAD_CMD = r"C:\Program Files\FreeCAD 1.1\bin\freecadcmd.exe"
-FREECAD_CMD = os.environ.get("FREECAD_CMD", DEFAULT_FREECAD_CMD)
+# Ruta a freecadcmd.exe: deteccion automatica desde core.paths
+from core.paths import FREECAD_CMD
 TIMEOUT = 120
 
 

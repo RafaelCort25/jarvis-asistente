@@ -127,7 +127,7 @@ class DevSkill(Skill):
         return text.replace("```", "").strip()
 
     def _es_dentro_del_proyecto(self, path):
-        """Devuelve True si el path esta dentro de C:\\JARVIS."""
+        """Devuelve True si el path esta dentro de la raiz del proyecto."""
         try:
             path.relative_to(ROOT)
             return True

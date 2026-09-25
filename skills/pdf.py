@@ -48,13 +48,9 @@ class PdfSkill(Skill):
         return max(docxs, key=lambda p: p.stat().st_mtime)
 
     def _find_soffice(self):
-        candidates = [
-            r"C:\Program Files\LibreOffice\program\soffice.exe",
-            r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
-        ]
-        for c in candidates:
-            if Path(c).exists():
-                return c
+        from core.paths import SOFFICE_CMD
+        if SOFFICE_CMD and Path(SOFFICE_CMD).exists():
+            return SOFFICE_CMD
         return shutil.which("soffice")
 
     # ─── CONVERT DOCX → PDF ──────────────────────────────────────────────

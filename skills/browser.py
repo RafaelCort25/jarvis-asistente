@@ -2,7 +2,7 @@ import subprocess
 from urllib.parse import quote_plus
 from skills.base import Skill
 
-BRAVE_PATH = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
+from core.paths import BRAVE_CMD as BRAVE_PATH
 
 
 class BrowserSkill(Skill):
