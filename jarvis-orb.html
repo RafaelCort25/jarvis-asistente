@@ -373,6 +373,243 @@
     margin-top: 12px;
     font-style: italic;
   }
+  /* ═══════════════════════════════════════════════════════════ */
+  /* PANELES: Modales de Sistema / Credenciales / Onboarding    */
+  /* ═══════════════════════════════════════════════════════════ */
+
+  .sys-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--panel); border: 1px solid var(--panel-border);
+    color: var(--text-dim); padding: 6px 12px; border-radius: 999px;
+    font-size: 0.72rem; letter-spacing: 0.04em;
+    cursor: pointer; pointer-events: auto;
+    transition: border-color .2s, color .2s;
+    backdrop-filter: blur(14px);
+  }
+  .sys-btn:hover { border-color: var(--gold); color: var(--gold-bright); }
+  .sys-btn .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem; padding: 1px 6px; border-radius: 999px;
+    background: rgba(201,166,104,0.15); color: var(--gold);
+  }
+  .sys-btn.warn .badge {
+    background: rgba(201,140,80,0.25); color: #e8b06a;
+    box-shadow: 0 0 10px rgba(201,140,80,0.4);
+  }
+  .sys-btn.ok .badge {
+    background: rgba(120,180,120,0.2); color: #a8d4a8;
+  }
+
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(10,9,8,0.85); backdrop-filter: blur(12px);
+    display: none; align-items: center; justify-content: center;
+    padding: 40px 20px;
+  }
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    width: min(720px, 95vw); max-height: 90vh; overflow-y: auto;
+    background: rgba(20,17,13,0.95);
+    border: 1px solid rgba(201,166,104,0.25);
+    border-radius: 16px; padding: 30px 34px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    animation: rise .3s ease both;
+  }
+  .modal::-webkit-scrollbar { width: 6px; }
+  .modal::-webkit-scrollbar-thumb {
+    background: rgba(201,166,104,0.3); border-radius: 3px;
+  }
+
+  .modal h2 {
+    font-family: 'Fraunces', serif; font-weight: 500;
+    font-size: 1.5rem; color: var(--gold-bright);
+    margin-bottom: 6px; letter-spacing: 0.01em;
+  }
+  .modal .subtitle {
+    font-size: 0.82rem; color: var(--text-dim);
+    margin-bottom: 24px;
+  }
+  .modal .close-x {
+    position: absolute; top: 18px; right: 22px;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(201,166,104,0.08); border: 1px solid var(--panel-border);
+    color: var(--text-dim); cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s ease;
+  }
+  .modal .close-x:hover { color: var(--gold); border-color: var(--gold); }
+  .modal-relative { position: relative; }
+
+  /* Sección de estado */
+  .status-section {
+    margin-bottom: 22px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(201,166,104,0.1);
+  }
+  .status-section:last-child {
+    border-bottom: none; margin-bottom: 0; padding-bottom: 0;
+  }
+  .status-section h3 {
+    font-family: 'Fraunces', serif; font-weight: 500;
+    font-size: 1rem; color: var(--gold-bright);
+    margin-bottom: 14px; letter-spacing: 0.01em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .status-section h3 .count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem; color: var(--text-dim);
+    font-weight: 400;
+  }
+
+  .status-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px; border-radius: 8px;
+    margin-bottom: 4px; font-size: 0.86rem;
+    transition: background .15s ease;
+  }
+  .status-item:hover { background: rgba(201,166,104,0.05); }
+  .status-item .icon {
+    width: 18px; text-align: center; flex: none; font-size: 1rem;
+  }
+  .status-item .icon.ok { color: var(--success); }
+  .status-item .icon.warn { color: #e8b06a; }
+  .status-item .icon.err { color: #d08a8a; }
+  .status-item .label { flex: 1; color: var(--text); }
+  .status-item .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem; color: var(--text-dim);
+    text-align: right; max-width: 45%; word-break: break-all;
+  }
+
+  .modal-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 18px; border-radius: 999px;
+    background: rgba(201,166,104,0.15);
+    border: 1px solid rgba(201,166,104,0.35);
+    color: var(--gold-bright); cursor: pointer;
+    font-size: 0.82rem; letter-spacing: 0.03em;
+    transition: background .2s, border-color .2s;
+    font-family: 'Inter', sans-serif;
+  }
+  .modal-btn:hover {
+    background: rgba(201,166,104,0.28);
+    border-color: var(--gold);
+  }
+  .modal-btn.primary {
+    background: rgba(201,166,104,0.28);
+    border-color: var(--gold);
+  }
+  .modal-btn.danger {
+    background: rgba(180,100,100,0.15);
+    border-color: rgba(180,100,100,0.35);
+    color: #e0a0a0;
+  }
+  .modal-btn.danger:hover {
+    background: rgba(180,100,100,0.28);
+    border-color: #c97a7a;
+  }
+  .modal-actions {
+    display: flex; gap: 10px; justify-content: flex-end;
+    margin-top: 24px; padding-top: 18px;
+    border-top: 1px solid rgba(201,166,104,0.1);
+  }
+
+  /* Form de credenciales */
+  .cred-item {
+    padding: 14px 16px; margin-bottom: 10px;
+    background: rgba(201,166,104,0.04);
+    border: 1px solid rgba(201,166,104,0.12);
+    border-radius: 10px;
+    transition: border-color .2s;
+  }
+  .cred-item:hover { border-color: rgba(201,166,104,0.28); }
+  .cred-item .cred-header {
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer;
+  }
+  .cred-item .cred-name {
+    flex: 1; font-size: 0.9rem; color: var(--text);
+    font-weight: 500;
+  }
+  .cred-item .cred-desc {
+    font-size: 0.76rem; color: var(--text-dim);
+    margin-top: 4px;
+  }
+  .cred-item .cred-status {
+    font-size: 0.72rem; letter-spacing: 0.04em;
+    padding: 3px 10px; border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .cred-item .cred-status.ok {
+    background: rgba(120,180,120,0.15); color: #a8d4a8;
+  }
+  .cred-item .cred-status.err {
+    background: rgba(180,100,100,0.15); color: #d0a0a0;
+  }
+  .cred-item.expanded {
+    border-color: rgba(201,166,104,0.4);
+    background: rgba(201,166,104,0.07);
+  }
+  .cred-fields {
+    display: none; margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed rgba(201,166,104,0.15);
+  }
+  .cred-item.expanded .cred-fields { display: block; }
+
+  .cred-field {
+    margin-bottom: 12px;
+  }
+  .cred-field label {
+    display: block; font-size: 0.78rem;
+    color: var(--text-dim); margin-bottom: 5px;
+    letter-spacing: 0.03em;
+  }
+  .cred-field input {
+    width: 100%; padding: 9px 12px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(201,166,104,0.2);
+    border-radius: 8px;
+    color: var(--text); font-family: 'JetBrains Mono', monospace;
+    font-size: 0.84rem;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .cred-field input:focus {
+    border-color: var(--gold);
+  }
+  .cred-field input::placeholder {
+    color: rgba(139,132,120,0.6);
+    font-family: 'Inter', sans-serif;
+  }
+  .cred-actions {
+    display: flex; gap: 10px; margin-top: 14px;
+    align-items: center;
+  }
+  .cred-actions .link {
+    margin-left: auto; font-size: 0.76rem;
+    color: var(--gold);
+    text-decoration: none;
+    opacity: 0.75;
+    transition: opacity .2s;
+  }
+  .cred-actions .link:hover { opacity: 1; }
+
+  .cred-result {
+    font-size: 0.8rem; margin-top: 10px;
+    padding: 8px 12px; border-radius: 6px;
+    display: none;
+  }
+  .cred-result.ok {
+    background: rgba(120,180,120,0.15); color: #a8d4a8;
+    display: block;
+  }
+  .cred-result.err {
+    background: rgba(180,100,100,0.15); color: #d0a0a0;
+    display: block;
+  }
+
 </style>
 </head>
 <body>
@@ -395,6 +632,10 @@
     <span class="sep">·</span>
     <span class="meta" id="lastSkill">listo</span>
   </div>
+  <button class="sys-btn" id="sysBtn" title="Estado del sistema">
+    ⚙️ Sistema
+    <span class="badge" id="sysBadge">...</span>
+  </button>
 </header>
 
 <button id="closeChat" title="Cerrar chat">✕</button>
@@ -418,6 +659,58 @@
     </div>
   </div>
   <div id="hint">Escribe, toca la esfera o usa el micrófono</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: ESTADO DEL SISTEMA                                 -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalStatus">
+  <div class="modal modal-relative">
+    <button class="close-x" data-close="modalStatus">✕</button>
+    <h2>Estado del Sistema</h2>
+    <p class="subtitle">Todo lo que Nitro necesita para funcionar.</p>
+    <div id="statusBody">
+      <p style="color:var(--text-dim); text-align:center; padding:20px;">Cargando...</p>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" id="btnOpenCredentials">Configurar integraciones</button>
+      <button class="modal-btn primary" data-close="modalStatus">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: CREDENCIALES                                        -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalCreds">
+  <div class="modal modal-relative">
+    <button class="close-x" data-close="modalCreds">✕</button>
+    <h2>Integraciones</h2>
+    <p class="subtitle">Configura las cuentas externas que Nitro puede usar. Los datos se guardan solo en tu PC.</p>
+    <div id="credsBody">
+      <p style="color:var(--text-dim); text-align:center; padding:20px;">Cargando...</p>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" data-close="modalCreds">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: ONBOARDING (aparece al arrancar)                    -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalOnboarding">
+  <div class="modal modal-relative">
+    <h2>Bienvenido a JARVIS</h2>
+    <p class="subtitle">Voy a revisar tu sistema para asegurarme de que todo funcione.</p>
+    <div id="onboardingBody">
+      <p style="color:var(--text-dim); text-align:center; padding:20px;">Analizando...</p>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn" id="btnOnboardingLater">Más tarde</button>
+      <button class="modal-btn primary" id="btnOnboardingOk">Entendido</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1221,6 +1514,274 @@ async function uploadFiles(files) {
     speechSynthesis.speak(utter);
   }
 }
+// ═══════════════════════════════════════════════════════════
+// PANELES: SISTEMA / CREDENCIALES / ONBOARDING
+// ═══════════════════════════════════════════════════════════
+
+const sysBtn = document.getElementById('sysBtn');
+const sysBadge = document.getElementById('sysBadge');
+const modalStatus = document.getElementById('modalStatus');
+const modalCreds = document.getElementById('modalCreds');
+const modalOnboarding = document.getElementById('modalOnboarding');
+
+function abrirModal(id) {
+  const m = document.getElementById(id);
+  if (m) m.classList.add('active');
+}
+function cerrarModal(id) {
+  const m = document.getElementById(id);
+  if (m) m.classList.remove('active');
+}
+
+// Cerrar al click en X o botones con data-close
+document.querySelectorAll('[data-close]').forEach(el => {
+  el.addEventListener('click', () => cerrarModal(el.dataset.close));
+});
+// Cerrar al click en el overlay (fuera del .modal)
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.classList.remove('active');
+  });
+});
+
+// ─── Iconos segun estado ───
+function iconFor(ok, warn=false) {
+  if (ok) return '<span class="icon ok">✓</span>';
+  if (warn) return '<span class="icon warn">!</span>';
+  return '<span class="icon err">✕</span>';
+}
+
+// ─── Render del estado del sistema ───
+function renderStatus(data) {
+  const d = data.detalle;
+  let html = '';
+
+  // IA / Ollama
+  html += '<div class="status-section">';
+  html += '<h3>🧠 Inteligencia (Ollama)</h3>';
+  if (d.ollama.running) {
+    html += `<div class="status-item">${iconFor(true)}<span class="label">Ollama corriendo</span><span class="value">${d.ollama.models.length} modelos</span></div>`;
+    for (const m of d.ollama.expected) {
+      const icon = m.present ? iconFor(true) : iconFor(false, true);
+      const valor = m.present ? 'instalado' : 'opcional';
+      html += `<div class="status-item">${icon}<span class="label">${m.name}</span><span class="value">${m.desc} · ${valor}</span></div>`;
+    }
+  } else {
+    html += `<div class="status-item">${iconFor(false)}<span class="label">Ollama no corriendo</span><span class="value">inicia: ollama serve</span></div>`;
+  }
+  html += '</div>';
+
+  // Herramientas
+  html += '<div class="status-section">';
+  html += '<h3>🛠️ Herramientas externas</h3>';
+  const tools = d.tools;
+  const nombres = { freecad: 'FreeCAD', blender: 'Blender', oda: 'ODA File Converter', soffice: 'LibreOffice', brave: 'Brave', chrome: 'Chrome' };
+  for (const key of ['freecad', 'blender', 'oda', 'soffice', 'brave', 'chrome']) {
+    const t = tools[key];
+    const icon = t.ok ? iconFor(true) : iconFor(false, true);
+    const valor = t.ok ? (t.path || '').split('\\').pop() : 'no detectado';
+    html += `<div class="status-item">${icon}<span class="label">${nombres[key]}</span><span class="value">${valor}</span></div>`;
+  }
+  html += '</div>';
+
+  // Credenciales
+  html += '<div class="status-section">';
+  html += '<h3>🔑 Integraciones configuradas</h3>';
+  const creds = d.credentials;
+  const nombresCreds = { n8n: 'n8n', gmail: 'Gmail', canva: 'Canva', maps: 'Google Maps', telegram: 'Telegram' };
+  for (const key of ['n8n', 'gmail', 'canva', 'maps', 'telegram']) {
+    const c = creds[key];
+    const icon = c.ok ? iconFor(true) : iconFor(false, true);
+    const valor = c.ok ? 'configurado' : 'no configurado';
+    html += `<div class="status-item">${icon}<span class="label">${nombresCreds[key]}</span><span class="value">${valor}</span></div>`;
+  }
+  html += '</div>';
+
+  // Directorios
+  html += '<div class="status-section">';
+  html += '<h3>📁 Directorios</h3>';
+  for (const key of Object.keys(d.dirs)) {
+    const dir = d.dirs[key];
+    const icon = dir.ok ? iconFor(true) : iconFor(false);
+    html += `<div class="status-item">${icon}<span class="label">${key}</span><span class="value">${dir.path}</span></div>`;
+  }
+  html += '</div>';
+
+  document.getElementById('statusBody').innerHTML = html;
+}
+
+// ─── Render de credenciales ───
+function renderCreds(integraciones) {
+  let html = '';
+  for (const integ of integraciones) {
+    const statusClass = integ.configurado ? 'ok' : 'err';
+    const statusText = integ.configurado ? 'configurado' : 'pendiente';
+
+    html += `<div class="cred-item" data-id="${integ.id}">`;
+    html += `<div class="cred-header">`;
+    html += `<span class="cred-name">${integ.nombre}</span>`;
+    html += `<span class="cred-status ${statusClass}">${statusText}</span>`;
+    html += `</div>`;
+    html += `<div class="cred-desc">${integ.descripcion}</div>`;
+    html += `<div class="cred-fields">`;
+
+    for (const campo of integ.campos) {
+      const valActual = (integ.valores_actuales || {})[campo.key] || '';
+      html += `<div class="cred-field">`;
+      html += `<label>${campo.label}</label>`;
+      html += `<input type="${campo.tipo}" data-key="${campo.key}" placeholder="${campo.placeholder}" value="${valActual}">`;
+      html += `</div>`;
+    }
+
+    html += `<div class="cred-actions">`;
+    html += `<button class="modal-btn primary" data-save="${integ.id}">Guardar</button>`;
+    if (integ.url_docs) {
+      html += `<a class="link" href="${integ.url_docs}" target="_blank">Obtener credenciales →</a>`;
+    }
+    html += `</div>`;
+    html += `<div class="cred-result" data-result="${integ.id}"></div>`;
+    html += `</div>`;
+    html += `</div>`;
+  }
+  document.getElementById('credsBody').innerHTML = html;
+
+  // Expandir al click en header
+  document.querySelectorAll('.cred-item .cred-header').forEach(h => {
+    h.addEventListener('click', () => {
+      h.parentElement.classList.toggle('expanded');
+    });
+  });
+
+  // Guardar
+  document.querySelectorAll('[data-save]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.save;
+      const item = btn.closest('.cred-item');
+      const campos = item.querySelectorAll('input[data-key]');
+      const valores = {};
+      campos.forEach(inp => valores[inp.dataset.key] = inp.value);
+
+      const resultEl = item.querySelector('.cred-result');
+      resultEl.className = 'cred-result';
+      resultEl.textContent = 'Guardando...';
+
+      try {
+        const res = await fetch('/credentials/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ integracion: id, valores }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          resultEl.className = 'cred-result ok';
+          resultEl.textContent = `✓ Guardado (${data.campos_guardados} campos)`;
+          // Actualizar badge
+          setTimeout(() => actualizarBadge(), 500);
+        } else {
+          resultEl.className = 'cred-result err';
+          resultEl.textContent = `✕ ${data.error || 'Error'}`;
+        }
+      } catch (err) {
+        resultEl.className = 'cred-result err';
+        resultEl.textContent = `✕ ${err.message}`;
+      }
+    });
+  });
+}
+
+// ─── Render de onboarding ───
+function renderOnboarding(data) {
+  const d = data.detalle;
+  let html = '';
+
+  // Resumen general
+  if (data.ok) {
+    html += '<div style="text-align:center; padding:20px 0;">';
+    html += '<div style="font-size:3rem; margin-bottom:12px;">✨</div>';
+    html += '<p style="font-size:1rem; color:var(--gold-bright);">Todo está listo. ¡Puedes empezar a usar Nitro!</p>';
+    html += '</div>';
+  } else {
+    html += '<div style="margin-bottom:20px;">';
+    html += '<p style="font-size:0.9rem; color:#e8b06a; margin-bottom:14px;">⚠️ Hay algunos elementos opcionales que faltan:</p>';
+    html += '<ul style="margin-left:1.2em; font-size:0.84rem; line-height:1.8; color:var(--text-dim);">';
+    for (const p of data.problemas) {
+      html += `<li>${p}</li>`;
+    }
+    html += '</ul>';
+    html += '</div>';
+    html += '<p style="font-size:0.84rem; color:var(--text-dim); text-align:center;">No es obligatorio. Puedes configurarlo cuando quieras desde <strong>⚙️ Sistema</strong>.</p>';
+  }
+
+  document.getElementById('onboardingBody').innerHTML = html;
+}
+
+// ─── Cargar datos del backend ───
+async function actualizarBadge() {
+  try {
+    const res = await fetch('/onboarding/status');
+    const data = await res.json();
+    sysBadge.textContent = data.ok ? 'ok' : `${data.problemas.length}`;
+    sysBtn.className = 'sys-btn ' + (data.ok ? 'ok' : 'warn');
+    return data;
+  } catch (e) {
+    sysBadge.textContent = '?';
+    return null;
+  }
+}
+
+async function abrirStatus() {
+  abrirModal('modalStatus');
+  document.getElementById('statusBody').innerHTML = '<p style="color:var(--text-dim); text-align:center; padding:20px;">Cargando...</p>';
+  const data = await actualizarBadge();
+  if (data) renderStatus(data);
+}
+
+async function abrirCreds() {
+  abrirModal('modalCreds');
+  document.getElementById('credsBody').innerHTML = '<p style="color:var(--text-dim); text-align:center; padding:20px;">Cargando...</p>';
+  try {
+    const res = await fetch('/credentials/list');
+    const data = await res.json();
+    renderCreds(data.integraciones || []);
+  } catch (e) {
+    document.getElementById('credsBody').innerHTML = `<p style="color:#d0a0a0; text-align:center; padding:20px;">Error: ${e.message}</p>`;
+  }
+}
+
+async function comprobarOnboarding() {
+  try {
+    const data = await actualizarBadge();
+    if (!data) return;
+
+    // Mostrar el modal si no se ha completado antes
+    if (!data.done) {
+      renderOnboarding(data);
+      abrirModal('modalOnboarding');
+    }
+  } catch (e) {
+    console.warn('[ONBOARDING]', e);
+  }
+}
+
+// ─── Event handlers ───
+sysBtn.addEventListener('click', abrirStatus);
+document.getElementById('btnOpenCredentials').addEventListener('click', () => {
+  cerrarModal('modalStatus');
+  abrirCreds();
+});
+document.getElementById('btnOnboardingOk').addEventListener('click', async () => {
+  cerrarModal('modalOnboarding');
+  try {
+    await fetch('/onboarding/mark_done', { method: 'POST' });
+  } catch (e) {}
+});
+document.getElementById('btnOnboardingLater').addEventListener('click', () => {
+  cerrarModal('modalOnboarding');
+});
+
+// ─── Al cargar: comprobar estado ───
+setTimeout(comprobarOnboarding, 800);
 
 console.log('[JARVIS] Interfaz cargada correctamente');
 </script>

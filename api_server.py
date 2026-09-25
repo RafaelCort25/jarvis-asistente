@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from core import onboarding as _onb
 
 from core.brain import Brain
 from core.router import Router
@@ -368,3 +369,188 @@ def index():
         "<p>Coloca jarvis-orb.html en la raiz del proyecto.</p>",
         status_code=404,
     )
+# ═══════════════════════════════════════════════════════════════════════════
+# ONBOARDING — Estado del sistema
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.get("/onboarding/status")
+def onboarding_status():
+    """Estado completo del sistema: Python, Ollama, herramientas, credenciales."""
+    status = _onb.check_all()
+    resumen = _onb.resumen_corto(status)
+    return {
+        "done": _onb.is_done(),
+        "ok": resumen["ok"],
+        "problemas": resumen["problemas"],
+        "detalle": {
+            "python": status["python"],
+            "ollama": status["ollama"],
+            "tools": status["tools"],
+            "credentials": status["credentials"],
+            "dirs": status["dirs"],
+            "root": status["root"],
+        },
+    }
+
+
+@app.post("/onboarding/mark_done")
+def onboarding_mark_done():
+    ok = _onb.mark_done()
+    return {"ok": ok}
+
+
+@app.post("/onboarding/reset")
+def onboarding_reset():
+    ok = _onb.reset()
+    return {"ok": ok}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CREDENCIALES — Guardar .env.tmp
+# ═══════════════════════════════════════════════════════════════════════════
+
+INTEGRACIONES = {
+    "n8n": {
+        "nombre": "n8n",
+        "descripcion": "Automatizacion de workflows (localhost:5678)",
+        "archivo": ".env.n8n.tmp",
+        "url_docs": "http://localhost:5678/",
+        "campos": [
+            {"key": "N8N_API_KEY", "label": "API Key", "placeholder": "n8n_api_...", "tipo": "password"},
+            {"key": "N8N_BASE_URL", "label": "URL base", "placeholder": "http://localhost:5678", "tipo": "text"},
+        ],
+    },
+    "gmail": {
+        "nombre": "Gmail",
+        "descripcion": "Correo electronico (requiere 2FA + app password)",
+        "archivo": ".env.gmail.tmp",
+        "url_docs": "https://myaccount.google.com/apppasswords",
+        "campos": [
+            {"key": "GMAIL_USER", "label": "Correo de Gmail", "placeholder": "tu@gmail.com", "tipo": "email"},
+            {"key": "GMAIL_APP_PASSWORD", "label": "App password (16 caracteres)", "placeholder": "abcd efgh ijkl mnop", "tipo": "password"},
+        ],
+    },
+    "canva": {
+        "nombre": "Canva",
+        "descripcion": "Diseno grafico (OAuth + Connect API)",
+        "archivo": ".env.canva.tmp",
+        "url_docs": "https://www.canva.com/developers/",
+        "campos": [
+            {"key": "CANVA_CLIENT_ID", "label": "Client ID", "placeholder": "OC-...", "tipo": "text"},
+            {"key": "CANVA_CLIENT_SECRET", "label": "Client Secret", "placeholder": "cnvca...", "tipo": "password"},
+            {"key": "CANVA_REDIRECT_URI", "label": "Redirect URI", "placeholder": "http://127.0.0.1:8080/callback", "tipo": "text"},
+        ],
+    },
+    "maps": {
+        "nombre": "Google Maps",
+        "descripcion": "Geocoding + Places (opcional, alternativa: OpenStreetMap)",
+        "archivo": ".env.maps.tmp",
+        "url_docs": "https://console.cloud.google.com/",
+        "campos": [
+            {"key": "GOOGLE_MAPS_API_KEY", "label": "API Key", "placeholder": "AIza...", "tipo": "password"},
+        ],
+    },
+    "telegram": {
+        "nombre": "Telegram",
+        "descripcion": "Bot de Telegram para notificaciones",
+        "archivo": ".env.telegram.tmp",
+        "url_docs": "https://core.telegram.org/bots#how-do-i-create-a-bot",
+        "campos": [
+            {"key": "TELEGRAM_BOT_TOKEN", "label": "Bot Token", "placeholder": "123456789:ABC...", "tipo": "password"},
+            {"key": "TELEGRAM_CHAT_ID", "label": "Chat ID", "placeholder": "123456789", "tipo": "text"},
+        ],
+    },
+}
+
+
+@app.get("/credentials/list")
+def credentials_list():
+    """Lista de integraciones y su estado de configuracion."""
+    resultado = []
+    for key, info in INTEGRACIONES.items():
+        archivo = ROOT / info["archivo"]
+        configurado = False
+        valores_mascara = {}
+        if archivo.exists():
+            configurado = True
+            try:
+                for line in archivo.read_text(encoding="utf-8").splitlines():
+                    if "=" in line:
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip()
+                        # Enmascarar valores sensibles
+                        if len(v) > 6:
+                            valores_mascara[k] = v[:3] + "…" + v[-3:]
+                        else:
+                            valores_mascara[k] = "…"
+            except Exception:
+                pass
+
+        resultado.append({
+            "id": key,
+            "nombre": info["nombre"],
+            "descripcion": info["descripcion"],
+            "url_docs": info.get("url_docs", ""),
+            "configurado": configurado,
+            "campos": info["campos"],
+            "valores_actuales": valores_mascara,
+        })
+    return {"integraciones": resultado}
+
+
+class CredencialesPayload(BaseModel):
+    integracion: str
+    valores: dict
+
+
+@app.post("/credentials/save")
+def credentials_save(payload: CredencialesPayload):
+    """Guarda los valores de una integracion en su .env.tmp."""
+    if payload.integracion not in INTEGRACIONES:
+        return {"ok": False, "error": "Integracion desconocida"}
+
+    info = INTEGRACIONES[payload.integracion]
+    archivo = ROOT / info["archivo"]
+
+    # Leer existentes
+    existentes = {}
+    if archivo.exists():
+        try:
+            for line in archivo.read_text(encoding="utf-8-sig").splitlines():
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    existentes[k.strip()] = v.strip()
+        except Exception:
+            pass
+
+    # Actualizar (solo valores no vacios)
+    for k, v in payload.valores.items():
+        if v and str(v).strip():
+            existentes[k] = str(v).strip()
+
+    # Guardar
+    try:
+        lineas = [f"{k}={v}" for k, v in existentes.items()]
+        archivo.write_text("\n".join(lineas) + "\n", encoding="utf-8")
+        return {"ok": True, "archivo": str(archivo), "campos_guardados": len(existentes)}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SKILLS — Listar y estado
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.get("/skills/list")
+def skills_list():
+    """Lista todas las skills registradas en el router."""
+    try:
+        from core.router import Router
+        # Cache simple en memoria para no reinstanciar
+        if not hasattr(skills_list, "_cache"):
+            r = Router()
+            skills_list._cache = sorted(r.skills.keys())
+        return {"skills": skills_list._cache, "total": len(skills_list._cache)}
+    except Exception as e:
+        return {"skills": [], "total": 0, "error": str(e)}
