@@ -168,6 +168,30 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "renderiza este archivo X.step" -> blender.render_step (step_path = X.step)
   - "muestrame el modelo en 3d" -> blender.render_step
   - NUNCA uses browser.* ni dev.* para renderizar
+  - ENTERTAINMENT:
+  - "pausa la pelicula", "play", "continua la pelicula" -> entertainment.play_pause
+  - "siguiente cancion" -> entertainment.next_track
+  - "cancion anterior" -> entertainment.prev_track
+  - NUNCA uses terminal.* ni spotify.* para esto
+
+- ALARM:
+  - "pon una alarma en 5 minutos" -> alarm.set (minutes = 5, text = "Alarma")
+  - "despiertame en 10 minutos" -> alarm.set (minutes = 10, text = "Recordatorio")
+  - "que alarmas tengo" -> alarm.list
+  - "cancela la alarma" -> alarm.cancel
+
+- PRODUCTIVITY:
+  - "guarda una nota que diga X" -> productivity.save_note (text = "X")
+  - "lee mis notas", "mis notas" -> productivity.read_notes
+  - "borra mis notas" -> productivity.clear_notes
+
+- TRANSLATE:
+  - "traduce al ingles hola mundo" -> translate.text (text = "hola mundo", to = "en")
+  - "traduce al frances X" -> translate.text (text = "X", to = "fr")
+
+- WEATHER:
+  - "que clima hace en Lima" -> weather.current (city = "Lima")
+  - "como esta el clima en Cusco" -> weather.current (city = "Cusco")
 
 
 

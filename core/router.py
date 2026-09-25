@@ -1416,6 +1416,125 @@ class Router:
                     "action": "create_and_test",
                     "params": {"description": desc, "language": lang, "path": path},
                 }]
+                    # ═══════════════════════════════════════════════════════════════════
+        # ENTERTAINMENT: control de reproduccion multimedia
+        # ═══════════════════════════════════════════════════════════════════
+        if any(p in t for p in [
+            "pausa la pelicula", "pausa el video", "pausa la musica",
+            "play", "reproduce", "continua la pelicula", "continua el video",
+            "play_pause",
+        ]) and any(p in t for p in ["pelicula", "video", "musica", "play", "pausa"]):
+            return [{"skill": "entertainment", "action": "play_pause", "params": {}}]
+
+        if any(p in t for p in [
+            "siguiente cancion", "siguiente pista", "salta la cancion",
+            "pasa la cancion", "next track",
+        ]):
+            return [{"skill": "entertainment", "action": "next_track", "params": {}}]
+
+        if any(p in t for p in [
+            "cancion anterior", "pista anterior", "vuelve la cancion",
+            "anterior cancion",
+        ]):
+            return [{"skill": "entertainment", "action": "prev_track", "params": {}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # ALARM: alarmas
+        # ═══════════════════════════════════════════════════════════════════
+        m = re.search(
+            r'\b(?:pon|ponme|crea|configura|setea)\s+(?:una\s+)?alarma\s+(?:en\s+|a\s+las?\s+|para\s+)?(\d+)\s*(?:minutos?|min|m)\b',
+            t, re.IGNORECASE,
+        )
+        if m:
+            return [{"skill": "alarm", "action": "set", "params": {"minutes": int(m.group(1)), "text": "Alarma"}}]
+
+        m = re.search(
+            r'\b(?:despiertame|avisame|recuerdame)\s+en\s+(\d+)\s*(?:minutos?|min|m)\b',
+            t, re.IGNORECASE,
+        )
+        if m:
+            return [{"skill": "alarm", "action": "set", "params": {"minutes": int(m.group(1)), "text": "Recordatorio"}}]
+
+        if any(p in t for p in [
+            "que alarmas tengo", "lista mis alarmas", "mis alarmas",
+        ]):
+            return [{"skill": "alarm", "action": "list", "params": {}}]
+
+        if any(p in t for p in [
+            "cancela la alarma", "borra la alarma", "elimina la alarma",
+            "quita la alarma",
+        ]):
+            return [{"skill": "alarm", "action": "cancel", "params": {}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # PRODUCTIVITY: notas
+        # ═══════════════════════════════════════════════════════════════════
+        if any(p in t for p in [
+            "guarda una nota", "guarda nota", "anota que",
+            "toma nota de", "apunta que", "apunta esto",
+        ]):
+            # Extraer el texto de la nota
+            m = re.search(
+                r'\b(?:guarda una nota|guarda nota|anota que|toma nota de|apunta que|apunta esto)\s*(?::|que)?\s*(.+)$',
+                text, re.IGNORECASE,
+            )
+            if m:
+                nota = m.group(1).strip(" .,!?¡¿")
+                if nota:
+                    return [{"skill": "productivity", "action": "save_note", "params": {"text": nota}}]
+
+        if any(p in t for p in [
+            "lee mis notas", "leeme las notas", "muestra mis notas",
+            "que notas tengo", "mis notas",
+        ]):
+            return [{"skill": "productivity", "action": "read_notes", "params": {}}]
+
+        if any(p in t for p in [
+            "borra mis notas", "limpia las notas", "borra todas las notas",
+        ]):
+            return [{"skill": "productivity", "action": "clear_notes", "params": {}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # TRANSLATE: traducir texto
+        # ═══════════════════════════════════════════════════════════════════
+        m = re.search(
+            r'\b(?:traduce|traducir|traduceme)\s+(?:al\s+|a\s+|en\s+)?(ingles|inglés|english|espanol|español|spanish|frances|francés|french|aleman|alemán|german|italiano|italian|portugues|portugués|portuguese|japones|japonés|japanese|chino|chinese|ruso|russian)\s+(.+)$',
+            text, re.IGNORECASE,
+        )
+        if m:
+            idioma = m.group(1).lower().strip()
+            texto_a_traducir = m.group(2).strip(" .,!?¡¿")
+            mapa_idiomas = {
+                "ingles": "en", "inglés": "en", "english": "en",
+                "espanol": "es", "español": "es", "spanish": "es",
+                "frances": "fr", "francés": "fr", "french": "fr",
+                "aleman": "de", "alemán": "de", "german": "de",
+                "italiano": "it", "italian": "it",
+                "portugues": "pt", "portugués": "pt", "portuguese": "pt",
+                "japones": "ja", "japonés": "ja", "japanese": "ja",
+                "chino": "zh", "chinese": "zh",
+                "ruso": "ru", "russian": "ru",
+            }
+            to = mapa_idiomas.get(idioma, "en")
+            if texto_a_traducir:
+                return [{"skill": "translate", "action": "text", "params": {"text": texto_a_traducir, "to": to}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # WEATHER: clima
+        # ═══════════════════════════════════════════════════════════════════
+        m = re.search(
+            r'\b(?:que\s+clima|clima\s+en|como\s+esta\s+el\s+clima\s+en|temperatura\s+en)\s+([a-zA-Záéíóúñ\s]+?)(?:\s+hoy|\s+ahora|\?|$|\.)',
+            text, re.IGNORECASE,
+        )
+        if m:
+            ciudad = m.group(1).strip(" .,!?¡¿")
+            if ciudad:
+                return [{"skill": "weather", "action": "current", "params": {"city": ciudad}}]
+
+        if any(p in t for p in [
+            "que clima hace", "como esta el clima", "va a llover",
+        ]):
+            return [{"skill": "weather", "action": "current", "params": {"city": ""}}]
 
         return None
 

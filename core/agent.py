@@ -68,6 +68,9 @@ SKILLS DISPONIBLES:
 === OTROS ===
 31. vision.describe_screen() | vision.explain_screen_code()
 32. spotify.play(query) | spotify.pause() | spotify.next() | spotify.current()
+39. entertainment.play_pause() | entertainment.next_track() | entertainment.prev_track()
+    - Control de reproduccion multimedia del sistema (peliculas, videos, musica de otras apps)
+    - NO confundir con spotify.* (que es solo la app de Spotify)
 === N8N (automatizacion de workflows) ===
 33. n8n.list_workflows() - lista tus workflows locales
 34. n8n.get_workflow(id_or_name) - detalle de un workflow
@@ -162,6 +165,10 @@ crear documentos, ejecutar comandos, consultar el RAG, etc.).
 Si la tarea es de RAZONAMIENTO PURO (planificar, aconsejar, explicar, analizar, redactar contenido,
 escribir un plan, dar ideas, resumir, traducir texto conceptual, etc.), NO uses skills.
 Responde DIRECTAMENTE con "final_answer".
+Si el usuario dice "pausa la pelicula", "continua el video", "siguiente cancion":
+   -> USA entertainment.play_pause / entertainment.next_track / entertainment.prev_track
+   -> NO uses spotify.* (solo sirve para Spotify)
+   -> NO uses terminal.* ni desktop.*
 
 EJEMPLOS DE RAZONAMIENTO PURO (sin skills):
 - "planifica un viaje" -> final_answer con el plan escrito
