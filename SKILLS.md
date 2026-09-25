@@ -513,6 +513,7 @@ Lectura, análisis y generación de planos DWG/DXF.
 | `extract_rooms_with_areas` | 🟢 | `path` | Lista ambientes con sus áreas en m² |
 | `cuadro_superficies_excel` | 🟡 | `path`, `output`, `titulo` | Genera Excel con cuadro de superficies |
 | `export_ifc` | 🟡 | `path`, `output`, `nombre_proyecto`, `altura`, `grosor` | Exporta muros a formato IFC (BIM) |
+| `export_ifc_full` | 🟡 | `path`, `output`, `puertas`, `ventanas`, `nombre_proyecto`, `altura`, `grosor` | Exporta muros + puertas + ventanas a IFC (BIM) |
 
 **Requiere:** ODA File Converter + shapely + openpyxl.
 
