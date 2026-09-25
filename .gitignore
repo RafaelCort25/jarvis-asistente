@@ -38,3 +38,4 @@ test_*.py
 .env.gmail*
 .env.canva*
 .onboarding_done
+.onboarding_done
