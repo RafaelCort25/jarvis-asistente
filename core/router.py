@@ -563,6 +563,22 @@ class Router:
                 "action": "export_pdf",
                 "params": {"path": ""},
             }]
+
+                # ═══════════════════════════════════════════════════════════════════
+        # BLENDER: prioridad si pide "render" (antes que Maps)
+        # ═══════════════════════════════════════════════════════════════════
+        if any(p in t for p in ["haz un render", "hazme un render", "render del", "render de el", "render de la"]):
+            from pathlib import Path
+            sandbox_fc = Path(r"C:\JARVIS\sandbox\freecad")
+            detallados = sorted(sandbox_fc.glob("detallado_*.step"), key=lambda p: p.stat().st_mtime, reverse=True)
+            simples = sorted(sandbox_fc.glob("edificio_*.step"), key=lambda p: p.stat().st_mtime, reverse=True)
+            steps = detallados + simples
+            if steps:
+                return [{"skill": "blender", "action": "render_step", "params": {"step_path": str(steps[0]), "output": "", "cam_angulo": 45}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # MAPS: buscar edificios reales en OpenStreetMap
+        # ═══════════════════════════════════════════════════════════════════
                 # ═══════════════════════════════════════════════════════════════════
         # MAPS: buscar edificios reales en OpenStreetMap
         # ═══════════════════════════════════════════════════════════════════
@@ -608,8 +624,10 @@ class Router:
         # Renderizar el ultimo STEP generado
         if any(p in t for p in [
             "renderiza el ultimo", "renderiza el último", "render del ultimo",
-            "renderiza este step", "renderiza este modelo", "muestrame en 3d",
-            "renderiza en blender", "haz un render",
+            "renderiza este step", "renderiza este modelo",
+            "muestrame en 3d", "muestrame el modelo en 3d", "muestrame el 3d",
+            "ver en 3d", "visualiza el 3d", "visualizar el modelo",
+            "renderiza en blender", "haz un render", "hazme un render",
         ]):
             from pathlib import Path
             sandbox_fc = Path(r"C:\JARVIS\sandbox\freecad")
