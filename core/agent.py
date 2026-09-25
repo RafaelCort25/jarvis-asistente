@@ -81,6 +81,9 @@ SKILLS DISPONIBLES:
     - Lee un DXF, extrae los ambientes cerrados y sus areas, y crea un xlsx
     - path: ruta del DXF en sandbox/dwg/
 43. dwg.extract_rooms_with_areas(path) - lista ambientes con areas (sin generar Excel)
+44. dwg.export_ifc(path, output, nombre_proyecto, altura, grosor)
+    - Exporta los muros del DXF a un archivo IFC (formato BIM estandar)
+    - Abrible en Revit, ArchiCAD, Tekla, viewers online
 === N8N (automatizacion de workflows) ===
 33. n8n.list_workflows() - lista tus workflows locales
 34. n8n.get_workflow(id_or_name) - detalle de un workflow

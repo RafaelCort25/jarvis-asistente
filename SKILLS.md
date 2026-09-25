@@ -512,6 +512,7 @@ Lectura, análisis y generación de planos DWG/DXF.
 | `add_hatch` | 🟡 | `path`, `output` | Relleno rayado de muros (ANSI31) |
 | `extract_rooms_with_areas` | 🟢 | `path` | Lista ambientes con sus áreas en m² |
 | `cuadro_superficies_excel` | 🟡 | `path`, `output`, `titulo` | Genera Excel con cuadro de superficies |
+| `export_ifc` | 🟡 | `path`, `output`, `nombre_proyecto`, `altura`, `grosor` | Exporta muros a formato IFC (BIM) |
 
 **Requiere:** ODA File Converter + shapely + openpyxl.
 
@@ -694,7 +695,7 @@ Checklist para que una skill quede 100% integrada:
 
 **Total:** 31 skills · 4 combos · n8n 100% · Gmail 100% · Canva 100% · Maps 100% · FreeCAD 100% · Blender 100% · DWG 100%.
 
-Estado: **Bloque 1 (auditoría) CERRADO** · **CAD-1 CERRADO** · **CAD-2 CERRADO**.
-Próximo: CAD-3 (IFC export + puertas/ventanas reales).
+Estado: **Bloque 1 CERRADO** · **CAD-1 CERRADO** · **CAD-2 CERRADO** · **CAD-3 CERRADO**.
+Próximo: CAD-4 (puertas/ventanas reales + planta/fachada/corte).
 
 Estado: **Bloque 1 (auditoría) CERRADO.** Próximo: Bloque 2 (portabilidad + onboarding + .exe).

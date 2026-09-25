@@ -503,6 +503,29 @@ class Router:
         ]):
             return [{"skill": "canva", "action": "authorize", "params": {}}]
 
+                # Exportar a IFC (BIM)
+        if any(p in t for p in [
+            "exporta el plano a ifc", "exportar a ifc", "guardar como ifc",
+            "convierte el plano a ifc", "plano en ifc", "archivo ifc",
+            "exporta a bim", "convierte a bim",
+        ]):
+            from core.paths import SANDBOX_DWG as sandbox_dwg
+            m_path = re.search(r'([A-Za-z]:\\[^\s]+\.(?:dxf|dwg)|[^\s]+\.(?:dxf|dwg))', t)
+            if m_path:
+                path = m_path.group(1)
+            else:
+                candidatos = sorted(
+                    sandbox_dwg.glob("*.dxf"),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                )
+                path = str(candidatos[0]) if candidatos else ""
+            return [{"skill": "dwg", "action": "export_ifc",
+                     "params": {"path": path, "output": "",
+                                "nombre_proyecto": "Proyecto Nitro",
+                                "altura": 3.0, "grosor": 0.15}}]
+
+
                 # ═══════════════════════════════════════════════════════════════════
         # DWG: cuadro de superficies y analisis de planos
         # ═══════════════════════════════════════════════════════════════════

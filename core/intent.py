@@ -172,6 +172,8 @@ REGLAS DOCS (importante, revisar antes de dev):
   - "cuadro de superficies del plano X" -> dwg.cuadro_superficies_excel (path = ruta del DXF)
   - "lista los ambientes del plano" -> dwg.extract_rooms_with_areas (path = ruta)
   - "que ambientes hay en el plano X" -> dwg.extract_rooms_with_areas
+    - "exporta el plano a IFC" -> dwg.export_ifc (path, altura=3.0, grosor=0.15)
+  - "conviértelo a BIM" -> dwg.export_ifc
   - ENTERTAINMENT:
   - "pausa la pelicula", "play", "continua la pelicula" -> entertainment.play_pause
   - "siguiente cancion" -> entertainment.next_track
