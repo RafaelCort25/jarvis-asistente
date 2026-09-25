@@ -131,6 +131,16 @@ class DwgSkill(Skill):
     description = "Lee, convierte y analiza planos DWG/DXF"
 
     def run(self, action, params):
+        if action == "export_ifc_full":
+            return self.export_ifc_full(
+                    params.get("path", ""),
+                    params.get("output", ""),
+                    params.get("puertas", []),
+                    params.get("ventanas", []),
+                    params.get("nombre_proyecto", "Proyecto Nitro"),
+                    params.get("altura", 3.0),
+                    params.get("grosor", 0.15),
+                )
         if action == "export_ifc":
             return self.export_ifc(
                     params.get("path", ""),
@@ -1247,4 +1257,68 @@ class DwgSkill(Skill):
                 f"Abrelo en Revit, ArchiCAD o https://viewer.ifcopenshell.org/"
             ),
             "voice": f"Archivo IFC generado con {len(muros)} muros.",
+        }
+    def export_ifc_full(self, path, output="", puertas=None, ventanas=None,
+                        nombre_proyecto="Proyecto Nitro", altura=3.0, grosor=0.15):
+        """Exporta muros del DXF + puertas/ventanas especificadas a IFC."""
+        if not path:
+            return {"thought": "", "display": "Falta la ruta.", "voice": "Falta la ruta."}
+
+        doc, err = _abrir_dxf(path)
+        if err:
+            return {"thought": "Error", "display": err, "voice": "Error."}
+
+        msp = doc.modelspace()
+        capas_muro = [l.dxf.name for l in doc.layers if 'muro' in l.dxf.name.lower()]
+        if not capas_muro:
+            return {"thought": "Sin capa MUROS", "display": "No encontre capas con 'muro'.", "voice": "Sin muros."}
+
+        segmentos = self._extraer_segmentos(msp, capas_muro, min_largo=0.5)
+        if not segmentos:
+            return {"thought": "Sin segmentos", "display": "No hay segmentos en MUROS.", "voice": "Sin segmentos."}
+
+        muros = []
+        for i, (x1, y1, x2, y2) in enumerate(segmentos):
+            muros.append({
+                "x1": x1, "y1": y1, "x2": x2, "y2": y2,
+                "grosor": float(grosor), "altura": float(altura),
+                "nombre": f"Muro_{i}",
+            })
+
+        if not output:
+            output = str(SANDBOX / f"{Path(path).stem}_bim_full_{uuid.uuid4().hex[:6]}.ifc")
+
+        puertas = puertas or []
+        ventanas = ventanas or []
+
+        if not confirmation.require(
+            "dwg", "export_ifc_full",
+            f"Exportar a IFC: {len(muros)} muros, {len(puertas)} puertas, {len(ventanas)} ventanas"
+        ):
+            return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
+
+        from core.ifc_export import export_walls_to_ifc
+        ok, err2 = export_walls_to_ifc(
+            muros, output, puertas=puertas, ventanas=ventanas,
+            nombre_proyecto=nombre_proyecto,
+        )
+
+        if not ok:
+            return {
+                "thought": "Error IFC",
+                "display": f"Error: {err2}",
+                "voice": "Error exportando.",
+            }
+
+        return {
+            "thought": f"IFC completo generado",
+            "display": (
+                f"IFC (BIM) completo generado.\n"
+                f" Muros: {len(muros)}\n"
+                f" Puertas: {len(puertas)}\n"
+                f" Ventanas: {len(ventanas)}\n"
+                f" Archivo: {output}\n\n"
+                f"Abrelo en Revit, ArchiCAD o https://viewer.ifcopenshell.org/"
+            ),
+            "voice": f"IFC completo: {len(muros)} muros, {len(puertas)} puertas, {len(ventanas)} ventanas.",
         }
