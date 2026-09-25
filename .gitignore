@@ -42,3 +42,6 @@ test_*.py
 .onboarding_done
 *.bak
 requirements.txt.bak
+test_plan_fixture.dxf
+*.dxf.bak
+sandbox/dwg/
