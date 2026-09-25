@@ -533,6 +533,8 @@ Geometría CAD, planos técnicos, export DXF.
 | `export_pdf` | 🟡 | `path` | Exporta PDF |
 | `save_as` | 🟡 | `path` | Guarda FCStd |
 | `clear_workspace` | 🔴 | — | Limpia workspace |
+| `add_room_labels` | 🟡 | `labels` (list) | Etiquetas de ambientes en 3D |
+| `add_level_dimensions` | 🟡 | `height`, `num_floors` | Cotas de nivel (+0.00, +2.80...) |
 
 **Nota:** cada acción tarda 2-4s porque abre `freecadcmd` como subproceso.
 
@@ -600,6 +602,7 @@ Lectura y análisis de planos DWG/DXF.
 | `annotate` | 🟡 | `path`, `output`, `offset` | Acotado automático |
 | `extract_walls_3d` | 🟡 | `path`, `height` | Muros a STEP |
 | `extract_all_layers_3d` | 🟡 | `path`, `output` | Todas las capas a STEP |
+| `add_hatch` | 🟡 | `path`, `output` | Relleno rayado de muros (ANSI31) |
 
 **Requiere:** ODA File Converter instalado.
 
