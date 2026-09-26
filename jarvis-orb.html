@@ -610,6 +610,163 @@
     display: block;
   }
 
+
+  /* ═══════════════════════════════════════════════════════════ */
+  /* SIDEBAR DE HISTORIAL                                      */
+  /* ═══════════════════════════════════════════════════════════ */
+
+  .hist-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--panel); border: 1px solid var(--panel-border);
+    color: var(--text-dim); padding: 6px 12px; border-radius: 999px;
+    font-size: 0.72rem; letter-spacing: 0.04em;
+    cursor: pointer; pointer-events: auto;
+    transition: border-color .2s, color .2s;
+    backdrop-filter: blur(14px);
+  }
+  .hist-btn:hover { border-color: var(--gold); color: var(--gold-bright); }
+  .hist-btn .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem; padding: 1px 6px; border-radius: 999px;
+    background: rgba(201,166,104,0.15); color: var(--gold);
+  }
+
+  #histSidebar {
+    position: fixed; top: 0; right: -360px; bottom: 0; z-index: 90;
+    width: 340px;
+    background: rgba(15,13,10,0.97);
+    border-left: 1px solid rgba(201,166,104,0.18);
+    backdrop-filter: blur(20px);
+    box-shadow: -20px 0 60px rgba(0,0,0,0.5);
+    transition: right .3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    display: flex; flex-direction: column;
+  }
+  #histSidebar.open { right: 0; }
+
+  .hist-header {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid rgba(201,166,104,0.12);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .hist-header h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 1.15rem;
+    color: var(--gold-bright);
+    letter-spacing: 0.01em;
+  }
+  .hist-header .close-btn {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(201,166,104,0.08);
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+    cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s ease;
+  }
+  .hist-header .close-btn:hover { color: var(--gold); border-color: var(--gold); }
+
+  .hist-new-btn {
+    margin: 16px 24px 8px;
+    padding: 11px 16px; border-radius: 10px;
+    background: rgba(201,166,104,0.12);
+    border: 1px solid rgba(201,166,104,0.3);
+    color: var(--gold-bright);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem; font-weight: 500;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    transition: background .2s, border-color .2s;
+  }
+  .hist-new-btn:hover {
+    background: rgba(201,166,104,0.2);
+    border-color: var(--gold);
+  }
+  .hist-new-btn .plus { font-size: 1.1rem; line-height: 1; }
+
+  .hist-list {
+    flex: 1; overflow-y: auto;
+    padding: 8px 16px 24px;
+  }
+  .hist-list::-webkit-scrollbar { width: 5px; }
+  .hist-list::-webkit-scrollbar-thumb {
+    background: rgba(201,166,104,0.25); border-radius: 3px;
+  }
+
+  .hist-group-label {
+    font-size: 0.68rem; letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(201,166,104,0.55);
+    padding: 16px 8px 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .hist-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 12px;
+    margin-bottom: 4px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background .15s ease, border-color .15s ease;
+    position: relative;
+  }
+  .hist-item:hover {
+    background: rgba(201,166,104,0.06);
+    border-color: rgba(201,166,104,0.15);
+  }
+  .hist-item.active {
+    background: rgba(201,166,104,0.12);
+    border-color: rgba(201,166,104,0.32);
+  }
+  .hist-item .hist-info { flex: 1; min-width: 0; }
+  .hist-item .hist-title {
+    font-size: 0.85rem;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+  .hist-item.active .hist-title { color: var(--gold-bright); }
+  .hist-item .hist-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.66rem;
+    color: var(--text-dim);
+  }
+  .hist-item .hist-delete {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: none; border: 1px solid transparent;
+    color: var(--text-dim); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; flex: none;
+    opacity: 0;
+    transition: opacity .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .hist-item:hover .hist-delete { opacity: 0.6; }
+  .hist-item .hist-delete:hover {
+    opacity: 1;
+    color: #d08a8a;
+    border-color: rgba(180,100,100,0.35);
+  }
+
+  .hist-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    font-style: italic;
+  }
+
+  /* Backdrop cuando el sidebar esta abierto (solo en pantallas chicas) */
+  #histBackdrop {
+    position: fixed; inset: 0; z-index: 89;
+    background: rgba(10,9,8,0.5);
+    backdrop-filter: blur(2px);
+    display: none;
+  }
+  #histBackdrop.active { display: block; }
+
 </style>
 </head>
 <body>
@@ -635,6 +792,10 @@
   <button class="sys-btn" id="sysBtn" title="Estado del sistema">
     ⚙️ Sistema
     <span class="badge" id="sysBadge">...</span>
+  </button>
+  <button class="hist-btn" id="histBtn" title="Historial de conversaciones">
+    💬 Historial
+    <span class="badge" id="histBadge">0</span>
   </button>
 </header>
 
@@ -720,6 +881,25 @@
     </div>
   </div>
 </div>
+
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- SIDEBAR: HISTORIAL DE CONVERSACIONES                      -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="histBackdrop"></div>
+<aside id="histSidebar">
+  <div class="hist-header">
+    <h3>Historial</h3>
+    <button class="close-btn" id="histClose" title="Cerrar">✕</button>
+  </div>
+  <button class="hist-new-btn" id="histNew">
+    <span class="plus">+</span>
+    Nueva conversacion
+  </button>
+  <div class="hist-list" id="histList">
+    <div class="hist-empty">Cargando...</div>
+  </div>
+</aside>
 
 <script>
 // ═══════════════════════════════════════════════════════════
@@ -1909,6 +2089,225 @@ document.getElementById('btnOnboardingLater').addEventListener('click', () => {
 
 // ─── Al cargar: comprobar estado ───
 setTimeout(comprobarOnboarding, 800);
+
+
+// ═══════════════════════════════════════════════════════════
+// HISTORIAL DE CONVERSACIONES — Sidebar
+// ═══════════════════════════════════════════════════════════
+
+const histBtn = document.getElementById('histBtn');
+const histBadge = document.getElementById('histBadge');
+const histSidebar = document.getElementById('histSidebar');
+const histBackdrop = document.getElementById('histBackdrop');
+const histList = document.getElementById('histList');
+const histClose = document.getElementById('histClose');
+const histNew = document.getElementById('histNew');
+
+let histConvActual = null;
+
+function abrirHist() {
+  histSidebar.classList.add('open');
+  histBackdrop.classList.add('active');
+  cargarHistorial();
+}
+
+function cerrarHist() {
+  histSidebar.classList.remove('open');
+  histBackdrop.classList.remove('active');
+}
+
+function _fechaGrupo(iso) {
+  // Devuelve "Hoy", "Ayer" o "dd/mm/yyyy"
+  if (!iso) return "Sin fecha";
+  try {
+    const d = new Date(iso);
+    const hoy = new Date();
+    const ayer = new Date();
+    ayer.setDate(hoy.getDate() - 1);
+    const mismoDia = (a, b) =>
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate();
+    if (mismoDia(d, hoy)) return "Hoy";
+    if (mismoDia(d, ayer)) return "Ayer";
+    return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
+  } catch (e) {
+    return "Sin fecha";
+  }
+}
+
+function _hora(iso) {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    return "";
+  }
+}
+
+async function cargarHistorial() {
+  try {
+    const res = await fetch('/conversations/list');
+    const data = await res.json();
+    const convs = data.conversaciones || [];
+    histConvActual = data.actual;
+
+    histBadge.textContent = convs.length;
+
+    if (convs.length === 0) {
+      histList.innerHTML = '<div class="hist-empty">Aun no hay conversaciones.</div>';
+      return;
+    }
+
+    // Agrupar por dia
+    const grupos = {};
+    const orden = [];
+    for (const c of convs) {
+      const g = _fechaGrupo(c.actualizada || c.creada);
+      if (!grupos[g]) {
+        grupos[g] = [];
+        orden.push(g);
+      }
+      grupos[g].push(c);
+    }
+
+    let html = '';
+    for (const g of orden) {
+      html += '<div class="hist-group-label">' + g + '</div>';
+      for (const c of grupos[g]) {
+        const activo = (c.id === histConvActual) ? ' active' : '';
+        const titulo = (c.titulo || 'Conversacion').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const meta = c.n_mensajes + ' msgs · ' + _hora(c.actualizada || c.creada);
+        html += '<div class="hist-item' + activo + '" data-id="' + c.id + '">';
+        html += '  <div class="hist-info">';
+        html += '    <div class="hist-title">' + titulo + '</div>';
+        html += '    <div class="hist-meta">' + meta + '</div>';
+        html += '  </div>';
+        html += '  <button class="hist-delete" data-del="' + c.id + '" title="Borrar">✕</button>';
+        html += '</div>';
+      }
+    }
+    histList.innerHTML = html;
+
+    // Bind click a cada item
+    histList.querySelectorAll('.hist-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.classList.contains('hist-delete')) return;
+        cargarConversacion(el.dataset.id);
+      });
+    });
+
+    // Bind botones de borrar
+    histList.querySelectorAll('.hist-delete').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.del;
+        if (!confirm('Borrar esta conversacion?')) return;
+        try {
+          await fetch('/conversations/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id }),
+          });
+          cargarHistorial();
+        } catch (err) {
+          console.warn('[HIST]', err);
+        }
+      });
+    });
+
+  } catch (e) {
+    histList.innerHTML = '<div class="hist-empty">Error cargando historial.</div>';
+    console.warn('[HIST]', e);
+  }
+}
+
+async function cargarConversacion(id) {
+  try {
+    const res = await fetch('/conversations/get?id=' + encodeURIComponent(id));
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Error');
+
+    // Marcar como actual
+    await fetch('/conversations/select', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id }),
+    });
+    histConvActual = id;
+
+    // Limpiar y renderizar
+    transcriptEl.innerHTML = '';
+    const mensajes = data.conversacion.mensajes || [];
+    if (mensajes.length === 0) {
+      transcriptEl.innerHTML = '<div class="bubble jarvis" style="color:var(--text-dim); font-style:italic;">Conversacion vacia. Escribe algo para empezar.</div>';
+    } else {
+      enterConversation();
+      for (const m of mensajes) {
+        addMessage(m.role === 'user' ? 'user' : 'jarvis', m.text || '', m.thought, m.artifacts);
+      }
+    }
+
+    cerrarHist();
+  } catch (e) {
+    console.warn('[HIST LOAD]', e);
+    alert('Error cargando conversacion: ' + e.message);
+  }
+}
+
+async function nuevaConversacion() {
+  try {
+    const res = await fetch('/conversations/new', { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Error');
+
+    histConvActual = data.conversacion.id;
+    transcriptEl.innerHTML = '';
+    exitConversation();
+    cerrarHist();
+    cargarHistorial();
+  } catch (e) {
+    console.warn('[HIST NEW]', e);
+  }
+}
+
+// ─── Event handlers ───
+histBtn.addEventListener('click', abrirHist);
+histClose.addEventListener('click', cerrarHist);
+histBackdrop.addEventListener('click', cerrarHist);
+histNew.addEventListener('click', nuevaConversacion);
+
+// Cargar historial al arrancar (para tener el badge actualizado)
+setTimeout(() => {
+  fetch('/conversations/list')
+    .then(r => r.json())
+    .then(d => {
+      const convs = d.conversaciones || [];
+      histBadge.textContent = convs.length;
+    })
+    .catch(() => {});
+}, 2000);
+
+// Refrescar historial tras cada respuesta del chat
+const _origAddMessage = addMessage;
+addMessage = function(role, text, thought, artifacts) {
+  const result = _origAddMessage.apply(this, arguments);
+  // Si es jarvis, refrescar el historial en background
+  if (role === 'jarvis') {
+    setTimeout(() => {
+      fetch('/conversations/list')
+        .then(r => r.json())
+        .then(d => {
+          const convs = d.conversaciones || [];
+          histBadge.textContent = convs.length;
+        })
+        .catch(() => {});
+    }, 500);
+  }
+  return result;
+};
+
 
 console.log('[JARVIS] Interfaz cargada correctamente');
 </script>
