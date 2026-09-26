@@ -1,4 +1,4 @@
-﻿"""Router principal de JARVIS/Nitro.
+"""Router principal de JARVIS/Nitro.
 
 Responsabilidades:
 - Recibir texto del usuario
@@ -49,6 +49,8 @@ from skills.freecad import FreeCadSkill
 from skills.maps import MapsSkill
 from skills.blender import BlenderSkill
 from skills.dwg import DwgSkill
+from skills.chiste import JokeSkill
+from skills.frases import FrasesSkill
 
 
 # Timeout maximo por skill (segundos)
@@ -106,6 +108,10 @@ class Router:
             "blender": BlenderSkill(),
             "dwg": DwgSkill(),
             
+        
+            "chiste": JokeSkill(),
+        
+            "frases": FrasesSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -736,6 +742,50 @@ class Router:
                 return [{"skill": "blender", "action": "render_views",
                          "params": {"step_path": str(steps[0]), "res_x": 1920, "res_y": 1080}}]
 
+
+        # === SKILL AUTO-GENERADA: chiste ===
+        if any(p in t for p in [
+            "chiste",
+            "haz chiste",
+            "tell chiste",
+            "tell_es chiste",
+            "usa chiste",
+        ]):
+            return [{"skill": "chiste", "action": "tell_es", "params": {}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # SKILL CREATOR: crear nuevas skills automaticamente
+        # ═══════════════════════════════════════════════════════════════════
+        m_crear = re.search(
+            r'\b(?:crea|crear|genera|quiero|necesito|aprende a)\s+'
+            r'(?:una\s+)?(?:skill|habilidad|funcion|capacidad)\s+'
+            r'(?:para\s+|de\s+|que\s+)?(.+)$',
+            t, re.IGNORECASE,
+        )
+        if m_crear:
+            descripcion = m_crear.group(1).strip(' .,!?¡¿')
+            palabras = [p for p in descripcion.split() if len(p) > 3 and p not in ('para', 'que', 'con', 'desde', 'usando', 'hacia', 'sobre')]
+            if palabras:
+                nombre = palabras[0].lower()
+                nombre = re.sub(r'[^a-z0-9_]', '', nombre)
+                if nombre and len(nombre) >= 3:
+                    return {
+                        'voice': f'Creando skill {nombre}...',
+                        'display': f'Creando skill **{nombre}**...',
+                        'thought': f'Skill Creator: generando {nombre}',
+                        '_crear_skill': True,
+                        '_skill_nombre': nombre,
+                        '_skill_descripcion': descripcion,
+                    }
+        
+        # === SKILL AUTO-GENERADA: frases ===
+        if any(p in t for p in [
+            "usa frases",
+            "random frases",
+            "frases",
+            "haz frases",
+        ]):
+            return [{"skill": "frases", "action": "random", "params": {}}]
 
         # ═══════════════════════════════════════════════════════════════════
         # MAPS: buscar edificios reales en OpenStreetMap
@@ -1948,6 +1998,48 @@ class Router:
         if isinstance(quick, dict) and quick.get("_short_circuit"):
             quick_limpio = {k: v for k, v in quick.items() if not k.startswith("_")}
             return quick_limpio, False
+
+        # Skill Creator: crear skill nueva
+        if isinstance(quick, dict) and quick.get("_crear_skill"):
+            nombre = quick.get("_skill_nombre", "")
+            descripcion = quick.get("_skill_descripcion", "")
+            try:
+                from core.skill_creator import crear_skill
+                from core.skill_registry_apply import aplicar_registro
+                
+                # 1. Crear la skill
+                r1 = crear_skill(nombre, descripcion)
+                if not r1["ok"]:
+                    return {
+                        "voice": f"No pude crear la skill {nombre}.",
+                        "display": f"**Error creando skill:** {r1['error']}",
+                        "thought": "Skill Creator fallo",
+                    }, False
+                
+                # 2. Registrarla
+                r2 = aplicar_registro(nombre)
+                pasos_txt = "\n".join(r2.get("pasos", []))
+                
+                return {
+                    "voice": f"Skill {nombre} creada y registrada.",
+                    "display": (
+                        f"**Skill '{nombre}' creada** con exito.\n\n"
+                        f"**Descripcion:** {descripcion}\n"
+                        f"**Acciones:** {', '.join(r2.get('acciones', []))}\n"
+                        f"**Archivo:** `skills/{nombre}.py`\n\n"
+                        f"**Registro:**\n{pasos_txt}\n\n"
+                        f"Prueba diciendo: '{r2.get('acciones', [''])[0] if r2.get('acciones') else nombre}'"
+                    ),
+                    "thought": f"Skill {nombre} creada y registrada",
+                }, False
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                return {
+                    "voice": f"Error creando skill {nombre}.",
+                    "display": f"**Error:** {e}",
+                    "thought": "Skill Creator fallo",
+                }, False
 
         if quick == "__N8N_BUILDER__":
             try:

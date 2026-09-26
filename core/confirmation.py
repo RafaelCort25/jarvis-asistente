@@ -227,7 +227,14 @@ RISK_LEVELS = {
     ("github", "commit"): "medium",
     ("github", "push"): "high",
     ("github", "list_issues"): "low",
-}
+
+    # Skill auto-generada: chiste
+    ("chiste", "tell"): "low",
+    ("chiste", "tell_es"): "low",
+    
+    # Skill auto-generada: frases
+    ("frases", "random"): "low",
+    }
 
 
 def set_handler(fn):

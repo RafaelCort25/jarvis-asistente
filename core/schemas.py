@@ -333,7 +333,16 @@ SKILLS_VALIDAS = {
     "none": {
         "chat": {},
     },
-}
+
+        "chiste": {
+            "tell": {},
+            "tell_es": {},
+        },
+    
+        "frases": {
+            "random": {},
+        },
+    }
 
 def build_json_schema():
     """
