@@ -318,7 +318,8 @@ Paso 3: {"thought": "Ya tengo la ruta correcta", "action": "files.open_path", "p
 
 class Agent:
     def __init__(self):
-        self.model = CONFIG["models"].get("reasoning", CONFIG["models"]["default"])
+        from core.model_config import get_model
+        self.model = get_model("agent")
         self.max_steps = 6
         # Estado pendiente cuando el agente pregunta algo y espera respuesta
         self._pending_state = None

@@ -7,6 +7,7 @@ import io
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
+from core.model_config import get_model
 
 import ollama
 import requests
@@ -330,7 +331,7 @@ Habla como si describieras la imagen resultante. Se concreto y visual.
 NO digas "esta imagen muestra". Empieza directamente."""
         try:
             resp = ollama.chat(
-                model=CONFIG["models"].get("default", "dolphin-directo"),
+                model=get_model("chat"),
                 messages=[{"role": "user", "content": prompt_llm}],
                 options={"temperature": 0.5},
             )

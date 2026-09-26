@@ -450,7 +450,9 @@ class N8nSkill(Skill):
             return {"thought": "", "display": "Dime que workflow quieres crear.", "voice": "Dime que workflow."}
 
         # 1. Generar JSON con LLM
-        print(f"[N8N] Generando workflow con qwen2.5-coder:7b...")
+        from core.model_config import get_model
+        _model = get_model("agent")
+        print(f"[N8N] Generando workflow con {_model}...")
         wf_json, err = self._generate_workflow_with_llm(description)
         if err:
             return {
@@ -618,7 +620,8 @@ Ahora genera el workflow para: {description}
 
         try:
             from core.config_loader import CONFIG
-            model = CONFIG["models"].get("coding", "qwen2.5-coder:7b")
+            from core.model_config import get_model
+            model = get_model("agent")
             response = ollama.chat(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],

@@ -5,7 +5,8 @@ from core.memory import Memory
 
 class Brain:
     def __init__(self, model=None):
-        self.model = model or CONFIG["models"]["default"]
+        from core.model_config import get_model
+        self.model = model or get_model("chat")
         self.history = []
         self.name = CONFIG["jarvis"]["name"]
         self.memory = Memory()

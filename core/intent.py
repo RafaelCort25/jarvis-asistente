@@ -244,7 +244,8 @@ No devuelvas texto fuera del JSON.
 """
 class IntentClassifier:
     def __init__(self):
-        self.model = CONFIG["models"].get("intent", CONFIG["models"]["default"])
+        from core.model_config import get_model
+        self.model = get_model("classifier")
         self.cache = {}
         self.schema = build_json_schema()
         print(f"[INTENT] Usando modelo: {self.model}")

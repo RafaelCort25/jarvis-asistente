@@ -554,3 +554,113 @@ def skills_list():
         return {"skills": skills_list._cache, "total": len(skills_list._cache)}
     except Exception as e:
         return {"skills": [], "total": 0, "error": str(e)}
+    # ═══════════════════════════════════════════════════════════════════════════
+# MODELOS — Selección de modelos de Ollama
+# ═══════════════════════════════════════════════════════════════════════════
+
+MODELS_CONFIG_PATH = ROOT / "config" / "models.json"
+
+# Modelo por defecto si el config no existe o está corrupto
+MODELOS_DEFAULT = {
+    "chat": "llama3.2:3b",
+    "classifier": "llama3.2:3b",
+    "agent": "qwen2.5-coder:7b",
+    "vision": "llava:7b",
+}
+
+# Categorías con descripción
+CATEGORIAS_MODELO = {
+    "chat": {
+        "nombre": "Chat general",
+        "descripcion": "Conversaciones normales, preguntas abiertas, brainstorming",
+        "criterio": "Modelo rápido y generalista",
+    },
+    "classifier": {
+        "nombre": "Clasificador de intent",
+        "descripcion": "Detecta qué skill usar para cada frase (rápido)",
+        "criterio": "Muy rápido, se llama muchas veces",
+    },
+    "agent": {
+        "nombre": "Agente (multi-paso)",
+        "descripcion": "Tareas complejas que requieren varios pasos",
+        "criterio": "Bueno en código y razonamiento",
+    },
+    "vision": {
+        "nombre": "Visión",
+        "descripcion": "Analiza imágenes y pantalla",
+        "criterio": "Modelo multimodal (llava, minicpm-v)",
+    },
+}
+
+
+def _load_models_config():
+    """Carga config/models.json o devuelve los defaults."""
+    if not MODELS_CONFIG_PATH.exists():
+        return dict(MODELOS_DEFAULT)
+    try:
+        import json as _json
+        data = _json.loads(MODELS_CONFIG_PATH.read_text(encoding="utf-8"))
+        # Rellenar faltantes con defaults
+        for k, v in MODELOS_DEFAULT.items():
+            if k not in data:
+                data[k] = v
+        return data
+    except Exception as e:
+        print(f"[MODELS] Error leyendo config: {e}")
+        return dict(MODELOS_DEFAULT)
+
+
+def _save_models_config(config):
+    """Guarda config/models.json."""
+    try:
+        MODELS_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        import json as _json
+        MODELS_CONFIG_PATH.write_text(
+            _json.dumps(config, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        return True
+    except Exception as e:
+        print(f"[MODELS] Error guardando config: {e}")
+        return False
+
+
+@app.get("/models/list")
+def models_list():
+    """Devuelve los modelos disponibles en Ollama + el activo por categoría."""
+    try:
+        import requests as _rq
+        r = _rq.get("http://localhost:11434/api/tags", timeout=3)
+        if r.status_code != 200:
+            return {"ok": False, "error": "Ollama no responde"}
+        data = r.json()
+        modelos = [m.get("name", "") for m in data.get("models", [])]
+        modelos.sort()
+        return {
+            "ok": True,
+            "modelos": modelos,
+            "activo": _load_models_config(),
+            "categorias": CATEGORIAS_MODELO,
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e), "modelos": [], "activo": _load_models_config(), "categorias": CATEGORIAS_MODELO}
+
+
+class ModeloPayload(BaseModel):
+    categoria: str
+    modelo: str
+
+
+@app.post("/models/set")
+def models_set(payload: ModeloPayload):
+    """Cambia el modelo activo para una categoría."""
+    if payload.categoria not in MODELOS_DEFAULT:
+        return {"ok": False, "error": f"Categoría desconocida: {payload.categoria}"}
+    if not payload.modelo.strip():
+        return {"ok": False, "error": "Modelo vacío"}
+
+    config = _load_models_config()
+    config[payload.categoria] = payload.modelo.strip()
+    if _save_models_config(config):
+        return {"ok": True, "activo": config}
+    return {"ok": False, "error": "No se pudo guardar"}

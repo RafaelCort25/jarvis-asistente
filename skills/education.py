@@ -19,7 +19,8 @@ class EducationSkill(Skill):
     description = "PSeInt, conversion de codigo, diagramas Mermaid"
 
     def __init__(self):
-        self.model = CONFIG["models"].get("coding", "qwen2.5-coder:7b")
+        from core.model_config import get_model
+        self.model = get_model("agent")
 
     def run(self, action, params):
         if action == "pseint":

@@ -672,6 +672,14 @@
     <div id="statusBody">
       <p style="color:var(--text-dim); text-align:center; padding:20px;">Cargando...</p>
     </div>
+    <!-- Sección de modelos (se rellena con JS) -->
+    <div class="status-section" id="modelsSection" style="display:none;">
+    <h3>🤖 Modelos de IA <span class="count" id="modelsCount"></span></h3>
+    <div id="modelsBody"></div>
+    <div class="modal-actions" style="margin-top:16px; padding-top:0; border-top:none;">
+        <button class="modal-btn primary" id="btnReloadModels">Recargar modelos</button>
+    </div>
+</div>
     <div class="modal-actions">
       <button class="modal-btn" id="btnOpenCredentials">Configurar integraciones</button>
       <button class="modal-btn primary" data-close="modalStatus">Cerrar</button>
@@ -1610,6 +1618,116 @@ function renderStatus(data) {
   document.getElementById('statusBody').innerHTML = html;
 }
 
+// ─── Modelos de Ollama (seleccion en tiempo real) ───
+let modelosCache = null;
+let categoriasCache = null;
+let activoCache = null;
+
+async function cargarModelos() {
+  try {
+    const res = await fetch('/models/list');
+    const data = await res.json();
+    if (!data.ok) {
+      modelosCache = [];
+      categoriasCache = {};
+      activoCache = {};
+    } else {
+      modelosCache = data.modelos || [];
+      categoriasCache = data.categorias || {};
+      activoCache = data.activo || {};
+    }
+    renderModelos();
+  } catch (e) {
+    console.warn('[MODELOS]', e);
+    modelosCache = [];
+    categoriasCache = {};
+    activoCache = {};
+    renderModelos();
+  }
+}
+
+function renderModelos() {
+  const sec = document.getElementById('modelsSection');
+  const body = document.getElementById('modelsBody');
+  if (!sec || !body) return;
+
+  if (!modelosCache || modelosCache.length === 0) {
+    sec.style.display = 'none';
+    return;
+  }
+  sec.style.display = 'block';
+  const countEl = document.getElementById('modelsCount');
+  if (countEl) countEl.textContent = modelosCache.length + ' disponibles';
+
+  const orden = ['chat', 'classifier', 'agent', 'vision'];
+  let html = '';
+  for (const cat of orden) {
+    const info = categoriasCache[cat] || { nombre: cat, descripcion: '' };
+    const activo = activoCache[cat] || '';
+    html += '<div class="cred-item expanded" style="margin-bottom:14px;">';
+    html += '<div class="cred-header" style="cursor:default;">';
+    html += '<span class="cred-name">' + info.nombre + '</span>';
+    html += '<span class="cred-status ok" data-cat-status="' + cat + '">' + (activo || '—') + '</span>';
+    html += '</div>';
+    html += '<div class="cred-desc">' + (info.descripcion || '') + '</div>';
+    html += '<div class="cred-fields" style="display:block;">';
+    html += '<div class="cred-field">';
+    html += '<label>Modelo activo</label>';
+    html += '<select data-model-select="' + cat + '" style="width:100%; padding:9px 12px; background:rgba(0,0,0,0.35); border:1px solid rgba(201,166,104,0.2); border-radius:8px; color:var(--text); font-family:\'JetBrains Mono\', monospace; font-size:0.84rem; outline:none;">';
+    // Si el modelo activo no esta instalado, mostrarlo primero como advertencia
+    if (activo && !modelosCache.includes(activo)) {
+      html += '<option value="' + activo + '" selected>' + activo + ' (no instalado)</option>';
+    }
+    for (const m of modelosCache) {
+      const sel = (m === activo) ? 'selected' : '';
+      html += '<option value="' + m + '" ' + sel + '>' + m + '</option>';
+    }
+    html += '</select>';
+    html += '</div>';
+    html += '<div class="cred-actions">';
+    html += '<button class="modal-btn primary" data-model-save="' + cat + '">Guardar</button>';
+    html += '<span class="cred-result" data-model-result="' + cat + '"></span>';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+  }
+  body.innerHTML = html;
+
+  body.querySelectorAll('[data-model-save]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const cat = btn.dataset.modelSave;
+      const sel = body.querySelector('select[data-model-select="' + cat + '"]');
+      const resultEl = body.querySelector('[data-model-result="' + cat + '"]');
+      if (!sel || !sel.value) return;
+      resultEl.className = 'cred-result';
+      resultEl.textContent = 'Guardando...';
+      try {
+        const r = await fetch('/models/set', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ categoria: cat, modelo: sel.value }),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          resultEl.className = 'cred-result ok';
+          resultEl.textContent = '✓ Guardado';
+          activoCache = d.activo || activoCache;
+          for (const k of Object.keys(activoCache)) {
+            const badge = body.querySelector('[data-cat-status="' + k + '"]');
+            if (badge) badge.textContent = activoCache[k];
+          }
+        } else {
+          resultEl.className = 'cred-result err';
+          resultEl.textContent = '✕ ' + (d.error || 'Error');
+        }
+      } catch (e) {
+        resultEl.className = 'cred-result err';
+        resultEl.textContent = '✕ ' + e.message;
+      }
+    });
+  });
+}
+
 // ─── Render de credenciales ───
 function renderCreds(integraciones) {
   let html = '';
@@ -1735,6 +1853,8 @@ async function abrirStatus() {
   document.getElementById('statusBody').innerHTML = '<p style="color:var(--text-dim); text-align:center; padding:20px;">Cargando...</p>';
   const data = await actualizarBadge();
   if (data) renderStatus(data);
+  // Cargar modelos de Ollama
+  await cargarModelos();
 }
 
 async function abrirCreds() {
@@ -1766,6 +1886,13 @@ async function comprobarOnboarding() {
 
 // ─── Event handlers ───
 sysBtn.addEventListener('click', abrirStatus);
+
+// Boton recargar modelos
+const _btnReload = document.getElementById('btnReloadModels');
+if (_btnReload) _btnReload.addEventListener('click', cargarModelos);
+
+// Carga inicial de modelos (para tener cache antes de abrir el modal)
+setTimeout(cargarModelos, 1500);
 document.getElementById('btnOpenCredentials').addEventListener('click', () => {
   cerrarModal('modalStatus');
   abrirCreds();

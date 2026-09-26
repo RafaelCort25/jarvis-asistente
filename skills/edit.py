@@ -29,7 +29,8 @@ class EditSkill(Skill):
     description = "Modifica archivos existentes (Word, Excel, texto) con instrucciones"
 
     def __init__(self):
-        self.model = CONFIG["models"].get("default", "dolphin-directo")
+        from core.model_config import get_model
+        self.model = get_model("chat")
 
     def run(self, action, params):
         if action == "modify":

@@ -6,6 +6,7 @@ import chromadb
 import ollama
 
 from core.config_loader import CONFIG
+from core.model_config import get_model
 
 ROOT = Path(__file__).resolve().parent.parent
 MEMORY_DIR = ROOT / "memory"
@@ -239,7 +240,7 @@ class RAG:
 
         try:
             resp = ollama.chat(
-                model=CONFIG["models"].get("reasoning", CONFIG["models"]["default"]),
+                model=get_model("agent"),
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": 0.2},
             )

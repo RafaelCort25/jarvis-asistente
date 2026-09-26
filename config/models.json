@@ -1,0 +1,6 @@
+{
+  "chat": "dolphin-directo:latest",
+  "classifier": "llama3.2:3b",
+  "agent": "qwen2.5-coder:7b",
+  "vision": "llava-phi3:latest"
+}
