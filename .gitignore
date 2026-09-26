@@ -52,3 +52,6 @@ backups/
 cancelar_apagado.ps1
 test_*.py
 workflow.py
+preparar_dist.ps1
+generar_iss.ps1
+JARVIS-Dist/

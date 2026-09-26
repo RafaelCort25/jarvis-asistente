@@ -1,9 +1,9 @@
 Senna - Asistente personal
-Copyright (c) 2026 Rafael Cortez. Todos los derechos reservados.
+Copyright (c) 2026 Rafael Cortijo. Todos los derechos reservados.
 
 LICENCIA DE USO PERSONAL
 
-Este software es propiedad de Rafael Cortez y se distribuye
+Este software es propiedad de Rafael Cortijo y se distribuye
 exclusivamente para uso personal. No esta permitida su
 redistribucion, venta, sublicencia ni explotacion comercial
 sin autorizacion expresa por escrito del autor.
