@@ -48,3 +48,4 @@ sandbox/dwg/
 requirements_before_slim.txt
 *.bak
 .onboarding_done
+backups/
