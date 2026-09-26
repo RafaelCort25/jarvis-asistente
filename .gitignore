@@ -49,3 +49,5 @@ requirements_before_slim.txt
 *.bak
 .onboarding_done
 backups/
+cancelar_apagado.ps1
+test_*.py

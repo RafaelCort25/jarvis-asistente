@@ -58,6 +58,17 @@ class SystemSkill(Skill):
             return f"Error al bloquear: {e}"
 
     def _shutdown(self):
+        # DOBLE VERIFICACION: el usuario debe escribir "CONFIRMO APAGAR"
+        print()
+        print("=" * 60)
+        print("  ACCION PELIGROSA: APAGAR LA PC")
+        print("=" * 60)
+        try:
+            resp = input("Escribe CONFIRMO APAGAR para continuar: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            resp = ""
+        if resp != "CONFIRMO APAGAR":
+            return "Apagado CANCELADO. (se requiere confirmacion literal)"
         try:
             subprocess.Popen("shutdown /s /t 30", shell=True)
             return "Apagando el PC en 30 segundos. Di 'cancela el apagado' si te arrepientes."
@@ -65,6 +76,16 @@ class SystemSkill(Skill):
             return f"Error al apagar: {e}"
 
     def _restart(self):
+        print()
+        print("=" * 60)
+        print("  ACCION PELIGROSA: REINICIAR LA PC")
+        print("=" * 60)
+        try:
+            resp = input("Escribe CONFIRMO REINICIAR para continuar: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            resp = ""
+        if resp != "CONFIRMO REINICIAR":
+            return "Reinicio CANCELADO."
         try:
             subprocess.Popen("shutdown /r /t 30", shell=True)
             return "Reiniciando en 30 segundos."

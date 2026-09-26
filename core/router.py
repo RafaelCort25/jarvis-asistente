@@ -1654,6 +1654,68 @@ class Router:
             "que clima hace", "como esta el clima", "va a llover",
         ]):
             return [{"skill": "weather", "action": "current", "params": {"city": ""}}]
+        # ═══════════════════════════════════════════════════════════════════
+        # DESKTOP: volumen, silenciar
+        # ═══════════════════════════════════════════════════════════════════
+        if any(p in t for p in [
+            "sube el volumen", "subir volumen", "mas volumen", "más volumen",
+            "subele el volumen", "súbele el volumen",
+            "aumenta el volumen", "volume up",
+        ]):
+            return [{"skill": "desktop", "action": "volume_up", "params": {}}]
+
+        if any(p in t for p in [
+            "baja el volumen", "bajar volumen", "menos volumen",
+            "bajale el volumen", "bájale el volumen",
+            "reduce el volumen", "volume down",
+        ]):
+            return [{"skill": "desktop", "action": "volume_down", "params": {}}]
+
+        if any(p in t for p in [
+            "silencia", "silenciar", "mute", "quita el sonido",
+            "sin sonido",
+        ]):
+            return [{"skill": "desktop", "action": "mute", "params": {}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # SYSTEM: captura, bloquear, apagar, reiniciar
+        # ═══════════════════════════════════════════════════════════════════
+        if any(p in t for p in [
+            "toma una captura", "captura de pantalla", "haz una captura",
+            "screenshot", "captura la pantalla", "toma captura",
+        ]) or t.strip() in ("captura", "screenshot"):
+            return [{"skill": "system", "action": "screenshot", "params": {}}]
+
+        if any(p in t for p in [
+            "bloquea la pc", "bloquear pc", "bloquea el equipo",
+            "bloquea la pantalla", "bloquear la pc",
+        ]) or t.strip() == "lock":
+            return [{"skill": "system", "action": "lock", "params": {}}]
+
+        if any(p in t for p in [
+            "apaga la pc", "apagar pc", "apaga el equipo",
+            "apagar la pc",
+        ]) or t.strip() == "shutdown":
+            return [{"skill": "system", "action": "shutdown", "params": {}}]
+
+        if any(p in t for p in [
+            "reinicia la pc", "reiniciar pc", "reinicia el equipo",
+            "reiniciar la pc",
+        ]) or t.strip() == "restart":
+            return [{"skill": "system", "action": "restart", "params": {}}]
+
+        if any(p in t for p in [
+            "suspende la pc", "suspender pc", "duerme la pc",
+            "suspender la pc",
+        ]) or t.strip() == "sleep":
+            return [{"skill": "system", "action": "sleep", "params": {}}]
+
+        if any(p in t for p in [
+            "cancela el apagado", "cancelar apagado",
+            "cancelar shutdown",
+        ]):
+            return [{"skill": "system", "action": "cancel_shutdown", "params": {}}]
+
         return None
 
     def _normalize(self, result):
