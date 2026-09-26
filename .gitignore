@@ -55,3 +55,5 @@ workflow.py
 preparar_dist.ps1
 generar_iss.ps1
 JARVIS-Dist/
+requirements_full.txt.bak
+requirements_clean.txt
