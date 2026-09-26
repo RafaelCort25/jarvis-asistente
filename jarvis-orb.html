@@ -841,6 +841,19 @@
         <button class="modal-btn primary" id="btnReloadModels">Recargar modelos</button>
     </div>
 </div>
+
+    <!-- Sección de agentes multiagente -->
+    <div class="status-section" id="agentsSection" style="display:none;">
+        <h3>🎭 Agentes Multiagente <span class="count" id="agentsCount"></span></h3>
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.85rem; color:var(--text);">
+                <input type="checkbox" id="agentsToggle" style="width:auto;">
+                <span>Activar multiagente</span>
+            </label>
+            <span id="agentsStatus" style="font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--text-dim);"></span>
+        </div>
+        <div id="agentsBody"></div>
+    </div>
     <div class="modal-actions">
       <button class="modal-btn" id="btnOpenCredentials">Configurar integraciones</button>
       <button class="modal-btn primary" data-close="modalStatus">Cerrar</button>
@@ -2035,6 +2048,8 @@ async function abrirStatus() {
   if (data) renderStatus(data);
   // Cargar modelos de Ollama
   await cargarModelos();
+  // Cargar agentes
+  await cargarAgentes();
 }
 
 async function abrirCreds() {
@@ -2090,6 +2105,121 @@ document.getElementById('btnOnboardingLater').addEventListener('click', () => {
 // ─── Al cargar: comprobar estado ───
 setTimeout(comprobarOnboarding, 800);
 
+
+
+// ═══════════════════════════════════════════════════════════
+// PANEL DE AGENTES MULTIAGENTE
+// ═══════════════════════════════════════════════════════════
+
+let agentesModelosCache = null;
+let agentesConfigCache = null;
+
+async function cargarAgentes() {
+  try {
+    const res = await fetch('/agents/list');
+    const data = await res.json();
+    if (!data.ok) return;
+    agentesModelosCache = data.modelos || [];
+    agentesConfigCache = data.config || {};
+    renderAgentes(data);
+  } catch (e) {
+    console.warn('[AGENTES]', e);
+  }
+}
+
+function renderAgentes(data) {
+  const sec = document.getElementById('agentsSection');
+  const body = document.getElementById('agentsBody');
+  const toggle = document.getElementById('agentsToggle');
+  const statusEl = document.getElementById('agentsStatus');
+  const countEl = document.getElementById('agentsCount');
+  if (!sec || !body) return;
+
+  sec.style.display = 'block';
+  const agentes = data.agentes || [];
+  countEl.textContent = agentes.length + ' agentes';
+  toggle.checked = !!data.enabled;
+  statusEl.textContent = data.enabled ? '● ACTIVO' : '○ INACTIVO';
+  statusEl.style.color = data.enabled ? '#a8d4a8' : 'var(--text-dim)';
+
+  let html = '';
+  for (const ag of agentes) {
+    const cfg = agentesConfigCache[ag.id] || {};
+    const modeloActivo = cfg.model || '(default)';
+    html += '<div class="cred-item expanded" style="margin-bottom:10px;">';
+    html += '<div class="cred-header" style="cursor:default;">';
+    html += '<span class="cred-name">' + ag.nombre + '</span>';
+    html += '<span class="cred-status ok" data-agent-status="' + ag.id + '">' + modeloActivo + '</span>';
+    html += '</div>';
+    html += '<div class="cred-desc">' + ag.descripcion + '</div>';
+    html += '<div class="cred-fields" style="display:block;">';
+    html += '<div class="cred-field">';
+    html += '<label>Modelo</label>';
+    html += '<select data-agent-select="' + ag.id + '" style="width:100%; padding:9px 12px; background:rgba(0,0,0,0.35); border:1px solid rgba(201,166,104,0.2); border-radius:8px; color:var(--text); font-family:\'JetBrains Mono\',monospace; font-size:0.84rem; outline:none;">';
+    if (modeloActivo && !agentesModelosCache.includes(modeloActivo) && modeloActivo !== '(default)') {
+      html += '<option value="' + modeloActivo + '" selected>' + modeloActivo + ' (no instalado)</option>';
+    }
+    for (const m of agentesModelosCache) {
+      const sel = (m === modeloActivo) ? 'selected' : '';
+      html += '<option value="' + m + '" ' + sel + '>' + m + '</option>';
+    }
+    html += '</select>';
+    html += '</div>';
+    html += '<div class="cred-actions">';
+    html += '<button class="modal-btn primary" data-agent-save="' + ag.id + '">Guardar</button>';
+    html += '<span class="cred-result" data-agent-result="' + ag.id + '"></span>';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+  }
+  body.innerHTML = html;
+
+  // Handler toggle
+  toggle.onchange = async () => {
+    try {
+      const r = await fetch('/agents/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: toggle.checked }),
+      });
+      const d = await r.json();
+      statusEl.textContent = d.enabled ? '● ACTIVO' : '○ INACTIVO';
+      statusEl.style.color = d.enabled ? '#a8d4a8' : 'var(--text-dim)';
+    } catch (e) {}
+  };
+
+  // Handler save por agente
+  body.querySelectorAll('[data-agent-save]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ag = btn.dataset.agentSave;
+      const sel = body.querySelector('select[data-agent-select="' + ag + '"]');
+      const resultEl = body.querySelector('[data-agent-result="' + ag + '"]');
+      if (!sel || !sel.value) return;
+      resultEl.className = 'cred-result';
+      resultEl.textContent = 'Guardando...';
+      try {
+        const r = await fetch('/agents/set-model', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agente: ag, modelo: sel.value }),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          resultEl.className = 'cred-result ok';
+          resultEl.textContent = '✓ Guardado';
+          const badge = body.querySelector('[data-agent-status="' + ag + '"]');
+          if (badge) badge.textContent = sel.value;
+        } else {
+          resultEl.className = 'cred-result err';
+          resultEl.textContent = '✕ ' + (d.error || 'Error');
+        }
+      } catch (e) {
+        resultEl.className = 'cred-result err';
+        resultEl.textContent = '✕ ' + e.message;
+      }
+    });
+  });
+}
 
 // ═══════════════════════════════════════════════════════════
 // HISTORIAL DE CONVERSACIONES — Sidebar

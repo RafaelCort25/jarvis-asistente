@@ -30,7 +30,25 @@ class AgentBase:
     can_execute = False   # Si True, intenta ejecutar skills reales
 
     def __init__(self, model: Optional[str] = None, memory=None, trace=None):
-        self.model = model or get_model(self.default_model_key)
+        if model:
+            self.model = model
+        else:
+            # Leer config/agents.json primero, sino usar model_config
+            try:
+                import json
+                from pathlib import Path as _P
+                cfg_path = _P(__file__).resolve().parent.parent.parent / "config" / "agents.json"
+                if cfg_path.exists():
+                    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+                    entry = cfg.get(self.name, {})
+                    if isinstance(entry, dict) and entry.get("model"):
+                        self.model = entry["model"]
+                    else:
+                        self.model = get_model(self.default_model_key)
+                else:
+                    self.model = get_model(self.default_model_key)
+            except Exception:
+                self.model = get_model(self.default_model_key)
         self.memory = memory
         self.trace = trace
 

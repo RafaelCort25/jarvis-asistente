@@ -129,6 +129,39 @@ def chat(msg: Message):
     text = msg.text
     result_data = None
 
+    # ─── MULTIAGENTE (si esta activado) ─────────────────────────────────
+    if USE_MULTIAGENT:
+        try:
+            ma = _get_multiagent()
+            res = ma.run(text, router=router)
+            respuesta = res.get("respuesta", "")
+            response = {
+                "type": "multiagent",
+                "text": respuesta,
+                "voice": clean_voice(respuesta),
+                "thought": f"Agentes: {', '.join(res.get('agentes_usados', []))}",
+                "artifacts": [],
+                "agentes": res.get("agentes_usados", []),
+                "plan": res.get("plan", []),
+            }
+            result_data = {"display": respuesta, "thought": response["thought"], "artifacts": []}
+            try:
+                _conv.add_message("user", text)
+                _conv.add_message(
+                    "jarvis",
+                    respuesta,
+                    thought=response.get("thought"),
+                    artifacts=None,
+                )
+            except Exception as _e:
+                print(f"[CHAT/MULTIAGENT] Error guardando historial: {_e}")
+            return response
+        except Exception as e:
+            import traceback
+            print(f"[MULTIAGENT ERROR] {e}")
+            traceback.print_exc()
+            # Continuar con router normal
+
     try:
         result, is_chat = router.route(text)
     except Exception as e:
@@ -145,7 +178,16 @@ def chat(msg: Message):
         result_data = {"display": response["text"], "thought": "", "artifacts": []}
         
         # Guardar en el historial
-        _save_history(text, result_data)
+        try:
+            _conv.add_message("user", text)
+            _conv.add_message(
+                "jarvis",
+                result_data.get("display", ""),
+                thought=result_data.get("thought"),
+                artifacts=result_data.get("artifacts"),
+            )
+        except Exception as _e:
+            print(f"[CHAT] Error guardando historial: {_e}")
         return response
 
     if result:
@@ -589,7 +631,91 @@ def skills_list():
     except Exception as e:
         return {"skills": [], "total": 0, "error": str(e)}
 
-    # ═══════════════════════════════════════════════════════════════════════════
+    
+
+# ═══════════════════════════════════════════════════════════════════════════
+# AGENTES MULTIAGENTE
+# ═══════════════════════════════════════════════════════════════════════════
+
+USE_MULTIAGENT = False
+_multiagent_instance = None
+
+def _get_multiagent():
+    global _multiagent_instance
+    if _multiagent_instance is None:
+        from core.agents.multiagent import MultiAgent
+        _multiagent_instance = MultiAgent()
+    return _multiagent_instance
+
+
+AGENTES_INFO = [
+    {"id": "supervisor", "nombre": "Supervisor", "descripcion": "Planifica qué agente usar"},
+    {"id": "dev", "nombre": "DEV", "descripcion": "Programación, scripts, código"},
+    {"id": "research", "nombre": "RESEARCH", "descripcion": "Investigación, explicaciones"},
+    {"id": "execute", "nombre": "EXECUTE", "descripcion": "Control del sistema"},
+    {"id": "chat", "nombre": "CHAT", "descripcion": "Conversación casual"},
+]
+
+
+@app.get("/agents/list")
+def agents_list():
+    """Devuelve el estado del multiagente + config + modelos disponibles."""
+    import json
+    cfg_path = ROOT / "config" / "agents.json"
+    config = {}
+    try:
+        if cfg_path.exists():
+            config = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    modelos = []
+    try:
+        import requests as _rq
+        r = _rq.get("http://localhost:11434/api/tags", timeout=3)
+        if r.status_code == 200:
+            modelos = sorted([m.get("name", "") for m in r.json().get("models", [])])
+    except Exception:
+        pass
+    return {
+        "ok": True,
+        "enabled": USE_MULTIAGENT,
+        "agentes": AGENTES_INFO,
+        "config": config,
+        "modelos": modelos,
+    }
+
+
+@app.post("/agents/toggle")
+def agents_toggle(payload: dict):
+    global USE_MULTIAGENT
+    USE_MULTIAGENT = bool(payload.get("enabled", False))
+    return {"ok": True, "enabled": USE_MULTIAGENT}
+
+
+class AgentModelPayload(BaseModel):
+    agente: str
+    modelo: str
+
+
+@app.post("/agents/set-model")
+def agents_set_model(payload: AgentModelPayload):
+    import json
+    if payload.agente not in ("supervisor", "dev", "research", "execute", "chat"):
+        return {"ok": False, "error": "Agente desconocido"}
+    cfg_path = ROOT / "config" / "agents.json"
+    try:
+        config = json.loads(cfg_path.read_text(encoding="utf-8")) if cfg_path.exists() else {}
+        config[payload.agente] = {"model": payload.modelo, "enabled": True}
+        cfg_path.write_text(json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8")
+        # Resetear la instancia para que recoja los nuevos modelos
+        global _multiagent_instance
+        _multiagent_instance = None
+        return {"ok": True, "config": config}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # CONVERSACIONES — Historial de chats
 # ═══════════════════════════════════════════════════════════════════════════
 
