@@ -1788,6 +1788,103 @@ class Router:
     def route(self, text):
         browser = self.skills["browser"]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # PROCEDIMIENTOS: aprendizaje y ejecucion de secuencias
+        # ═══════════════════════════════════════════════════════════════════
+        try:
+            from core import procedures as _proc
+            t_proc = text.lower().strip()
+
+            # A) Terminar grabacion
+            if _proc.is_recording() and any(p in t_proc for p in [
+                "termina el procedimiento", "termina procedimiento",
+                "para el procedimiento", "para de grabar",
+                "termina de grabar", "deten la grabacion",
+            ]):
+                ok, msg = _proc.stop_recording()
+                return {
+                    "voice": msg,
+                    "display": msg,
+                    "thought": "Procedimiento guardado",
+                }, False
+
+            # B) Empezar a grabar
+            import re as _re
+            m_rec = _re.search(
+                r'\b(?:aprende|graba|grabar|registra|ensename)\s+(?:el\s+|un\s+|la\s+)?'
+                r'(?:procedimiento\s+|secuencia\s+|rutina\s+|tarea\s+)?(.+?)(?:\s+procedimiento)?$',
+                t_proc,
+            )
+            if m_rec:
+                name = m_rec.group(1).strip(" .,!?¡¿")
+                ok, msg = _proc.start_recording(name)
+                if ok:
+                    return {
+                        "voice": msg,
+                        "display": msg,
+                        "thought": f"Grabando: {name}",
+                    }, False
+
+            # C) Listar procedimientos
+            if any(p in t_proc for p in [
+                "que procedimientos tengo", "lista de procedimientos",
+                "lista mis procedimientos", "mis procedimientos",
+                "que procedimientos hay", "listar procedimientos",
+            ]):
+                procs = _proc.list_procedures()
+                if not procs:
+                    msg = "No tienes procedimientos guardados."
+                else:
+                    lineas = [f"Tienes {len(procs)} procedimiento(s):"]
+                    for pr in procs:
+                        lineas.append(f"  - {pr['name']} ({pr['n_pasos']} pasos)")
+                    msg = "\n".join(lineas)
+                return {"voice": msg, "display": msg, "thought": ""}, False
+
+            # D) Borrar procedimiento
+            m_del = _re.search(
+                r'\b(?:borra|elimina|quita)\s+(?:el\s+|la\s+)?procedimiento\s+(.+)$',
+                t_proc,
+            )
+            if m_del:
+                name = m_del.group(1).strip(" .,!?¡¿")
+                if _proc.delete_procedure(name):
+                    msg = f"Procedimiento '{name}' borrado."
+                else:
+                    msg = f"No encontre el procedimiento '{name}'."
+                return {"voice": msg, "display": msg, "thought": ""}, False
+
+            # E) Ejecutar procedimiento
+            m_exec = _re.search(
+                r'\b(?:ejecuta|corre|haz|lanza|reproduce)\s+(?:el\s+|la\s+)?procedimiento\s+(.+)$',
+                t_proc,
+            )
+            if m_exec:
+                name = m_exec.group(1).strip(" .,!?¡¿")
+                proc = _proc.get_procedure(name)
+                if not proc:
+                    msg = f"No encontre el procedimiento '{name}'."
+                    return {"voice": msg, "display": msg, "thought": ""}, False
+                # Ejecutar cada paso
+                pasos = proc.get("steps", [])
+                displays = []
+                for i, paso in enumerate(pasos, 1):
+                    try:
+                        paso_text = paso.get("text", "")
+                        # Ejecutar el paso con el router (recursivo)
+                        res_paso, _ = self.route(paso_text)
+                        if res_paso:
+                            d = res_paso.get("display", "") or res_paso.get("voice", "")
+                            if d:
+                                displays.append(f"{i}. {d}")
+                    except Exception as _e:
+                        displays.append(f"{i}. [ERROR] {_e}")
+                resumen = f"Procedimiento '{name}' ejecutado ({len(pasos)} pasos):\n" + "\n".join(displays)
+                return {"voice": f"Procedimiento {name} ejecutado.", "display": resumen, "thought": ""}, False
+
+        except Exception as e:
+            print(f"[ROUTER] Error en procedimientos: {e}")
+
         # 0. ¿Hay pregunta pendiente del agente?
         try:
             if self.agent.has_pending_question():

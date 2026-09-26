@@ -129,6 +129,18 @@ def chat(msg: Message):
     text = msg.text
     result_data = None
 
+    # ─── PROCEDIMIENTOS: grabar paso si esta activo ────────────────────
+    from core import procedures as _proc
+    _grabando = _proc.is_recording()
+    _es_control = False
+    if _grabando:
+        t_low = text.lower().strip()
+        _es_control = any(p in t_low for p in [
+            "termina el procedimiento", "termina procedimiento",
+            "para el procedimiento", "para de grabar",
+            "termina de grabar", "deten la grabacion",
+        ])
+
     # ─── MULTIAGENTE (si esta activado) ─────────────────────────────────
     if USE_MULTIAGENT:
         try:
@@ -238,6 +250,14 @@ def chat(msg: Message):
             "artifacts": [],
         }
         result_data = {"display": response["text"], "thought": "", "artifacts": []}
+
+    # ─── PROCEDIMIENTOS: guardar paso si estabamos grabando ───────────
+    if _grabando and not _es_control:
+        try:
+            _proc.add_step(text)
+            print(f"[PROC] Paso guardado: {text[:60]}")
+        except Exception as _e:
+            print(f"[PROC] Error guardando paso: {_e}")
 
     # Guardar en el historial
     try:
