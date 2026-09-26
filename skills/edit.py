@@ -117,6 +117,7 @@ Responde SOLO con el JSON."""
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": 0.1},
                 format=schema,
+                stream=False,
             )
             raw = resp["message"]["content"].strip()
             print(f"[EDIT] Respuesta del LLM: {raw[:300]}")

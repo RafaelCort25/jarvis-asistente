@@ -84,6 +84,7 @@ class OfficeSkill(Skill):
                 model=self.model,
                 messages=messages,
                 options={"temperature": 0.5},
+                stream=False,
             )
             return response["message"]["content"].strip()
         except Exception as e:

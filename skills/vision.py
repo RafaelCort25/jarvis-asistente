@@ -63,6 +63,7 @@ class VisionSkill(Skill):
                     }
                 ],
                 options={"temperature": 0.2},
+                stream=False,
             )
             texto = response["message"]["content"].strip()
             if not texto:

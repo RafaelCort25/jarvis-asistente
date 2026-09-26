@@ -48,6 +48,7 @@ class TranslateSkill(Skill):
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": 0.2},
+                stream=False,
             )
             translation = response["message"]["content"].strip()
             translation = re.sub(r'^["\']|["\']$', '', translation)

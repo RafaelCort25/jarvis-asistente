@@ -243,6 +243,7 @@ class RAG:
                 model=get_model("agent"),
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": 0.2},
+                stream=False,
             )
             answer = resp["message"]["content"].strip()
         except Exception as e:

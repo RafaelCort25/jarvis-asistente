@@ -626,6 +626,7 @@ Ahora genera el workflow para: {description}
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": 0.1, "num_predict": 6000},
+                stream=False,
             )
             raw = response["message"]["content"].strip()
         except Exception as e:

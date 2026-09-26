@@ -372,6 +372,7 @@ class Agent:
                     model=self.model,
                     messages=messages,
                     options={"temperature": 0.1, "num_predict": 500},
+                    stream=False,
                 )
                 raw = response["message"]["content"].strip()
             except Exception as e:
@@ -403,6 +404,7 @@ class Agent:
                         model=self.model,
                         messages=messages,
                         options={"temperature": 0.0, "num_predict": 500},
+                        stream=False,
                     )
                     parsed = self._parse_json(retry["message"]["content"].strip())
                 except Exception:

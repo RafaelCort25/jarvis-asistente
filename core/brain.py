@@ -43,7 +43,7 @@ class Brain:
         messages = [{"role": "system", "content": system}] + self.history[-10:]
 
         try:
-            response = ollama.chat(model=self.model, messages=messages)
+            response = ollama.chat(model=self.model, messages=messages, stream=False)
             reply = response["message"]["content"]
             self.history.append({"role": "assistant", "content": reply})
             # Guardar respuesta

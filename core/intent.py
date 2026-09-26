@@ -263,7 +263,8 @@ class IntentClassifier:
                     {"role": "user", "content": user_text},
                 ],
                 options={"temperature": 0.1},
-                format=self.schema,  # ← clave: fuerza la estructura
+                format=self.schema,  # ← clave: fuerza la estructura,
+                stream=False,
             )
             raw = response["message"]["content"].strip()
             result = self._parse_json(raw)

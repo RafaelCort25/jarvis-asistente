@@ -49,6 +49,7 @@ class EducationSkill(Skill):
                 model=self.model,
                 messages=messages,
                 options={"temperature": temperature},
+                stream=False,
             )
             return resp["message"]["content"].strip()
         except Exception as e:

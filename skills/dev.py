@@ -115,6 +115,7 @@ class DevSkill(Skill):
                 model=self.model,
                 messages=messages,
                 options={"temperature": 0.2},
+                stream=False,
             )
             return response["message"]["content"].strip()
         except Exception as e:
@@ -688,6 +689,7 @@ Reglas:
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": 0.1},
                 format=schema,
+                stream=False,
             )
             raw = resp["message"]["content"].strip()
             print(f"[DEV] Bugs encontrados (raw): {raw[:300]}")
@@ -861,6 +863,7 @@ Se directo y tecnico. Maximo 500 palabras."""
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": 0.3},
+                stream=False,
             )
             analisis = resp["message"]["content"].strip()
         except Exception as e:

@@ -334,6 +334,7 @@ NO digas "esta imagen muestra". Empieza directamente."""
                 model=get_model("chat"),
                 messages=[{"role": "user", "content": prompt_llm}],
                 options={"temperature": 0.5},
+                stream=False,
             )
             return resp["message"]["content"].strip()
         except Exception:
