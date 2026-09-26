@@ -696,6 +696,31 @@ Checklist para que una skill quede 100% integrada:
 
 **Total:** 31 skills · 4 combos · n8n 100% · Gmail 100% · Canva 100% · Maps 100% · FreeCAD 100% · Blender 100% · DWG 100%.
 
+## 🎨 Características de la GUI
+
+### Selección de modelos (chat/classifier/agent/vision)
+
+Panel en **⚙️ Sistema → 🤖 Modelos de IA** para cambiar en tiempo real:
+- **Chat general** — conversaciones abiertas (default: `llama3.2:3b`)
+- **Clasificador de intent** — detección de skills (default: `llama3.2:3b`)
+- **Agente (multi-paso)** — tareas complejas (default: `qwen2.5-coder:7b`)
+- **Visión** — análisis de imágenes (default: `llava-phi3:latest`)
+
+Config guardada en `config/models.json`. Cambios aplicados sin reiniciar.
+
+### Historial de conversaciones
+
+Panel lateral (**💬 Historial** en el header):
+- Agrupación por día (Hoy, Ayer, fecha)
+- Lista de conversaciones con título autogenerado y N mensajes
+- Clic en una → la carga en el chat
+- Botón "+ Nueva conversación"
+- Botón ✕ para borrar
+
+Archivos en `memory/conversations/*.json`. Endpoints en `/conversations/*`.
+
+---
+
 Estado: **Bloque 1 CERRADO** · **CAD-1 CERRADO** · **CAD-2 CERRADO** · **CAD-3 CERRADO**.
 Próximo: CAD-4 (puertas/ventanas reales + planta/fachada/corte).
 
