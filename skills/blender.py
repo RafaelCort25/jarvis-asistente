@@ -449,18 +449,34 @@ except Exception as e:
     print("WARN_FREESTYLE: " + str(e))
 
 # ─── HELPER PARA CREAR CAMARA ORTOGRAFICA ──────────────────────────
-def make_ortho_cam(name, loc, look_at, ortho_scale):
+def make_ortho_cam(name, tipo, ortho_scale, centro, dist):
+    # Crea una camara ortografica con rotacion EXPLICITA (sin to_track_quat)
+    # tipo: "planta" | "fachada" | "corte"
+    # centro: (cx, cy, cz) ; dist: distancia al centro
+    cx, cy, cz = centro
+
     cam_data = bpy.data.cameras.new(name=name)
     cam_data.type = 'ORTHO'
     cam_data.ortho_scale = ortho_scale
-    # CRITICO: extender el clip para que el modelo (escalado x1000) entre
     cam_data.clip_start = 0.01
     cam_data.clip_end = 1e7
+
     cam = bpy.data.objects.new(name, cam_data)
     bpy.context.scene.collection.objects.link(cam)
-    cam.location = loc
-    direc = Vector(look_at) - cam.location
-    cam.rotation_euler = direc.to_track_quat('-Z', 'Y').to_euler()
+
+    if tipo == 'planta':
+        # Camara arriba mirando hacia -Z. Up = +Y.
+        cam.location = (cx, cy, cz + dist)
+        cam.rotation_euler = (0.0, 0.0, 0.0)
+    elif tipo == 'fachada':
+        # Camara al sur mirando hacia +Y. Up = +Z.
+        cam.location = (cx, cy - dist, cz)
+        cam.rotation_euler = (math.radians(90), 0.0, 0.0)
+    elif tipo == 'corte':
+        # Camara al este mirando hacia -X. Up = +Z.
+        cam.location = (cx + dist, cy, cz)
+        cam.rotation_euler = (math.radians(90), 0.0, math.radians(90))
+
     return cam
 
 # Tamano de la vista ortografica (margen 1.2)
@@ -473,12 +489,11 @@ max_yz = max(tam_y, tam_z) * MARGEN
 # ─── VISTA 1: PLANTA (desde arriba, mirando -Z) ────────────────────
 cam_planta = make_ortho_cam(
     "Cam_Planta",
-    (centro_x, centro_y, centro_z + diagonal * 2),
-    (centro_x, centro_y, centro_z),
+    "planta",
     max_xy * 1.1,
+    (centro_x, centro_y, centro_z),
+    diagonal * 2,
 )
-# Planta: que el "norte" (eje +Y) quede ARRIBA de la imagen
-cam_planta.rotation_euler = (0, 0, math.radians(-90))
 scene.camera = cam_planta
 scene.render.filepath = os.path.join(OUTPUT_DIR, "01_planta.png")
 try:
@@ -490,9 +505,10 @@ except Exception as e:
 # ─── VISTA 2: FACHADA (desde el sur, mirando +Y) ──────────────────
 cam_fachada = make_ortho_cam(
     "Cam_Fachada",
-    (centro_x, centro_y - diagonal * 2, centro_z),
-    (centro_x, centro_y, centro_z),
+    "fachada",
     max_xz * 1.1,
+    (centro_x, centro_y, centro_z),
+    diagonal * 2,
 )
 scene.camera = cam_fachada
 scene.render.filepath = os.path.join(OUTPUT_DIR, "02_fachada.png")
@@ -533,9 +549,10 @@ for obj in [o for o in bpy.context.scene.objects if o.type == 'MESH']:
 # Camara mirando desde el lado este (mira hacia -X)
 cam_corte = make_ortho_cam(
     "Cam_Corte",
-    (centro_x + diagonal * 2, centro_y, centro_z),
-    (centro_x, centro_y, centro_z),
+    "corte",
     max_yz * 1.1,
+    (centro_x, centro_y, centro_z),
+    diagonal * 2,
 )
 scene.camera = cam_corte
 scene.render.filepath = os.path.join(OUTPUT_DIR, "03_corte.png")

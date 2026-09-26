@@ -722,6 +722,20 @@ class Router:
         ]):
             return [{"skill": "vision", "action": "explain_screen_code", "params": {}}]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # BLENDER: render de 3 vistas (planta/fachada/corte) — ANTES de MAPS
+        # ═══════════════════════════════════════════════════════════════════
+        if any(p in t for p in [
+            "genera las vistas", "renderiza las vistas", "genera planta fachada y corte",
+            "genera las 3 vistas", "haz las vistas del plano", "vistas ortograficas",
+            "vistas del plano", "vistas del ultimo step", "renderiza las 3 vistas",
+        ]):
+            from core.paths import SANDBOX_DWG
+            steps = sorted(SANDBOX_DWG.glob("*.step"), key=lambda x: x.stat().st_mtime, reverse=True)
+            if steps:
+                return [{"skill": "blender", "action": "render_views",
+                         "params": {"step_path": str(steps[0]), "res_x": 1920, "res_y": 1080}}]
+
 
         # ═══════════════════════════════════════════════════════════════════
         # MAPS: buscar edificios reales en OpenStreetMap
