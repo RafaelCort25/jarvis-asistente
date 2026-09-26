@@ -1815,6 +1815,32 @@ class Router:
                 "_short_circuit": True,
             }
 
+        # ═══════════════════════════════════════════════════════════════════
+        # HORA/FECHA (variantes sin "es")
+        # ═══════════════════════════════════════════════════════════════════
+        if any(p in t for p in ["que hora", "dime la hora", "hora actual"]):
+            return [{"skill": "system", "action": "time", "params": {}}]
+        if any(p in t for p in ["que dia", "dime el dia", "fecha actual", "que fecha"]):
+            return [{"skill": "system", "action": "date", "params": {}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # SPOTIFY (abrir + reproducir)
+        # ═══════════════════════════════════════════════════════════════════
+        if any(p in t for p in ["abre spotify", "abreme spotify", "abrir spotify", "lanza spotify"]):
+            return [{"skill": "desktop", "action": "open_app", "params": {"app": "spotify"}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # YOUTUBE (reproducir cancion directa)
+        # ═══════════════════════════════════════════════════════════════════
+        import re as _re_yt
+        m_yt = _re_yt.search(r"reproduce\s+(.+?)(?:\s+de\s+|\s+en\s+)?(.+)?$", t)
+        if m_yt and "youtube" not in t:
+            cancion = m_yt.group(1).strip()
+            artista = m_yt.group(2).strip() if m_yt.group(2) else ""
+            query = f"{cancion} {artista}".strip()
+            if query:
+                return [{"skill": "browser", "action": "youtube_play", "params": {"query": query}}]
+
         return None
 
     def _normalize(self, result):
@@ -1838,6 +1864,65 @@ class Router:
     def route(self, text):
         browser = self.skills["browser"]
 
+
+        # ═══════════════════════════════════════════════════════════════════
+        # ESTADO PENDIENTE: seleccion de opciones ("la primera", "el 3", etc.)
+        # ═══════════════════════════════════════════════════════════════════
+        try:
+            from core import pending_state as _ps
+            pend = _ps.get_pending()
+            if pend and _ps.es_seleccion(text):
+                tipo = pend["tipo"]
+                data = pend["data"]
+                # Contar opciones segun el tipo
+                if tipo == "youtube_select":
+                    max_op = len(data.get("videos", []))
+                elif tipo == "opciones":
+                    max_op = len(data.get("items", []))
+                else:
+                    max_op = 99
+                idx = _ps.parsear_seleccion(text, max_op)
+                if idx == -1:
+                    _ps.clear()
+                    return {
+                        "voice": "Cancelado.",
+                        "display": "Cancelado.",
+                        "thought": "Seleccion cancelada",
+                    }, False
+                elif idx >= 0:
+                    _ps.clear()
+                    if tipo == "youtube_select":
+                        # Usar play_pending del browser (index 1-based)
+                        bs = self.skills.get("browser")
+                        if bs and hasattr(bs, "run"):
+                            try:
+                                r = bs.run("play_pending", {"index": idx + 1})
+                                if r:
+                                    return r, False
+                            except Exception as _e:
+                                print(f"[PENDING] Error reproduciendo video: {_e}")
+                        return {
+                            "voice": f"No pude reproducir el video {idx + 1}.",
+                            "display": f"No pude reproducir el video {idx + 1}.",
+                            "thought": "",
+                        }, False
+                    elif tipo == "opciones":
+                        items = data.get("items", [])
+                        if idx < len(items):
+                            item = items[idx]
+                            return {
+                                "voice": f"Seleccionado: {item}",
+                                "display": f"**Seleccionado:** {item}",
+                                "thought": f"Seleccion idx={idx}",
+                            }, False
+                else:
+                    return {
+                        "voice": "No entendi. Di el numero o 'cancela'.",
+                        "display": "No entendi. Di el numero o 'cancela'.",
+                        "thought": "",
+                    }, False
+        except Exception as _e:
+            print(f"[ROUTER] Error en pending_state: {_e}")
         # ═══════════════════════════════════════════════════════════════════
         # PROCEDIMIENTOS: aprendizaje y ejecucion de secuencias
         # ═══════════════════════════════════════════════════════════════════

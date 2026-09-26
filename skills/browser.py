@@ -113,6 +113,13 @@ class BrowserSkill(Skill):
             voice_parts.append(f"La {i}: {t}.")
         voice_parts.append("Cual pongo?")
 
+        # Guardar estado pendiente para que el router intercepte la seleccion
+        try:
+            from core import pending_state as _ps
+            _ps.set_pending("youtube_select", {"videos": self.pending_videos})
+        except Exception as _e:
+            print(f"[BROWSER] No se pudo guardar pending: {_e}")
+
         return {
             "thought": f"Buscar '{query}' en YouTube, ordenar resultados",
             "display": "\n".join(display_lines),

@@ -43,6 +43,16 @@ REGLAS ADICIONALES:
 - NUNCA inventes sub-pasos: "abrir editor", "escribir codigo", "ejecutar script"
   NO son tareas validas. La tarea del usuario se pasa TAL CUAL al agente.
 - Maximo 3 pasos.
+- SELECCION SIMPLE: si el usuario dice "la primera", "el segundo", "opcion 3",
+  "ese", "el de arriba", etc., SIEMPRE va al agente chat (NO a dev).
+  El chat maneja el contexto de la conversacion anterior.
+- REPRODUCIR MUSICA: "reproduce X", "pon X", "busca X en youtube" SIEMPRE
+  van al agente execute o chat, NUNCA a dev ni research.
+- SELECCION SIMPLE: si el usuario dice "la primera", "el segundo", "opcion 3",
+  "ese", "el de arriba", etc., SIEMPRE va al agente **chat** (NO a dev).
+  El chat maneja el contexto de la conversacion anterior.
+- REPRODUCIR MUSICA: "reproduce X", "pon X", "busca X en youtube" SIEMPRE
+  van al agente **execute** o **chat**, NUNCA a dev ni research.
 
 FORMATO DE RESPUESTA (JSON estricto):
 {
