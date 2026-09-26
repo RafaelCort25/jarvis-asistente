@@ -767,9 +767,200 @@
   }
   #histBackdrop.active { display: block; }
 
+
+  /* ═══════════════════════════════════════════════════════════ */
+  /* NEBULOSA DE FONDO                                          */
+  /* ═══════════════════════════════════════════════════════════ */
+  #nebula {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .nebula-halo {
+    position: absolute;
+    border-radius: 50%;
+    mix-blend-mode: screen;
+    filter: blur(80px);
+  }
+  .nebula-1 {
+    width: 80vw;
+    height: 80vw;
+    top: -20vw;
+    left: -20vw;
+    background: radial-gradient(circle, rgba(201,166,104,0.28) 0%, rgba(201,166,104,0.06) 35%, transparent 65%);
+    animation: nebulaFloat1 25s ease-in-out infinite;
+  }
+  .nebula-2 {
+    width: 70vw;
+    height: 70vw;
+    bottom: -20vw;
+    right: -15vw;
+    background: radial-gradient(circle, rgba(120,150,200,0.22) 0%, rgba(120,150,200,0.04) 40%, transparent 65%);
+    animation: nebulaFloat2 30s ease-in-out infinite;
+  }
+  .nebula-3 {
+    width: 60vw;
+    height: 60vw;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(160,120,180,0.15) 0%, transparent 60%);
+    animation: nebulaFloat3 35s ease-in-out infinite;
+  }
+  @keyframes nebulaFloat1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(5vw, 3vw) scale(1.1); }
+    66% { transform: translate(-3vw, 5vw) scale(0.95); }
+  }
+  @keyframes nebulaFloat2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-6vw, -4vw) scale(1.15); }
+  }
+  @keyframes nebulaFloat3 {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.25; }
+    50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.15; }
+  }
+
+  /* ═══════════════════════════════════════════════════════════ */
+  /* CURSOR CUSTOM                                               */
+  /* ═══════════════════════════════════════════════════════════ */
+  #cursor-dot {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #e8c992;
+    pointer-events: none;
+    z-index: 9999;
+    mix-blend-mode: screen;
+    box-shadow: 0 0 10px rgba(232,201,146,0.9), 0 0 20px rgba(201,166,104,0.5);
+    transition: transform 0.05s linear;
+    display: none;
+  }
+  #cursor-ring {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(201,166,104,0.4);
+    pointer-events: none;
+    z-index: 9998;
+    mix-blend-mode: screen;
+    transition: width 0.3s ease, height 0.3s ease, border-color 0.3s ease;
+    display: none;
+  }
+  @media (min-width: 768px) {
+    body:not(.modal-open) #cursor-dot,
+    body:not(.modal-open) #cursor-ring {
+      display: block;
+    }
+    body:not(.modal-open) * {
+      cursor: none !important;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════ */
+  /* LOADING SCREEN                                              */
+  /* ═══════════════════════════════════════════════════════════ */
+  #loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: var(--void);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.7s ease;
+  }
+  #loading-screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  #loading-screen .loading-glow {
+    position: absolute;
+    width: 60vw;
+    height: 60vw;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(201,166,104,0.4) 0%, transparent 60%);
+    filter: blur(80px);
+    opacity: 0.3;
+  }
+  #loading-screen .loading-content {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+  }
+  #loading-screen .loading-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(3rem, 8vw, 6rem);
+    line-height: 1;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  #loading-screen .loading-subtitle {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--gold);
+    font-size: 1.1rem;
+    margin-bottom: 3rem;
+  }
+  #loading-screen .loading-bar {
+    width: 256px;
+    height: 2px;
+    background: rgba(201,166,104,0.2);
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 0 auto;
+  }
+  #loading-screen .loading-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #c9a668, #e8c992);
+    transition: width 0.3s ease;
+    border-radius: 999px;
+  }
+  #loading-screen .loading-percent {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    margin-top: 16px;
+  }
 </style>
 </head>
 <body>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <div class="loading-glow"></div>
+  <div class="loading-content">
+    <div class="loading-title">Senna</div>
+    <div class="loading-subtitle">asistente personal</div>
+    <div class="loading-bar">
+      <div class="loading-bar-fill" id="loadingBarFill" style="width:0%"></div>
+    </div>
+    <div class="loading-percent" id="loadingPercent">0%</div>
+  </div>
+</div>
+
+<!-- NEBULOSA DE FONDO -->
+<div id="nebula">
+  <div class="nebula-halo nebula-1"></div>
+  <div class="nebula-halo nebula-2"></div>
+  <div class="nebula-halo nebula-3"></div>
+</div>
+
+<!-- CURSOR CUSTOM -->
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+
 
 <div id="grid"></div>
 <div id="scene"></div>
@@ -999,13 +1190,19 @@ let orbScale = 1, targetScale = 1, orbY = 0, targetY = 0;
 const uniforms = {
   uTime: { value: 0 },
   uEnergy: { value: energy },
-  uColor: { value: PALETTE.idle.clone() }
+  uColor: { value: PALETTE.idle.clone() },
+  uShape: { value: 0.5 },
+  uNoiseScale: { value: 1.6 }
 };
 
 const vertexShader = `
   uniform float uTime;
   uniform float uEnergy;
+  uniform float uShape;
+  uniform float uNoiseScale;
   varying float vDisp;
+  varying vec3 vNormal;
+  varying vec3 vPosition;
   vec3 hash3(vec3 p){
     p = vec3( dot(p,vec3(127.1,311.7,74.7)),
               dot(p,vec3(269.5,183.3,246.1)),
@@ -1025,8 +1222,16 @@ const vertexShader = `
                dot(hash3(i+vec3(1,1,1)), f-vec3(1,1,1)), u.x), u.y), u.z);
   }
   void main(){
-    float n = noise(position * 1.6 + uTime * 0.35);
-    float disp = n * uEnergy;
+    vNormal = normal;
+    vPosition = position;
+    float n1 = noise(position * uNoiseScale + uTime * 0.35);
+    float n2 = noise(position * (uNoiseScale * 2.4) + uTime * 0.6);
+    float n3 = sin(position.x * 3.0 + uTime * 0.8) * cos(position.y * 3.0 + uTime * 0.6) * sin(position.z * 3.0 + uTime * 0.4);
+    float baseNoise = n1;
+    float detail = mix(0.0, n2 * 0.4, uShape);
+    float ripple = mix(0.0, n3 * 0.08, 1.0 - uShape);
+    float totalNoise = baseNoise + detail + ripple;
+    float disp = totalNoise * uEnergy;
     vDisp = disp;
     vec3 newPos = position + normal * disp;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
@@ -1035,10 +1240,18 @@ const vertexShader = `
 
 const fragmentShader = `
   uniform vec3 uColor;
+  uniform float uShape;
   varying float vDisp;
+  varying vec3 vNormal;
+  varying vec3 vPosition;
   void main(){
     float glow = smoothstep(-0.4, 0.6, vDisp) * 0.5 + 0.5;
+    vec3 viewDir = normalize(cameraPosition - vPosition);
+    float fresnel = pow(1.0 - abs(dot(vNormal, viewDir)), 2.0);
+    float rimIntensity = mix(0.6, 0.9, 1.0 - uShape);
     vec3 col = uColor * glow;
+    col += uColor * fresnel * rimIntensity;
+    col += vec3(1.0, 0.9, 0.7) * pow(fresnel, 4.0) * 0.4;
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -1060,6 +1273,31 @@ const glow = new THREE.Mesh(
   new THREE.MeshBasicMaterial({ color: 0xc9a668, transparent:true, opacity:0.05, side: THREE.BackSide })
 );
 scene.add(glow);
+
+// ─── PARTICULAS ORBITALES ────────────────────────────────────────────
+const ORBIT_COUNT = 80;
+const orbitPositions = new Float32Array(ORBIT_COUNT * 3);
+for (let i = 0; i < ORBIT_COUNT; i++) {
+  const angle = (i / ORBIT_COUNT) * Math.PI * 2;
+  const r = 2.2 + (Math.random() - 0.5) * 0.5;
+  const yOffset = (Math.random() - 0.5) * 1.2;
+  orbitPositions[i * 3] = Math.cos(angle) * r;
+  orbitPositions[i * 3 + 1] = yOffset;
+  orbitPositions[i * 3 + 2] = Math.sin(angle) * r;
+}
+const orbitGeometry = new THREE.BufferGeometry();
+orbitGeometry.setAttribute('position', new THREE.BufferAttribute(orbitPositions, 3));
+const orbitMaterial = new THREE.PointsMaterial({
+  color: 0xc9a668,
+  size: 0.05,
+  sizeAttenuation: true,
+  transparent: true,
+  opacity: 0.9,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending
+});
+const orbitParticles = new THREE.Points(orbitGeometry, orbitMaterial);
+scene.add(orbitParticles);
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth/window.innerHeight;
@@ -1086,6 +1324,12 @@ function animate(){
   orb.rotation.x = Math.sin(t*0.2) * 0.08;
   wireShell.rotation.y = -t * 0.05;
   wireShell.rotation.x = mouseY * 0.3;
+  if (typeof orbitParticles !== 'undefined') {
+    orbitParticles.rotation.y = t * 0.3;
+    orbitParticles.rotation.x = Math.sin(t * 0.4) * 0.15;
+    orbitParticles.position.y = orbY;
+    orbitParticles.scale.setScalar(orbScale);
+  }
   orb.position.y = orbY; orb.scale.setScalar(orbScale);
   wireShell.position.y = orbY; wireShell.scale.setScalar(orbScale);
   glow.position.y = orbY; glow.scale.setScalar(orbScale);
@@ -2440,6 +2684,74 @@ addMessage = function(role, text, thought, artifacts) {
 
 
 console.log('[JARVIS] Interfaz cargada correctamente');
+
+// ═══════════════════════════════════════════════════════════
+// LOADING SCREEN
+// ═══════════════════════════════════════════════════════════
+(function() {
+  const screen = document.getElementById('loading-screen');
+  const fill = document.getElementById('loadingBarFill');
+  const percent = document.getElementById('loadingPercent');
+  if (!screen || !fill || !percent) return;
+
+  let p = 0;
+  const interval = setInterval(() => {
+    p += Math.random() * 15 + 5;
+    if (p >= 100) {
+      p = 100;
+      clearInterval(interval);
+      setTimeout(() => {
+        screen.classList.add('hidden');
+      }, 400);
+    }
+    fill.style.width = p + '%';
+    percent.textContent = Math.round(p) + '%';
+  }, 200);
+})();
+
+// ═══════════════════════════════════════════════════════════
+// CURSOR CUSTOM
+// ═══════════════════════════════════════════════════════════
+(function() {
+  const dot = document.getElementById('cursor-dot');
+  const ring = document.getElementById('cursor-ring');
+  if (!dot || !ring) return;
+
+  let mx = 0, my = 0;
+  let rx = 0, ry = 0;
+
+  window.addEventListener('mousemove', (e) => {
+    mx = e.clientX;
+    my = e.clientY;
+    dot.style.transform = `translate3d(${mx - 4}px, ${my - 4}px, 0)`;
+  });
+
+  function animateCursor() {
+    rx += (mx - rx) * 0.15;
+    ry += (my - ry) * 0.15;
+    ring.style.transform = `translate3d(${rx - 20}px, ${ry - 20}px, 0)`;
+    requestAnimationFrame(animateCursor);
+  }
+  animateCursor();
+
+  function attachHover() {
+    document.querySelectorAll('a, button, .chip, [role="button"]').forEach((el) => {
+      el.addEventListener('mouseenter', () => {
+        ring.style.width = '60px';
+        ring.style.height = '60px';
+        ring.style.borderColor = 'rgba(232, 201, 146, 0.9)';
+      });
+      el.addEventListener('mouseleave', () => {
+        ring.style.width = '40px';
+        ring.style.height = '40px';
+        ring.style.borderColor = 'rgba(201, 166, 104, 0.4)';
+      });
+    });
+  }
+  setTimeout(attachHover, 1500);
+  setInterval(attachHover, 3000);
+})();
+
 </script>
 </body>
 </html>
