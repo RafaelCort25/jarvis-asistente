@@ -123,19 +123,30 @@ def _extract_artifacts(text):
 
 @app.post("/chat")
 def chat(msg: Message):
+    # Asegurar que hay una conversación activa
+    _conv.ensure_current()
+
+    text = msg.text
+    result_data = None
+
     try:
-        result, is_chat = router.route(msg.text)
+        result, is_chat = router.route(text)
     except Exception as e:
         import traceback
         print(f"[API/CHAT ERROR] {e}")
         traceback.print_exc()
-        return {
+        response = {
             "type": "error",
             "text": f"Error procesando el comando: {e}",
             "voice": "Hubo un error interno.",
             "thought": "",
             "artifacts": [],
         }
+        result_data = {"display": response["text"], "thought": "", "artifacts": []}
+        
+        # Guardar en el historial
+        _save_history(text, result_data)
+        return response
 
     if result:
         display = result.get("display", "")
@@ -143,39 +154,62 @@ def chat(msg: Message):
         thought = result.get("thought", "")
         artifacts = _extract_artifacts(display or voice)
         voice_clean = clean_voice(voice or display) or "Listo."
-        return {
+        
+        response = {
             "type": "command",
             "text": display or voice or "Listo.",
             "voice": voice_clean,
             "thought": thought,
             "artifacts": artifacts,
         }
+        result_data = {
+            "display": response["text"],
+            "thought": thought,
+            "artifacts": artifacts,
+        }
 
-    if is_chat:
+    elif is_chat:
         try:
-            reply = brain.chat(msg.text)
+            reply = brain.chat(text)
+            response = {
+                "type": "chat",
+                "text": reply,
+                "voice": clean_voice(reply),
+                "artifacts": [],
+            }
+            result_data = {"display": reply, "thought": "", "artifacts": []}
         except Exception as e:
             print(f"[API/BRAIN ERROR] {e}")
-            return {
+            response = {
                 "type": "error",
                 "text": f"Error en el cerebro: {e}",
                 "voice": "Error en el cerebro.",
                 "thought": "",
                 "artifacts": [],
             }
-        return {
-            "type": "chat",
-            "text": reply,
-            "voice": clean_voice(reply),
+            result_data = {"display": response["text"], "thought": "", "artifacts": []}
+    else:
+        response = {
+            "type": "unknown",
+            "text": "No entendi el comando.",
+            "voice": "",
             "artifacts": [],
         }
+        result_data = {"display": response["text"], "thought": "", "artifacts": []}
 
-    return {
-        "type": "unknown",
-        "text": "No entendi el comando.",
-        "voice": "",
-        "artifacts": [],
-    }
+    # Guardar en el historial
+    try:
+        _conv.add_message("user", text)
+        _conv.add_message(
+            "jarvis",
+            result_data.get("display", result_data.get("voice", "")),
+            thought=result_data.get("thought"),
+            artifacts=result_data.get("artifacts"),
+        )
+    except Exception as _e:
+        print(f"[CHAT] Error guardando historial: {_e}")
+
+    return response
 @app.post("/copy_image")
 def copy_image(path: str = Query(...)):
     """Copia una imagen al portapapeles de Windows."""
@@ -554,6 +588,83 @@ def skills_list():
         return {"skills": skills_list._cache, "total": len(skills_list._cache)}
     except Exception as e:
         return {"skills": [], "total": 0, "error": str(e)}
+
+    # ═══════════════════════════════════════════════════════════════════════════
+# CONVERSACIONES — Historial de chats
+# ═══════════════════════════════════════════════════════════════════════════
+
+from core import conversation_store as _conv
+
+@app.get("/conversations/list")
+def conversations_list():
+    """Lista todas las conversaciones guardadas."""
+    try:
+        items = _conv.list_conversations(limit=100)
+        actual = _conv.get_current_id()
+        return {"ok": True, "conversaciones": items, "actual": actual}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "conversaciones": [], "actual": None}
+
+@app.get("/conversations/get")
+def conversations_get(id: str = Query(..., description="ID de la conversacion")):
+    """Devuelve una conversacion completa."""
+    try:
+        conv = _conv.get_conversation(id)
+        if not conv:
+            return {"ok": False, "error": "Conversacion no encontrada"}
+        return {"ok": True, "conversacion": conv}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+class ConvSelectPayload(BaseModel):
+    id: str = ""
+
+@app.post("/conversations/new")
+def conversations_new():
+    """Crea una conversacion nueva y la marca como actual."""
+    try:
+        conv = _conv.new_conversation()
+        return {"ok": True, "conversacion": conv}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.post("/conversations/select")
+def conversations_select(payload: ConvSelectPayload):
+    """Marca una conversacion como la actual."""
+    try:
+        if not payload.id:
+            return {"ok": False, "error": "ID vacio"}
+        if not _conv.set_current_id(payload.id):
+            return {"ok": False, "error": "No existe esa conversacion"}
+        return {"ok": True, "actual": payload.id}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.post("/conversations/delete")
+def conversations_delete(payload: ConvSelectPayload):
+    """Borra una conversacion."""
+    try:
+        if not payload.id:
+            return {"ok": False, "error": "ID vacio"}
+        if not _conv.delete_conversation(payload.id):
+            return {"ok": False, "error": "No se pudo borrar"}
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.post("/conversations/rename")
+def conversations_rename(payload: dict):
+    """Renombra una conversacion."""
+    try:
+        id_conv = payload.get("id", "")
+        titulo = payload.get("titulo", "")
+        if not id_conv:
+            return {"ok": False, "error": "ID vacio"}
+        if not _conv.rename_conversation(id_conv, titulo):
+            return {"ok": False, "error": "No se pudo renombrar"}
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
     # ═══════════════════════════════════════════════════════════════════════════
 # MODELOS — Selección de modelos de Ollama
 # ═══════════════════════════════════════════════════════════════════════════
