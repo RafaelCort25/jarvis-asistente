@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jarvis</title>
+<title>Senna</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -782,7 +782,7 @@
 </div>
 
 <header>
-  <div class="wordmark">JARVIS <span>asistente</span></div>
+  <div class="wordmark">SENNA <span>asistente</span></div>
   <div class="status" id="status">
     <span class="dot"></span>
     <span id="statusText">EN ESPERA</span>
@@ -810,7 +810,7 @@
     <div class="chip" data-cmd="Recuérdame en un minuto tomar agua">Recordatorio</div>
   </div>
   <div id="inputRow">
-    <input id="textInput" type="text" placeholder="Escribe o habla con Jarvis…">
+    <input id="textInput" type="text" placeholder="Escribe o habla con Senna…">
     <div class="roundBtn" id="mic" title="Hablar">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
@@ -829,7 +829,7 @@
   <div class="modal modal-relative">
     <button class="close-x" data-close="modalStatus">✕</button>
     <h2>Estado del Sistema</h2>
-    <p class="subtitle">Todo lo que Nitro necesita para funcionar.</p>
+    <p class="subtitle">Todo lo que Senna necesita para funcionar.</p>
     <div id="statusBody">
       <p style="color:var(--text-dim); text-align:center; padding:20px;">Cargando...</p>
     </div>
@@ -868,7 +868,7 @@
   <div class="modal modal-relative">
     <button class="close-x" data-close="modalCreds">✕</button>
     <h2>Integraciones</h2>
-    <p class="subtitle">Configura las cuentas externas que Nitro puede usar. Los datos se guardan solo en tu PC.</p>
+    <p class="subtitle">Configura las cuentas externas que Senna puede usar. Los datos se guardan solo en tu PC.</p>
     <div id="credsBody">
       <p style="color:var(--text-dim); text-align:center; padding:20px;">Cargando...</p>
     </div>
@@ -883,7 +883,7 @@
 <!-- ═══════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modalOnboarding">
   <div class="modal modal-relative">
-    <h2>Bienvenido a JARVIS</h2>
+    <h2>Bienvenido a Senna</h2>
     <p class="subtitle">Voy a revisar tu sistema para asegurarme de que todo funcione.</p>
     <div id="onboardingBody">
       <p style="color:var(--text-dim); text-align:center; padding:20px;">Analizando...</p>
@@ -1488,7 +1488,7 @@ async function startRecording() {
       console.log('[MIC] Muy corto, ignorado');
       cleanup();
       setState('idle');
-      input.placeholder = 'Escribe o habla con Jarvis…';
+      input.placeholder = 'Escribe o habla con Senna…';
       return;
     }
 
@@ -1501,7 +1501,7 @@ async function startRecording() {
 
     if (blob.size < 1000) {
       setState('idle');
-      input.placeholder = 'Escribe o habla con Jarvis…';
+      input.placeholder = 'Escribe o habla con Senna…';
       return;
     }
 
@@ -1579,14 +1579,14 @@ async function transcribeAndSend(blob) {
   } catch (err) {
     console.error('[TRANSCRIBE] Error:', err);
     setState('idle');
-    input.placeholder = 'Escribe o habla con Jarvis…';
+    input.placeholder = 'Escribe o habla con Senna…';
     enterConversation();
     addMessage('jarvis', '⚠️ Error transcribiendo el audio.');
     soundError();
     return;
   }
 
-  input.placeholder = 'Escribe o habla con Jarvis…';
+  input.placeholder = 'Escribe o habla con Senna…';
 
   const text = (data.text || '').trim();
   if (!text) {

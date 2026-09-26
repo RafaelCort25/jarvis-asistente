@@ -118,7 +118,14 @@ class Supervisor:
             "explicar", "resume", "resumir", "que es", "como funciona",
             "por que", "porque", "cuando", "donde", "quien",
         ]
-        if any(w in t for w in ejecutar):
+        # PRIORIDAD: identidad -> chat siempre
+        identidad = [
+            "como te llamas", "quien eres", "quien te creo", "quien te hizo",
+            "tu nombre", "presentate", "preséntate",
+        ]
+        if any(w in t for w in identidad):
+            agente = "chat"
+        elif any(w in t for w in ejecutar):
             agente = "execute"
         elif any(w in t for w in dev):
             agente = "dev"

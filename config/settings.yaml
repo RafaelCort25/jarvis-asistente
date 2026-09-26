@@ -1,7 +1,7 @@
-﻿jarvis:
-  name: "Jarvis"
+senna:
+  name: "Senna"
   language: "es"
-  wake_word: "jarvis"
+  wake_word: "oye senna"
   debug: true
 
 models:

@@ -1716,6 +1716,41 @@ class Router:
         ]):
             return [{"skill": "system", "action": "cancel_shutdown", "params": {}}]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # IDENTIDAD: respuestas locales sin LLM (rapidas y consistentes)
+        # ═══════════════════════════════════════════════════════════════════
+        if any(p in t for p in [
+            "como te llamas", "cual es tu nombre", "tu nombre es",
+            "quien eres", "que eres",
+        ]) or t.strip() in ("como te llamas", "quien eres"):
+            return {
+                "voice": "Me llamo Senna.",
+                "display": "Me llamo **Senna**, tu asistente personal.",
+                "thought": "",
+                "_short_circuit": True,
+            }
+
+        if any(p in t for p in [
+            "quien te creo", "quien te hizo", "quien te programo",
+            "quien te desarrollo", "quien es tu creador",
+        ]):
+            return {
+                "voice": "Fui creado por Rafael como asistente personal.",
+                "display": "Fui creado por **Rafael** como asistente personal.",
+                "thought": "",
+                "_short_circuit": True,
+            }
+
+        if t.strip() in ("presentate", "preséntate", "presntate") or any(p in t for p in [
+            "presentate", "preséntate", "quien eres tu",
+        ]):
+            return {
+                "voice": "Soy Senna, tu asistente personal. Estoy aqui para ayudarte.",
+                "display": "Soy **Senna**, tu asistente personal. Estoy aquí para ayudarte con lo que necesites.",
+                "thought": "",
+                "_short_circuit": True,
+            }
+
         return None
 
     def _normalize(self, result):
@@ -1797,6 +1832,11 @@ class Router:
         except Exception as e:
             print(f"[ROUTER] Error en _quick_match: {e}")
             quick = None
+
+        # Short-circuit para respuestas locales (identidad, etc.)
+        if isinstance(quick, dict) and quick.get("_short_circuit"):
+            quick_limpio = {k: v for k, v in quick.items() if not k.startswith("_")}
+            return quick_limpio, False
 
         if quick == "__N8N_BUILDER__":
             try:

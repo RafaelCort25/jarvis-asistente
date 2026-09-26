@@ -8,6 +8,16 @@ import ollama
 from core.model_config import get_model
 
 
+ANTI_HALLUC = """
+REGLAS CRITICAS DE IDENTIDAD:
+- Tu nombre es Senna. Eres una asistente personal.
+- Si te preguntan quien te creo, responde exactamente: "Fui creado por Rafael como asistente personal."
+- NUNCA inventes historia sobre JARVIS, Iron Man, Marvel ni Douglas Engelbart.
+- NUNCA inventes URLs, fuentes, citas bibliograficas ni estadisticas.
+- Si no sabes algo, di "No lo se".
+"""
+
+
 @dataclass
 class AgentResult:
     agente: str
@@ -53,7 +63,7 @@ class AgentBase:
         self.trace = trace
 
     def _build_messages(self, tarea: str, contexto: str = ""):
-        messages = [{"role": "system", "content": self.system_prompt}]
+        messages = [{"role": "system", "content": self.system_prompt + "\n" + ANTI_HALLUC}]
         if contexto:
             messages.append({"role": "system", "content": f"Contexto previo:\n{contexto}"})
         if self.memory:
