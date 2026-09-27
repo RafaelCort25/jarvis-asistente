@@ -1911,14 +1911,19 @@ class Router:
         # ═══════════════════════════════════════════════════════════════════
         # EDIT: PDF (unir, dividir, borrar paginas, rotar)
         # ═══════════════════════════════════════════════════════════════════
-        # Unir PDFs
+        # Unir PDFs (dos variantes: con keyword "pdfs" o lista directa de .pdf)
         m = re.search(r"(?:une|unir|combina|junta)\s+(?:los\s+|estos\s+)?pdfs?\s+(.+)", t, re.IGNORECASE)
+        if not m:
+            # Variante: lista directa "une a.pdf, b.pdf"
+            m2 = re.search(r"(?:une|unir|combina|junta)\s+((?:[^\s,]+\.pdf[\s,y]+){1,}[^\s,]+\.pdf)", t, re.IGNORECASE)
+            if m2:
+                m = m2
         if m:
-            # Separar por " y ", "," o espacios
             raw = m.group(1)
             parts = re.split(r"\s+y\s+|\s*,\s*", raw)
-            files = [f.strip().strip('"').strip("'") for f in parts if f.strip()]
-            return [{"skill": "edit", "action": "pdf_merge", "params": {"files": files}}]
+            files = [f.strip().strip('"').strip("'") for f in parts if f.strip() and ".pdf" in f.lower()]
+            if len(files) >= 2:
+                return [{"skill": "edit", "action": "pdf_merge", "params": {"files": files}}]
 
         # Dividir PDF
         m = re.search(r"(?:divide|separar|split)\s+(?:el\s+)?pdf\s+(.+)", t, re.IGNORECASE)
