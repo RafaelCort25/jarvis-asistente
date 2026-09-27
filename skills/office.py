@@ -293,10 +293,50 @@ class OfficeSkill(Skill):
             p = DEFAULT_DIR / f"{slug}.docx"
         return p
 
+    def _detect_image_request(self, description):
+        """Detecta si el usuario quiere imagenes en el documento."""
+        if not description:
+            return False
+        t = description.lower()
+        keywords = [
+            "con imagenes", "con imagenes de",
+            "con fotos", "con fotos de",
+            "con ilustraciones", "con ilustraciones de",
+            "con graficos", "con dibujos",
+            "con imagenes reales", "con fotos reales",
+            "con imagenes profesionales",
+            "que tenga imagenes", "que incluya imagenes",
+        ]
+        return any(kw in t for kw in keywords)
+
+    def _ask_image_type(self, description):
+        """Devuelve la pregunta al usuario sobre el tipo de imagenes."""
+        return {
+            "voice": "¿Qué tipo de imágenes quieres? Opción 1: generar con IA. "
+                     "Opción 2: buscar fotos reales en Pexels. "
+                     "Opción 3: usar imágenes de una carpeta local. "
+                     "Di el número o cancela.",
+            "display": (
+                "**¿Qué tipo de imágenes quieres?**\n\n"
+                "[1] **Generar con IA** — 3 imágenes únicas creadas por Stable Diffusion\n"
+                "[2] **Buscar en Pexels** — 5 fotos reales profesionales (gratis)\n"
+                "[3] **Carpeta local** — usa imágenes de tu PC\n\n"
+                "Di el número o 'cancela'."
+            ),
+            "thought": "Detecte que el usuario quiere imagenes. Preguntando tipo.",
+            "_pending_image_type": True,
+            "_pending_description": description,
+        }
+
     def _create_doc(self, description, path_str, title):
         description = (description or "").strip()
         if not description:
             return "Dime sobre que quieres el documento."
+
+        # ─── Detectar si quiere imagenes ───
+        if self._detect_image_request(description):
+            print(f"[OFFICE] Detecte 'con imagenes' en la descripcion")
+            return self._ask_image_type(description)
 
         print(f"[OFFICE] Generando contenido con {self.model}...")
         prompt = f"""Escribe el contenido de un documento sobre el siguiente tema:

@@ -462,7 +462,7 @@ class Router:
             tema = m_xls.group(1).strip()
             return [{"skill": "office", "action": "create_xlsx", "params": {"description": tema}}]
         # Crear documento Word general
-        m_doc = re.search(r"(?:crea|hazme|genera|escribe)\s+(?:un\s+|una\s+)?(?:documento|word|doc)\s+(?:de|sobre|acerca de|que hable de)\s+(.+)", t)
+        m_doc = re.search(r"(?:crea|hazme|genera|escribe|redacta)\s+(?:un\s+|una\s+)?(?:documento|word|doc|informe|reporte|paper|ensayo|monografia|articulo|redaccion|resumen)\s+(?:de|del|sobre|acerca de|que hable de|que trate de)\s+(.+)", t, re.IGNORECASE)
         if m_doc:
             tema = m_doc.group(1).strip()
             return [{"skill": "office", "action": "create_doc", "params": {"description": tema}}]
@@ -1911,19 +1911,22 @@ class Router:
         return None
 
     def _normalize(self, result):
-        """Convierte string o dict en dict {voice, display, thought}."""
+        """Convierte string o dict en dict {voice, display, thought}.
+
+        Preserva las claves internas que empiezan con '_' (como
+        _pending_image_type, _short_circuit, etc.).
+        """
         if isinstance(result, dict):
-            if "voice" in result or "display" in result:
-                return {
-                    "voice": result.get("voice", ""),
-                    "display": result.get("display", ""),
-                    "thought": result.get("thought", ""),
-                }
-            return {
+            norm = {
                 "voice": result.get("voice", ""),
                 "display": result.get("display", str(result)),
                 "thought": result.get("thought", ""),
             }
+            # Preservar claves internas (empiezan con _)
+            for k, v in result.items():
+                if k.startswith("_"):
+                    norm[k] = v
+            return norm
         return {"voice": str(result), "display": str(result), "thought": ""}
 
     # ─── ROUTE PRINCIPAL ────────────────────────────────────────────────────
@@ -1946,6 +1949,8 @@ class Router:
                     max_op = len(data.get("videos", []))
                 elif tipo == "opciones":
                     max_op = len(data.get("items", []))
+                elif tipo == "office_image_type":
+                    max_op = 3  # 1: IA, 2: Pexels, 3: Local
                 else:
                     max_op = 99
                 idx = _ps.parsear_seleccion(text, max_op)
@@ -1982,6 +1987,19 @@ class Router:
                                 "display": f"**Seleccionado:** {item}",
                                 "thought": f"Seleccion idx={idx}",
                             }, False
+                    elif tipo == "office_image_type":
+                        # Opcion elegida: 0=IA, 1=Pexels, 2=Local
+                        descripcion = data.get("description", "")
+                        modo = ["IA", "Pexels", "Local"][idx] if idx < 3 else "?"
+                        return {
+                            "voice": f"Elegiste modo {modo}. Procesando...",
+                            "display": (
+                                f"**Modo elegido:** {modo}\n\n"
+                                f"**Descripcion del documento:** {descripcion}\n\n"
+                                f"(La busqueda/generacion de imagenes se implementara en la Fase 2)"
+                            ),
+                            "thought": f"Usuario eligio modo {modo} para imagenes",
+                        }, False
                 else:
                     return {
                         "voice": "No entendi. Di el numero o 'cancela'.",
@@ -2247,7 +2265,15 @@ class Router:
 
             result = self._safe_run(skill, action, params)
             if result:
-                results.append(self._normalize(result))
+                normalized = self._normalize(result)
+                # Detectar flags internos del resultado y actuar
+                if normalized.get("_pending_image_type"):
+                    from core import pending_state as _ps
+                    _ps.set_pending("office_image_type", {
+                        "description": normalized.get("_pending_description", ""),
+                    })
+                    print(f"[ROUTER] Pending office_image_type guardado")
+                results.append(normalized)
 
         if not results:
             return None, True
