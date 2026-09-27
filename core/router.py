@@ -1385,14 +1385,17 @@ class Router:
 
         # PDF: convertir Word a PDF
         if re.search(r'\bpdf\b', t) and any(w in t for w in ["convierte", "convertir", "pasa", "exporta", "haz"]):
-            m = re.search(r'\b(?:convierte|convertir|pasa|exporta)\s+(.+\.docx)\s+(?:a\s+|en\s+)?pdf', t, re.IGNORECASE)
-            if m:
-                return [{
-                    "skill": "pdf",
-                    "action": "from_docx",
-                    "params": {"path": m.group(1).strip(), "output": ""},
-                }]
-            return [{"skill": "pdf", "action": "from_docx", "params": {"path": "", "output": ""}}]
+            # Excluir conversion a imagenes (lo maneja el bloque PDF avanzado mas abajo)
+            es_a_imagenes = any(w in t.lower() for w in ["imagenes", "imagen", "png", "jpg", "jpeg", "foto"])
+            if not es_a_imagenes:
+                m = re.search(r'\b(?:convierte|convertir|pasa|exporta)\s+(.+\.docx)\s+(?:a\s+|en\s+)?pdf', t, re.IGNORECASE)
+                if m:
+                    return [{
+                        "skill": "pdf",
+                        "action": "from_docx",
+                        "params": {"path": m.group(1).strip(), "output": ""},
+                    }]
+                return [{"skill": "pdf", "action": "from_docx", "params": {"path": "", "output": ""}}]
 
         # PDF: listar
         if any(p in t for p in ["que pdfs tengo", "lista mis pdfs", "pdfs generados"]):
