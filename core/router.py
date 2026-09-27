@@ -1990,15 +1990,15 @@ class Router:
                     elif tipo == "office_image_type":
                         # Opcion elegida: 0=IA, 1=Pexels, 2=Local
                         descripcion = data.get("description", "")
+                        office_skill = self.skills.get("office")
+                        if office_skill and hasattr(office_skill, "_execute_image_mode"):
+                            res_img = office_skill._execute_image_mode(idx, descripcion)
+                            return res_img, False
                         modo = ["IA", "Pexels", "Local"][idx] if idx < 3 else "?"
                         return {
                             "voice": f"Elegiste modo {modo}. Procesando...",
-                            "display": (
-                                f"**Modo elegido:** {modo}\n\n"
-                                f"**Descripcion del documento:** {descripcion}\n\n"
-                                f"(La busqueda/generacion de imagenes se implementara en la Fase 2)"
-                            ),
-                            "thought": f"Usuario eligio modo {modo} para imagenes",
+                            "display": f"**Modo elegido:** {modo}",
+                            "thought": f"Usuario eligio modo {modo}",
                         }, False
                 else:
                     return {

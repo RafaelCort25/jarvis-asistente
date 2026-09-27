@@ -328,6 +328,89 @@ class OfficeSkill(Skill):
             "_pending_description": description,
         }
 
+    def _execute_image_mode(self, modo_idx, description):
+        """Ejecuta el modo de imagenes elegido por el usuario.
+        
+        modo_idx: 0=IA, 1=Pexels, 2=Local
+        """
+        descripcion_limpia = re.sub(
+            r'\s*con\s+(?:imagenes|fotos|ilustraciones|graficos|dibujos)(\s+de)?\s*',
+            ' ', description, flags=re.IGNORECASE
+        ).strip()
+
+        if modo_idx == 1:  # Pexels
+            print(f"[OFFICE] Buscando fotos en Pexels para: {descripcion_limpia}")
+            try:
+                from core import image_search as _img_search
+                fotos = _img_search.search_for_document(
+                    descripcion_limpia, n_queries=3, per_query=2
+                )
+                if not fotos:
+                    return {
+                        "voice": "No encontre fotos en Pexels para ese tema.",
+                        "display": f"**No encontre fotos en Pexels** para '{descripcion_limpia}'.",
+                        "thought": "Pexels no devolvio resultados",
+                    }
+                
+                # Guardar en pending_state
+                from core import pending_state as _ps
+                _ps.set_pending("office_image_select", {
+                    "description": descripcion_limpia,
+                    "photos": fotos,
+                })
+                
+                lineas = [f"**Encontré {len(fotos)} fotos en Pexels:**\n"]
+                for i, f in enumerate(fotos, 1):
+                    lineas.append(
+                        f"**{i}.** {f.get('alt', '')[:70]}\n"
+                        f"   Foto por *{f.get('photographer', '?')}*"
+                    )
+                lineas.append("")
+                lineas.append("Di los números que quieras insertar (ej: **1,3,5**), **todas** o **cancela**.")
+                
+                return {
+                    "voice": f"Encontre {len(fotos)} fotos. Di los numeros que quieras o todas.",
+                    "display": "\n".join(lineas),
+                    "thought": f"Pexels: {len(fotos)} fotos encontradas",
+                    "artifacts": [
+                        {
+                            "type": "image_preview",
+                            "url": f.get("url_thumb", f.get("url", "")),
+                            "url_full": f.get("url", ""),
+                            "alt": f.get("alt", ""),
+                            "photographer": f.get("photographer", ""),
+                            "index": i,
+                        }
+                        for i, f in enumerate(fotos, 1)
+                    ],
+                }
+            except Exception as e:
+                return {
+                    "voice": f"Error buscando fotos: {e}",
+                    "display": f"**Error:** {e}",
+                    "thought": "",
+                }
+
+        elif modo_idx == 0:  # IA
+            return {
+                "voice": "Generando imagenes con IA... (Fase 2 pendiente)",
+                "display": "**Modo IA** — se implementará en la Fase 2.",
+                "thought": "IA no implementado",
+            }
+
+        elif modo_idx == 2:  # Local
+            return {
+                "voice": "Carpeta local... (Fase 2 pendiente)",
+                "display": "**Modo Local** — se implementará en la Fase 2.",
+                "thought": "Local no implementado",
+            }
+
+        return {
+            "voice": "Modo desconocido.",
+            "display": "Modo desconocido.",
+            "thought": "",
+        }
+
     def _create_doc(self, description, path_str, title):
         description = (description or "").strip()
         if not description:

@@ -57,3 +57,10 @@ generar_iss.ps1
 JARVIS-Dist/
 requirements_full.txt.bak
 requirements_clean.txt
+workflow.py
+datos.txt
+workflow.py
+_*.py
+_*.txt
+*.dxf
+*.FCStd
