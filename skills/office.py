@@ -79,8 +79,8 @@ class OfficeSkill(Skill):
                 model=self.model,
                 messages=messages,
                 options={
-                    "temperature": 0.2,
-                    "num_predict": 1500,
+                    "temperature": 0.1,
+                    "num_predict": 1200,
                 },
                 stream=False,
             )
@@ -185,24 +185,30 @@ class OfficeSkill(Skill):
             elif it["type"] == "table":
                 it["rows"] = [[self._clean_latex(cell) for cell in row] for row in it["rows"]]
 
-        # Deduplicar secciones: si un h1/h2/title se repite, ignorar la 2da
-        # ocurrencia y su contenido hasta el siguiente heading
+        # Deduplicar: si un h1/h2/title se repite, ignorar la 2da ocurrencia
+        # y su contenido hasta el siguiente heading.
+        # Normalizacion robusta: sin tildes, sin espacios extra, minusculas.
+        def _norm_key(s):
+            s = (s or "").strip().lower()
+            for k, v in {"á":"a","é":"e","í":"i","ó":"o","ú":"u","ñ":"n","ü":"u"}.items():
+                s = s.replace(k, v)
+            s = re.sub(r"\s+", " ", s)
+            return s
+
         items_dedup = []
         seen_headings = set()
         skip_until_next_heading = False
         for it in items:
             t = it["type"]
             if t in ("h1", "h2", "title"):
-                key = f"{t}:{it.get('text', '').strip().lower()}"
+                key = f"{t}:{_norm_key(it.get('text', ''))}"
                 if key in seen_headings:
-                    # Ya visto: marcar para saltar hasta el siguiente heading
                     skip_until_next_heading = True
                     continue
                 else:
                     seen_headings.add(key)
                     skip_until_next_heading = False
             elif skip_until_next_heading:
-                # Estamos en contenido duplicado: saltamos
                 continue
             items_dedup.append(it)
 
@@ -411,15 +417,102 @@ class OfficeSkill(Skill):
             "thought": "",
         }
 
-    def _create_doc(self, description, path_str, title):
+    def _finish_image_flow(self, indices_seleccionados, description):
+        """Descarga las fotos seleccionadas y genera el Word con imagenes.
+
+        indices_seleccionados: lista de indices (1-based) de las fotos elegidas.
+        """
+        from core import pending_state as _ps
+        pend = _ps.get_pending()
+        if not pend or pend["tipo"] != "office_image_select":
+            return {
+                "voice": "No hay una seleccion de fotos activa.",
+                "display": "No hay fotos pendientes de seleccionar.",
+                "thought": "",
+            }
+
+        fotos_todas = pend["data"].get("photos", [])
+        descripcion = pend["data"].get("description", description)
+        _ps.clear()
+
+        if not fotos_todas:
+            return {
+                "voice": "No hay fotos para insertar.",
+                "display": "**No hay fotos para insertar.**",
+                "thought": "",
+            }
+
+        # Filtrar fotos seleccionadas
+        fotos_sel = []
+        for idx in indices_seleccionados:
+            if 1 <= idx <= len(fotos_todas):
+                fotos_sel.append(fotos_todas[idx - 1])
+
+        if not fotos_sel:
+            return {
+                "voice": "Ninguna foto valida seleccionada.",
+                "display": "**Ninguna foto valida seleccionada.**",
+                "thought": "",
+            }
+
+        # Descargar fotos
+        from core import image_search as _img_search
+        from pathlib import Path as _P
+        images_dir = ROOT / "sandbox" / "office" / "images"
+        images_dir.mkdir(parents=True, exist_ok=True)
+
+        rutas_locales = []
+        for i, foto in enumerate(fotos_sel, 1):
+            url = foto.get("url", "")
+            if not url:
+                continue
+            slug = re.sub(r"[^a-z0-9]+", "_", foto.get("alt", f"foto_{i}").lower())[:40]
+            ext = ".jpg"
+            if ".png" in url.lower():
+                ext = ".png"
+            local_path = images_dir / f"office_{i}_{slug}{ext}"
+            print(f"[OFFICE] Descargando foto {i}: {url[:60]}...")
+            if _img_search.download_image(url, local_path):
+                rutas_locales.append({
+                    "path": str(local_path),
+                    "alt": foto.get("alt", ""),
+                    "photographer": foto.get("photographer", ""),
+                })
+
+        if not rutas_locales:
+            return {
+                "voice": "No pude descargar las fotos.",
+                "display": "**Error descargando fotos.**",
+                "thought": "",
+            }
+
+        # Generar el Word con el contenido + insertar fotos
+        return self._create_doc_with_images(descripcion, rutas_locales)
+
+    def _create_doc_with_images(self, description, fotos):
+        """Genera el Word con las imagenes insertadas (1 foto por seccion)."""
+        # Llamar a _create_doc pero con flag para insertar fotos
+        # Simplificacion: generamos el contenido, y al construir el Word
+        # distribuimos las fotos entre las secciones (h1)
+        return self._create_doc(description, "", "", _images=fotos)
+
+    def _create_doc(self, description, path_str, title, _images=None):
         description = (description or "").strip()
         if not description:
             return "Dime sobre que quieres el documento."
 
-        # ─── Detectar si quiere imagenes ───
-        if self._detect_image_request(description):
+        # ─── Detectar si quiere imagenes (solo si no venimos con _images) ───
+        if not _images and self._detect_image_request(description):
             print(f"[OFFICE] Detecte 'con imagenes' en la descripcion")
             return self._ask_image_type(description)
+
+        # Si venimos con _images, limpiar la descripcion del "con imagenes"
+        if _images:
+            description = re.sub(
+                r'\s*con\s+(?:imagenes|fotos|ilustraciones|graficos|dibujos)(\s+de)?\s*',
+                ' ', description, flags=re.IGNORECASE
+            ).strip()
+            print(f"[OFFICE] Generando doc con {len(_images)} imagenes insertadas")
 
         print(f"[OFFICE] Generando contenido con {self.model}...")
         prompt = f"""Escribe el contenido de un documento sobre el siguiente tema:
@@ -438,10 +531,17 @@ Formato:
 - Se claro, estructurado y util
 
 REGLAS CRITICAS DE LONGITUD:
-- MAXIMO 500 palabras en total.
-- MAXIMO 4 secciones principales.
+- MAXIMO 400 palabras en total.
+- MAXIMO 4 secciones principales (h1).
 - Cada seccion: maximo 2 parrafos.
 - Si el tema es muy amplio, cubre solo lo esencial.
+
+REGLAS ANTI-DUPLICACION (MUY IMPORTANTE):
+- Escribe el documento UNA SOLA VEZ. Cuando termines la ultima seccion, PARA.
+- NO vuelvas a escribir el titulo al final.
+- NO repitas ninguna seccion con el mismo titulo, ni con titulo parecido.
+- Si ya escribiste "Definicion", "Aplicaciones", "Desafios" y "Futuro",
+  el documento TERMINO. No continues.
 
 REGLAS CRITICAS DE CONTENIDO:
 - NUNCA repitas secciones. Cada seccion va UNA SOLA VEZ.
@@ -561,6 +661,7 @@ NO uses bloques de codigo ni backticks."""
 
             # ── 4. Contenido (saltando el titulo si ya lo escribimos) ──
             titulo_ya_escrito = titulo_escrito_arriba  # ya viene marcado si lo pusimos arriba
+            _img_idx = 0  # indice de la proxima imagen a insertar
             for it in items:
                 t = it["type"]
 
@@ -577,45 +678,23 @@ NO uses bloques de codigo ni backticks."""
                     continue
                 elif t == "h1":
                     doc.add_heading(it["text"], level=1)
-                elif t == "h2":
-                    doc.add_heading(it["text"], level=2)
-                elif t == "bullet":
-                    p = doc.add_paragraph(style="List Bullet")
-                    self._add_runs_with_format(p, it["text"])
-                elif t == "numbered":
-                    p = doc.add_paragraph(style="List Number")
-                    self._add_runs_with_format(p, it["text"])
-                elif t == "quote":
-                    p = doc.add_paragraph(style="Intense Quote")
-                    self._add_runs_with_format(p, it["text"])
-                elif t == "table":
-                    self._add_table(doc, it["rows"])
-                elif t == "image":
-                    try:
-                        img_path = Path(it["path"])
-                        if not img_path.is_absolute():
-                            img_path = ROOT / img_path
-                        if img_path.exists():
-                            doc.add_picture(str(img_path), width=Inches(5))
+                    # Insertar la siguiente imagen si hay
+                    if _images and _img_idx < len(_images):
+                        foto = _images[_img_idx]
+                        try:
+                            doc.add_picture(foto["path"], width=Inches(6))
+                            # Atribucion debajo
+                            cap = doc.add_paragraph()
+                            cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            run = cap.add_run(f"Foto por {foto.get('photographer', '?')} en Pexels")
+                            run.italic = True
+                            run.font.size = Pt(9)
+                            run.font.color.rgb = RGBColor(120, 120, 120)
                             doc.add_paragraph("")
-                    except Exception as e:
-                        print(f"[OFFICE] No se pudo anadir imagen: {e}")
-                else:  # paragraph
-                    p = doc.add_paragraph()
-                    self._add_runs_with_format(p, it["text"])
-
-            # Contenido
-            for it in items:
-                t = it["type"]
-
-                if t == "title":
-                    # Si ya pusimos portada, no duplicar
-                    if len(items) > 20 and tiene_titulo:
-                        continue
-                    h = doc.add_heading(it["text"], level=0)
-                    h.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                elif t == "h1":
-                    doc.add_heading(it["text"], level=1)
+                            _img_idx += 1
+                            print(f"[OFFICE] Imagen {_img_idx} insertada tras h1")
+                        except Exception as e:
+                            print(f"[OFFICE] Error insertando imagen: {e}")
                 elif t == "h2":
                     doc.add_heading(it["text"], level=2)
                 elif t == "bullet":

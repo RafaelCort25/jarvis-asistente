@@ -1951,6 +1951,8 @@ class Router:
                     max_op = len(data.get("items", []))
                 elif tipo == "office_image_type":
                     max_op = 3  # 1: IA, 2: Pexels, 3: Local
+                elif tipo == "office_image_select":
+                    max_op = len(data.get("photos", [])) or 20
                 else:
                     max_op = 99
                 idx = _ps.parsear_seleccion(text, max_op)
@@ -1987,6 +1989,17 @@ class Router:
                                 "display": f"**Seleccionado:** {item}",
                                 "thought": f"Seleccion idx={idx}",
                             }, False
+                    elif tipo == "office_image_select":
+                        # Usuario elige fotos por numero (idx = 0-based, +1 = 1-based)
+                        office_skill = self.skills.get("office")
+                        if office_skill and hasattr(office_skill, "_finish_image_flow"):
+                            res_img = office_skill._finish_image_flow([idx + 1], "")
+                            return res_img, False
+                        return {
+                            "voice": "Seleccionaste una foto.",
+                            "display": f"Foto #{idx + 1} seleccionada.",
+                            "thought": "",
+                        }, False
                     elif tipo == "office_image_type":
                         # Opcion elegida: 0=IA, 1=Pexels, 2=Local
                         descripcion = data.get("description", "")
