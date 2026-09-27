@@ -1881,6 +1881,32 @@ class Router:
             carpeta = (m.group(2) or "").strip()
             return [{"skill": "files", "action": "find_advanced", "params": {"folder": carpeta, "ext": ext, "limit": 20}}]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # OFICINA AVANZADA: crear documentos con tablas, Excel con formulas
+        # ═══════════════════════════════════════════════════════════════════
+        # Word con tabla
+        if any(p in t for p in ["word con tabla", "documento con tabla", "doc con tabla"]):
+            m = re.search(r"(?:sobre|de|acerca de)\s+(.+)$", t)
+            tema = m.group(1).strip() if m else ""
+            return [{"skill": "office", "action": "create_doc", "params": {"description": tema}}]
+        # Excel con datos
+        if any(p for p in ["excel de", "hoja de calculo de", "excel con datos de", "excel para"] for _ in [1]):
+            pass
+        m_xls = re.search(r"(?:excel|hoja de calculo)\s+(?:de|sobre|con|para)\s+(.+)", t)
+        if m_xls:
+            tema = m_xls.group(1).strip()
+            return [{"skill": "office", "action": "create_xlsx", "params": {"description": tema}}]
+        # Crear documento Word general
+        m_doc = re.search(r"(?:crea|hazme|genera|escribe)\s+(?:un\s+|una\s+)?(?:documento|word|doc)\s+(?:de|sobre|acerca de|que hable de)\s+(.+)", t)
+        if m_doc:
+            tema = m_doc.group(1).strip()
+            return [{"skill": "office", "action": "create_doc", "params": {"description": tema}}]
+        # PowerPoint
+        m_ppt = re.search(r"(?:crea|hazme|genera)\s+(?:una\s+)?(?:presentacion|powerpoint|ppt|diapositivas?)\s+(?:de|sobre|acerca de)\s+(.+)", t)
+        if m_ppt:
+            tema = m_ppt.group(1).strip()
+            return [{"skill": "office", "action": "create_ppt", "params": {"description": tema}}]
+
         return None
 
     def _normalize(self, result):
