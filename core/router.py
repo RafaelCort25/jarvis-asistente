@@ -778,14 +778,6 @@ class Router:
                         '_skill_descripcion': descripcion,
                     }
         
-        # === SKILL AUTO-GENERADA: frases ===
-        if any(p in t for p in [
-            "usa frases",
-            "random frases",
-            "frases",
-            "haz frases",
-        ]):
-            return [{"skill": "frases", "action": "random", "params": {}}]
 
         # ═══════════════════════════════════════════════════════════════════
         # MAPS: buscar edificios reales en OpenStreetMap
@@ -1840,6 +1832,27 @@ class Router:
             query = f"{cancion} {artista}".strip()
             if query:
                 return [{"skill": "browser", "action": "youtube_play", "params": {"query": query}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # FRASES MOTIVACIONALES (acciones avanzadas)
+        # ═══════════════════════════════════════════════════════════════════
+        # Contar (antes que "frase" para evitar conflicto)
+        if any(p in t for p in ["cuantas frases", "cuantas frases tienes", "cantidad de frases"]):
+            return [{"skill": "frases", "action": "count", "params": {}}]
+        # Listar
+        if any(p in t for p in ["lista de frases", "listar frases", "todas las frases", "ver frases"]):
+            return [{"skill": "frases", "action": "list", "params": {}}]
+        # Frase de autor especifico
+        m_frase = re.search(r"(?:frase|cita|pensamiento)\s+de\s+(.+)", t)
+        if m_frase:
+            return [{"skill": "frases", "action": "by_author", "params": {"autor": m_frase.group(1).strip()}}]
+        # Frase random (multiples variantes)
+        if any(p in t for p in [
+            "dame una frase", "dime una frase", "cuentame una frase",
+            "frase motivacional", "frase aleatoria", "random frases",
+            "una frase", "otra frase", "haz frases", "usa frases",
+        ]):
+            return [{"skill": "frases", "action": "random", "params": {}}]
 
         return None
 
