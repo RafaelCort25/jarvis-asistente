@@ -1955,6 +1955,29 @@ class Router:
                     max_op = len(data.get("photos", [])) or 20
                 else:
                     max_op = 99
+
+                # CASO ESPECIAL: office_image_select usa seleccion MULTIPLE
+                if tipo == "office_image_select":
+                    office_skill = self.skills.get("office")
+                    indices_1based = [
+                        i + 1 for i in _ps.parsear_seleccion_multiple(text, max_op)
+                    ]
+                    # NO limpiar aqui: _finish_image_flow lo hace internamente
+                    if not indices_1based:
+                        return {
+                            "voice": "Cancelado.",
+                            "display": "**Cancelado.**",
+                            "thought": "",
+                        }, False
+                    if office_skill and hasattr(office_skill, "_finish_image_flow"):
+                        res_img = office_skill._finish_image_flow(indices_1based, "")
+                        return res_img, False
+                    return {
+                        "voice": "Error interno.",
+                        "display": "**Error: no puedo procesar la seleccion.**",
+                        "thought": "",
+                    }, False
+
                 idx = _ps.parsear_seleccion(text, max_op)
                 if idx == -1:
                     _ps.clear()
@@ -1990,14 +2013,22 @@ class Router:
                                 "thought": f"Seleccion idx={idx}",
                             }, False
                     elif tipo == "office_image_select":
-                        # Usuario elige fotos por numero (idx = 0-based, +1 = 1-based)
+                        # Usuario elige fotos multiples: "1,3,5" o "todas"
                         office_skill = self.skills.get("office")
                         if office_skill and hasattr(office_skill, "_finish_image_flow"):
-                            res_img = office_skill._finish_image_flow([idx + 1], "")
+                            indices_1based = [i + 1 for i in
+                                              _ps.parsear_seleccion_multiple(text, max_op)]
+                            if not indices_1based:
+                                return {
+                                    "voice": "Cancelado.",
+                                    "display": "Cancelado.",
+                                    "thought": "",
+                                }, False
+                            res_img = office_skill._finish_image_flow(indices_1based, "")
                             return res_img, False
                         return {
-                            "voice": "Seleccionaste una foto.",
-                            "display": f"Foto #{idx + 1} seleccionada.",
+                            "voice": "Seleccionaste fotos.",
+                            "display": f"Fotos seleccionadas.",
                             "thought": "",
                         }, False
                     elif tipo == "office_image_type":

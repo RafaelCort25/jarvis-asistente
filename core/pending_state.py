@@ -60,12 +60,18 @@ def clear():
 
 
 def es_seleccion(texto):
-    """Detecta si el texto es una seleccion simple."""
+    """Detecta si el texto es una seleccion (simple o multiple)."""
     t = texto.lower().strip()
     if not t:
         return False
     # Cancelar
     if t in ("cancela", "cancelar", "no", "olvidalo", "olvidalo", "salir", "exit"):
+        return True
+    # "todas", "todos", "all"
+    if t in ("todas", "todos", "todas las fotos", "todas las imagenes", "all"):
+        return True
+    # Lista de numeros separados por coma, y, o espacio: "1,3,5" / "1, 3, 5" / "1 y 3"
+    if re.match(r'^\s*\d+(\s*[,y]\s*\d+)*\s*$', t):
         return True
     # Numero simple: "1", "2", "3", "el 1", "la 2", "opcion 3"
     if re.match(r'^(?:el|la|opcion|num|numero)?\s*\d+$', t):
@@ -77,6 +83,37 @@ def es_seleccion(texto):
     if t in ("ese", "esa", "aquel", "aquella"):
         return True
     return False
+
+
+def parsear_seleccion_multiple(texto, max_opciones):
+    """Convierte un texto de seleccion multiple en lista de indices (0-based).
+    
+    Acepta: "1,3,5", "1 3 5", "1 y 3", "todas", "1", "la primera".
+    Devuelve:
+        - lista de int: indices validos
+        - [] si cancelo o no se pudo interpretar
+    """
+    t = texto.lower().strip()
+    # Cancelar
+    if t in ("cancela", "cancelar", "no", "olvidalo", "salir", "exit"):
+        return []
+    # Todas
+    if t in ("todas", "todos", "todas las fotos", "todas las imagenes", "all"):
+        return list(range(max_opciones))
+    # Lista de numeros
+    nums = re.findall(r'\d+', t)
+    if nums:
+        indices = []
+        for n in nums:
+            i = int(n) - 1
+            if 0 <= i < max_opciones:
+                indices.append(i)
+        return indices
+    # Fallback: ordinal simple
+    idx = parsear_seleccion(texto, max_opciones)
+    if idx >= 0:
+        return [idx]
+    return []
 
 
 def parsear_seleccion(texto, max_opciones):
