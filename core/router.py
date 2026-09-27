@@ -1984,6 +1984,29 @@ class Router:
             return [{"skill": "edit", "action": "csv_modify",
                      "params": {"path": m.group(1).strip(), "instruction": m.group(2).strip()}}]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # PDF: info, extract_text, to_images, watermark, compress
+        # ═══════════════════════════════════════════════════════════════════
+        # Info del PDF
+        m = re.search(r"(?:cuantas|cuantas paginas|info|informacion)\s+(?:tiene|de|del)?\s*(?:el\s+)?pdf\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "pdf", "action": "info", "params": {"path": m.group(1).strip()}}]
+        # Extraer texto
+        m = re.search(r"(?:extrae|saca|lee|muestra)\s+(?:el\s+)?texto\s+(?:de|del)\s+(?:el\s+)?pdf\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "pdf", "action": "extract_text", "params": {"path": m.group(1).strip()}}]
+        # Convertir a imagenes
+        m = re.search(r"(?:convierte|pasa|transforma)\s+(?:el\s+)?pdf\s+(.+?)\s+(?:a|en)\s+(?:imagenes|png|imagen)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "pdf", "action": "to_images", "params": {"path": m.group(1).strip()}}]
+        # Marca de agua
+        m = re.search(r"(?:pon|anade|agrega|marca)\s+(?:una\s+)?marca\s+de\s+agua\s+(?:con\s+)?[\"']?(.+?)[\"']?\s+(?:al?|en el)\s+pdf\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "pdf", "action": "watermark", "params": {"text": m.group(1).strip(), "path": m.group(2).strip()}}]
+        # Comprimir
+        m = re.search(r"(?:comprime|reduce|optimiza)\s+(?:el\s+)?pdf\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "pdf", "action": "compress", "params": {"path": m.group(1).strip()}}]
         return None
 
     def _normalize(self, result):
