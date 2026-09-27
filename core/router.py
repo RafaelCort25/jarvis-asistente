@@ -1908,6 +1908,50 @@ class Router:
             return [{"skill": "files", "action": "find_advanced", "params": {"folder": carpeta, "ext": ext, "limit": 20}}]
 
 
+        # ═══════════════════════════════════════════════════════════════════
+        # EDIT: PDF (unir, dividir, borrar paginas, rotar)
+        # ═══════════════════════════════════════════════════════════════════
+        # Unir PDFs
+        m = re.search(r"(?:une|unir|combina|junta)\s+(?:los\s+|estos\s+)?pdfs?\s+(.+)", t, re.IGNORECASE)
+        if m:
+            files = [f.strip().strip('"').strip("'") for f in m.group(1).split(" y ") + m.group(1).split(",")]
+            files = [f for f in files if f]
+            return [{"skill": "edit", "action": "pdf_merge", "params": {"files": files}}]
+
+        # Dividir PDF
+        m = re.search(r"(?:divide|separar|split)\s+(?:el\s+)?pdf\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "edit", "action": "pdf_split", "params": {"path": m.group(1).strip()}}]
+
+        # Borrar paginas de un PDF
+        m = re.search(r"(?:borra|quita|elimina)\s+(?:la[s]?\s+)?paginas?\s+([\d,\s]+)\s+(?:de|del)\s+(?:el\s+)?pdf\s+(.+)", t, re.IGNORECASE)
+        if m:
+            nums = [int(x) for x in re.findall(r"\d+", m.group(1))]
+            return [{"skill": "edit", "action": "pdf_remove_pages", "params": {"path": m.group(2).strip(), "pages": nums}}]
+
+        # Rotar PDF
+        m = re.search(r"(?:rota|gira)\s+(?:el\s+)?pdf\s+(.+?)\s+(\d+)\s*(?:grados)?", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "edit", "action": "pdf_rotate", "params": {"path": m.group(1).strip(), "angle": int(m.group(2))}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # EDIT: Imagenes (resize, crop, rotate, convert)
+        # ═══════════════════════════════════════════════════════════════════
+        # Redimensionar
+        m = re.search(r"(?:redimensiona|cambia\s+el\s+tamano|escala)\s+(?:la\s+)?imagen\s+(.+?)\s+(?:a|en)\s+(\d+)\s*[xX]\s*(\d+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "edit", "action": "image_resize", "params": {"path": m.group(1).strip(), "width": int(m.group(2)), "height": int(m.group(3))}}]
+
+        # Rotar imagen
+        m = re.search(r"(?:rota|gira)\s+(?:la\s+)?imagen\s+(.+?)\s+(\d+)\s*(?:grados)?", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "edit", "action": "image_rotate", "params": {"path": m.group(1).strip(), "angle": int(m.group(2))}}]
+
+        # Convertir imagen
+        m = re.search(r"(?:convierte|transforma|pasa)\s+(?:la\s+)?imagen\s+(.+?)\s+(?:a|en|al)\s+(png|jpg|jpeg|webp|bmp|gif)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "edit", "action": "image_convert", "params": {"path": m.group(1).strip(), "format": m.group(2).lower()}}]
+
         return None
 
     def _normalize(self, result):

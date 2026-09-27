@@ -10,6 +10,20 @@ from docx import Document
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
 
+# Para PDFs
+try:
+    from pypdf import PdfReader, PdfWriter
+    HAS_PYPDF = True
+except ImportError:
+    HAS_PYPDF = False
+
+# Para imagenes
+try:
+    from PIL import Image
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+
 from skills.base import Skill
 from core.config_loader import CONFIG
 from core import confirmation
@@ -33,6 +47,7 @@ class EditSkill(Skill):
         self.model = get_model("chat")
 
     def run(self, action, params):
+        # ── Modify (Word/Excel/texto) ──
         if action == "modify":
             return self._modify(
                 params.get("path", ""),
@@ -41,6 +56,59 @@ class EditSkill(Skill):
             )
         if action == "list_uploads":
             return self._list_uploads()
+
+        # ── PDF ──
+        if action == "pdf_merge":
+            return self._pdf_merge(
+                params.get("files", []),
+                params.get("output", ""),
+            )
+        if action == "pdf_split":
+            return self._pdf_split(
+                params.get("path", ""),
+                params.get("output_dir", ""),
+            )
+        if action == "pdf_remove_pages":
+            return self._pdf_remove_pages(
+                params.get("path", ""),
+                params.get("pages", []),
+                params.get("output", ""),
+            )
+        if action == "pdf_rotate":
+            return self._pdf_rotate(
+                params.get("path", ""),
+                params.get("pages", []),
+                params.get("angle", 90),
+                params.get("output", ""),
+            )
+
+        # ── Imagenes ──
+        if action == "image_resize":
+            return self._image_resize(
+                params.get("path", ""),
+                params.get("width", 0),
+                params.get("height", 0),
+                params.get("output", ""),
+            )
+        if action == "image_crop":
+            return self._image_crop(
+                params.get("path", ""),
+                params.get("box", []),
+                params.get("output", ""),
+            )
+        if action == "image_rotate":
+            return self._image_rotate(
+                params.get("path", ""),
+                params.get("angle", 90),
+                params.get("output", ""),
+            )
+        if action == "image_convert":
+            return self._image_convert(
+                params.get("path", ""),
+                params.get("format", "png"),
+                params.get("output", ""),
+            )
+
         return f"Accion desconocida en edit: {action}"
 
     # ─── HELPERS ─────────────────────────────────────────────────────────
@@ -332,6 +400,280 @@ Responde SOLO con el JSON."""
         }
 
     # ─── LIST UPLOADS ────────────────────────────────────────────────────
+
+    # ─── PDF ─────────────────────────────────────────────────────────────
+
+    def _resolve_output_pdf(self, original_path, output_str, suffix=""):
+        if output_str:
+            out = Path(output_str.strip().strip('"').strip("'"))
+            if not out.is_absolute():
+                out = ROOT / out
+            if not out.suffix:
+                out = out.with_suffix(".pdf")
+            return out
+        stem = original_path.stem + suffix
+        return original_path.with_name(f"{stem}.pdf")
+
+    def _pdf_merge(self, files, output_str):
+        if not HAS_PYPDF:
+            return "Falta pypdf. Ejecuta: pip install pypdf"
+        if not files or len(files) < 2:
+            return "Necesito al menos 2 PDFs para unir."
+        paths = []
+        for f in files:
+            p = self._resolve_path(f)
+            if p and p.suffix.lower() == ".pdf":
+                paths.append(p)
+            else:
+                return f"No encontre el PDF: {f}"
+        try:
+            writer = PdfWriter()
+            for pdf in paths:
+                reader = PdfReader(str(pdf))
+                for page in reader.pages:
+                    writer.add_page(page)
+            if output_str:
+                out = self._resolve_output_pdf(paths[0], output_str)
+            else:
+                out = paths[0].with_name(f"{paths[0].stem}_merged.pdf")
+            try:
+                out.relative_to(ROOT)
+            except ValueError:
+                return f"Ruta fuera del proyecto: {out}"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            with open(out, "wb") as f:
+                writer.write(f)
+            return {
+                "thought": f"Unidos {len(paths)} PDFs",
+                "display": f"PDF unido: {out.name}\n({len(paths)} PDFs, {out.stat().st_size // 1024} KB)",
+                "voice": f"Listo. Uni {len(paths)} PDFs en {out.name}.",
+            }
+        except Exception as e:
+            return f"Error uniendo PDFs: {e}"
+
+    def _pdf_split(self, path_str, output_dir):
+        if not HAS_PYPDF:
+            return "Falta pypdf."
+        path = self._resolve_path(path_str)
+        if not path or path.suffix.lower() != ".pdf":
+            return f"No encontre el PDF: {path_str}"
+        try:
+            reader = PdfReader(str(path))
+            n = len(reader.pages)
+            if output_dir:
+                out_dir = Path(output_dir.strip().strip('"'))
+                if not out_dir.is_absolute():
+                    out_dir = ROOT / out_dir
+            else:
+                out_dir = path.parent / f"{path.stem}_paginas"
+            try:
+                out_dir.relative_to(ROOT)
+            except ValueError:
+                return f"Ruta fuera del proyecto: {out_dir}"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            for i, page in enumerate(reader.pages, 1):
+                writer = PdfWriter()
+                writer.add_page(page)
+                out_file = out_dir / f"{path.stem}_pag_{i:03d}.pdf"
+                with open(out_file, "wb") as f:
+                    writer.write(f)
+            return {
+                "thought": f"Dividido en {n} paginas",
+                "display": f"PDF dividido en {n} paginas: {out_dir}",
+                "voice": f"Listo. Dividi el PDF en {n} paginas.",
+            }
+        except Exception as e:
+            return f"Error dividiendo PDF: {e}"
+
+    def _pdf_remove_pages(self, path_str, pages, output_str):
+        if not HAS_PYPDF:
+            return "Falta pypdf."
+        path = self._resolve_path(path_str)
+        if not path or path.suffix.lower() != ".pdf":
+            return f"No encontre el PDF: {path_str}"
+        if not pages:
+            return "Necesito los numeros de pagina a eliminar."
+        try:
+            reader = PdfReader(str(path))
+            n = len(reader.pages)
+            to_remove = set()
+            for p in pages:
+                if 1 <= p <= n:
+                    to_remove.add(p - 1)
+            writer = PdfWriter()
+            for i, page in enumerate(reader.pages):
+                if i not in to_remove:
+                    writer.add_page(page)
+            out = self._resolve_output_pdf(path, output_str, "_sin_paginas")
+            try:
+                out.relative_to(ROOT)
+            except ValueError:
+                return f"Ruta fuera del proyecto: {out}"
+            with open(out, "wb") as f:
+                writer.write(f)
+            return {
+                "thought": f"Eliminadas {len(to_remove)} paginas",
+                "display": f"PDF modificado: {out.name}\n({len(to_remove)} paginas eliminadas de {n})",
+                "voice": f"Listo. Elimine {len(to_remove)} paginas.",
+            }
+        except Exception as e:
+            return f"Error: {e}"
+
+    def _pdf_rotate(self, path_str, pages, angle, output_str):
+        if not HAS_PYPDF:
+            return "Falta pypdf."
+        path = self._resolve_path(path_str)
+        if not path or path.suffix.lower() != ".pdf":
+            return f"No encontre el PDF: {path_str}"
+        if angle not in (90, 180, 270):
+            return "Angulo invalido. Usa 90, 180 o 270."
+        try:
+            reader = PdfReader(str(path))
+            writer = PdfWriter()
+            rotate_all = not pages
+            for i, page in enumerate(reader.pages):
+                page_num = i + 1
+                if rotate_all or page_num in pages:
+                    page.rotate(angle)
+                writer.add_page(page)
+            out = self._resolve_output_pdf(path, output_str, f"_rot{angle}")
+            try:
+                out.relative_to(ROOT)
+            except ValueError:
+                return f"Ruta fuera del proyecto: {out}"
+            with open(out, "wb") as f:
+                writer.write(f)
+            objetivo = "todas las paginas" if rotate_all else f"{len(pages)} paginas"
+            return {
+                "thought": f"Rotadas {objetivo} {angle} grados",
+                "display": f"PDF rotado: {out.name}\n({objetivo} a {angle} grados)",
+                "voice": f"Listo. Rote {objetivo}.",
+            }
+        except Exception as e:
+            return f"Error: {e}"
+
+    # ─── IMAGENES ────────────────────────────────────────────────────────
+
+    def _resolve_output_image(self, original_path, output_str, suffix=""):
+        if output_str:
+            out = Path(output_str.strip().strip('"').strip("'"))
+            if not out.is_absolute():
+                out = ROOT / out
+            if not out.suffix:
+                out = out.with_suffix(original_path.suffix)
+            return out
+        return original_path.with_name(f"{original_path.stem}{suffix}{original_path.suffix}")
+
+    def _image_resize(self, path_str, width, height, output_str):
+        if not HAS_PIL:
+            return "Falta Pillow."
+        path = self._resolve_path(path_str)
+        if not path:
+            return f"No encontre la imagen: {path_str}"
+        if not width or not height:
+            return "Necesito ancho y alto."
+        try:
+            img = Image.open(str(path))
+            old_size = img.size
+            img = img.resize((int(width), int(height)), Image.LANCZOS)
+            out = self._resolve_output_image(path, output_str, f"_{width}x{height}")
+            try:
+                out.relative_to(ROOT)
+            except ValueError:
+                return f"Ruta fuera del proyecto: {out}"
+            img.save(str(out))
+            return {
+                "thought": f"Redimensionada a {width}x{height}",
+                "display": f"Imagen guardada: {out.name}\n({old_size[0]}x{old_size[1]} -> {width}x{height})",
+                "voice": f"Listo. Cambie el tamano a {width} por {height}.",
+            }
+        except Exception as e:
+            return f"Error: {e}"
+
+    def _image_crop(self, path_str, box, output_str):
+        if not HAS_PIL:
+            return "Falta Pillow."
+        path = self._resolve_path(path_str)
+        if not path:
+            return f"No encontre la imagen: {path_str}"
+        if not box or len(box) != 4:
+            return "Necesito box = [left, top, right, bottom]."
+        try:
+            img = Image.open(str(path))
+            img = img.crop(tuple(int(x) for x in box))
+            out = self._resolve_output_image(path, output_str, "_crop")
+            try:
+                out.relative_to(ROOT)
+            except ValueError:
+                return f"Ruta fuera del proyecto: {out}"
+            img.save(str(out))
+            return {
+                "thought": f"Recortada a {img.size}",
+                "display": f"Imagen recortada: {out.name}\n(nuevo tamano: {img.size[0]}x{img.size[1]})",
+                "voice": "Listo. Recorte la imagen.",
+            }
+        except Exception as e:
+            return f"Error: {e}"
+
+    def _image_rotate(self, path_str, angle, output_str):
+        if not HAS_PIL:
+            return "Falta Pillow."
+        path = self._resolve_path(path_str)
+        if not path:
+            return f"No encontre la imagen: {path_str}"
+        try:
+            img = Image.open(str(path))
+            img = img.rotate(-int(angle), expand=True)
+            out = self._resolve_output_image(path, output_str, f"_rot{angle}")
+            try:
+                out.relative_to(ROOT)
+            except ValueError:
+                return f"Ruta fuera del proyecto: {out}"
+            img.save(str(out))
+            return {
+                "thought": f"Rotada {angle} grados",
+                "display": f"Imagen rotada: {out.name}",
+                "voice": f"Listo. Rote {angle} grados.",
+            }
+        except Exception as e:
+            return f"Error: {e}"
+
+    def _image_convert(self, path_str, formato, output_str):
+        if not HAS_PIL:
+            return "Falta Pillow."
+        path = self._resolve_path(path_str)
+        if not path:
+            return f"No encontre la imagen: {path_str}"
+        formato = formato.lower().lstrip(".")
+        if formato == "jpg":
+            formato = "jpeg"
+        if formato not in ("png", "jpeg", "webp", "bmp", "gif"):
+            return f"Formato no soportado: {formato}"
+        try:
+            img = Image.open(str(path))
+            if formato == "jpeg" and img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            ext = ".jpg" if formato == "jpeg" else f".{formato}"
+            if output_str:
+                out = Path(output_str.strip().strip('"').strip("'"))
+                if not out.is_absolute():
+                    out = ROOT / out
+                if not out.suffix:
+                    out = out.with_suffix(ext)
+            else:
+                out = path.with_suffix(ext)
+            try:
+                out.relative_to(ROOT)
+            except ValueError:
+                return f"Ruta fuera del proyecto: {out}"
+            img.save(str(out), format=formato.upper())
+            return {
+                "thought": f"Convertida a {formato}",
+                "display": f"Imagen convertida: {out.name}",
+                "voice": f"Listo. Converti a {formato}.",
+            }
+        except Exception as e:
+            return f"Error: {e}"
 
     def _list_uploads(self):
         if not UPLOADS_DIR.exists():
