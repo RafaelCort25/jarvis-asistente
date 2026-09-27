@@ -1959,6 +1959,31 @@ class Router:
         if m:
             return [{"skill": "edit", "action": "image_convert", "params": {"path": m.group(1).strip(), "format": m.group(2).lower()}}]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # EDIT: JSON / YAML / CSV (modificar con instrucciones)
+        # ═══════════════════════════════════════════════════════════════════
+        # Modificar JSON
+        m = re.search(r"(?:modifica|edita|cambia)\s+(?:el\s+)?(?:json|archivo\s+json)\s+(.+?)(?:\s*:\s*|\s+)(.+)", t, re.IGNORECASE)
+        if m and m.group(1).lower().endswith(".json"):
+            return [{"skill": "edit", "action": "json_modify",
+                     "params": {"path": m.group(1).strip(), "instruction": m.group(2).strip()}}]
+        m = re.search(r"(?:en|de)\s+(?:el\s+)?(?:json|archivo)\s+(.+?\.json)\s+(?:cambia|modifica|edita|pon|poner|borra|elimina|anade|agrega)\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "edit", "action": "json_modify",
+                     "params": {"path": m.group(1).strip(), "instruction": m.group(2).strip()}}]
+
+        # Modificar YAML
+        m = re.search(r"(?:en|de)\s+(?:el\s+)?(?:yaml|archivo)\s+(.+?\.(?:yaml|yml))\s+(?:cambia|modifica|edita|pon|poner|borra|elimina|anade|agrega)\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "edit", "action": "yaml_modify",
+                     "params": {"path": m.group(1).strip(), "instruction": m.group(2).strip()}}]
+
+        # Modificar CSV
+        m = re.search(r"(?:en|de)\s+(?:el\s+)?(?:csv|archivo)\s+(.+?\.csv)\s+(?:cambia|modifica|edita|pon|poner|borra|elimina|anade|agrega)\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "edit", "action": "csv_modify",
+                     "params": {"path": m.group(1).strip(), "instruction": m.group(2).strip()}}]
+
         return None
 
     def _normalize(self, result):
