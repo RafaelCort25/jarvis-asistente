@@ -109,6 +109,26 @@ class EditSkill(Skill):
                 params.get("output", ""),
             )
 
+        # ── JSON / YAML / CSV ──
+        if action == "json_modify":
+            return self._json_modify(
+                params.get("path", ""),
+                params.get("instruction", ""),
+                params.get("output", ""),
+            )
+        if action == "yaml_modify":
+            return self._yaml_modify(
+                params.get("path", ""),
+                params.get("instruction", ""),
+                params.get("output", ""),
+            )
+        if action == "csv_modify":
+            return self._csv_modify(
+                params.get("path", ""),
+                params.get("instruction", ""),
+                params.get("output", ""),
+            )
+
         return f"Accion desconocida en edit: {action}"
 
     # ─── HELPERS ─────────────────────────────────────────────────────────
@@ -194,19 +214,31 @@ Responde SOLO con el JSON."""
             return {"error": str(e)}
 
     def _parse_json(self, raw):
-        """Extrae el JSON de la respuesta del LLM."""
+        """Extrae el JSON de la respuesta del LLM. Soporta objeto o array."""
         # Quitar ```json ... ```
-        m = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', raw)
+        m = re.search(r'```(?:json)?\s*([\{\[][\s\S]*?[\}\]])\s*```', raw)
         if m:
             raw = m.group(1)
         else:
-            # Buscar el primer { ... ultimo }
-            start = raw.find("{")
-            end = raw.rfind("}")
+            # Buscar el primer { o [ y el ultimo } o ]
+            first_obj = raw.find("{")
+            first_arr = raw.find("[")
+            if first_obj == -1 and first_arr == -1:
+                return {"error": "No hay JSON en la respuesta"}
+            if first_arr >= 0 and (first_obj == -1 or first_arr < first_obj):
+                start = first_arr
+                end = raw.rfind("]")
+            else:
+                start = first_obj
+                end = raw.rfind("}")
             if start >= 0 and end > start:
                 raw = raw[start:end + 1]
         try:
-            return json.loads(raw)
+            parsed = json.loads(raw)
+            # Normalizar: si es array, envolverlo en {"operations": [...]}
+            if isinstance(parsed, list):
+                return {"operations": parsed}
+            return parsed
         except Exception as e:
             return {"error": f"JSON invalido: {e}", "raw": raw[:500]}
 
@@ -674,6 +706,325 @@ Responde SOLO con el JSON."""
             }
         except Exception as e:
             return f"Error: {e}"
+
+    # ─── JSON ────────────────────────────────────────────────────────────
+
+    def _ask_llm_for_json_ops(self, content_preview, instruction, file_type):
+        """Pide al LLM las operaciones concretas para modificar el JSON/YAML."""
+        prompt = f"""El usuario quiere modificar un archivo {file_type}.
+
+Instruccion: "{instruction}"
+
+Contenido actual:
+---INICIO---
+{content_preview[:2500]}
+---FIN---
+
+Devuelve un JSON con la lista de operaciones. Cada operacion debe tener:
+- "op": "set" (cambiar/crear valor), "delete" (borrar clave)
+- "path": lista de claves para llegar al valor. Ej: ["servidor", "puerto"]
+- "value": el nuevo valor (solo para "set"). Puede ser string, number, bool, null o lista/dict simple.
+
+Ejemplos:
+- Cambiar "nombre" a "Juan": [{{"op": "set", "path": ["nombre"], "value": "Juan"}}]
+- Cambiar "servidor.puerto" a 8080: [{{"op": "set", "path": ["servidor", "puerto"], "value": 8080}}]
+- Borrar "debug": [{{"op": "delete", "path": ["debug"]}}]
+
+REGLAS CRITICAS:
+- SOLO haz las operaciones que el usuario pidio. NADA mas.
+- Si el usuario pide UN cambio, devuelve EXACTAMENTE UNA operacion.
+- Si el usuario pide cambiar el "nombre", NO cambies "puerto", "version" ni nada mas.
+- Los valores van directos. Ejemplo correcto:
+  [{{"op": "set", "path": ["nombre"], "value": "Juan"}}]
+- Devuelve un ARRAY JSON, no un objeto. Ejemplo:
+  [{{"op": "set", "path": ["nombre"], "value": "Juan"}}]
+- NO envuelvas en {{"operations": [...]}}, solo el array directo.
+
+Responde SOLO con el JSON."""
+
+        try:
+            resp = ollama.chat(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                options={"temperature": 0.1, "num_predict": 500},
+                stream=False,
+            )
+            raw = resp["message"]["content"].strip()
+            print(f"[EDIT] Respuesta LLM: {raw[:300]}")
+            return self._parse_json(raw)
+        except Exception as e:
+            return {"error": str(e)}
+
+    def _apply_json_ops(self, data, ops):
+        """Aplica operaciones al dict/list de forma segura."""
+        changed = 0
+        for op in ops:
+            path = op.get("path", [])
+            if not isinstance(path, list) or not path:
+                continue
+            kind = op.get("op", "set")
+
+            # Navegar al padre
+            current = data
+            ok = True
+            for key in path[:-1]:
+                if isinstance(current, dict) and key in current:
+                    current = current[key]
+                else:
+                    ok = False
+                    break
+
+            if not ok:
+                continue
+
+            last_key = path[-1]
+
+            if kind == "set":
+                if isinstance(current, dict):
+                    current[last_key] = op.get("value")
+                    changed += 1
+            elif kind == "delete":
+                if isinstance(current, dict) and last_key in current:
+                    del current[last_key]
+                    changed += 1
+        return changed
+
+    def _json_modify(self, path_str, instruction, output_str):
+        path = self._resolve_path(path_str)
+        if not path:
+            return f"No encontre el archivo: {path_str}"
+        if path.suffix.lower() != ".json":
+            return f"No es un .json: {path}"
+
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:
+            return f"Error leyendo JSON: {e}"
+
+        preview = json.dumps(data, indent=2, ensure_ascii=False)[:2500]
+        print(f"[EDIT] Interpretando instruccion con {self.model}...")
+        result = self._ask_llm_for_json_ops(preview, instruction, "JSON")
+        if "error" in result:
+            return f"Error LLM: {result['error']}"
+
+        ops = result.get("operations", [])
+        if not ops:
+            return "El LLM no genero operaciones."
+
+        preview_lines = [f"Operaciones ({len(ops)}):"]
+        for o in ops[:10]:
+            preview_lines.append(f"  {o.get('op')} {'/'.join(o.get('path', []))} = {o.get('value', '')}")
+        print("\n[EDIT] " + "\n       ".join(preview_lines) + "\n")
+
+        if not confirmation.require("edit", "modify", f"Modificar {path.name} con {len(ops)} operaciones"):
+            return "Cancelado."
+
+        try:
+            total = self._apply_json_ops(data, ops)
+            if total == 0:
+                return "Ninguna operacion se aplico."
+
+            out = self._resolve_output(path, output_str)
+            try:
+                out.relative_to(ROOT)
+            except ValueError:
+                return f"Ruta fuera del proyecto: {out}"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+            return {
+                "thought": f"{total} operaciones aplicadas al JSON",
+                "display": f"JSON modificado: {out.name}\n({total} operaciones)",
+                "voice": f"Listo. Modifique {path.name}.",
+            }
+        except Exception as e:
+            return f"Error aplicando: {e}"
+
+    # ─── YAML ────────────────────────────────────────────────────────────
+
+    def _yaml_modify(self, path_str, instruction, output_str):
+        path = self._resolve_path(path_str)
+        if not path:
+            return f"No encontre el archivo: {path_str}"
+        if path.suffix.lower() not in (".yaml", ".yml"):
+            return f"No es un YAML: {path}"
+
+        try:
+            import yaml
+        except ImportError:
+            return "Falta PyYAML. Ejecuta: pip install PyYAML"
+
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                return "El YAML no es un diccionario."
+        except Exception as e:
+            return f"Error leyendo YAML: {e}"
+
+        preview = yaml.dump(data, allow_unicode=True)[:2500]
+        print(f"[EDIT] Interpretando instruccion con {self.model}...")
+        result = self._ask_llm_for_json_ops(preview, instruction, "YAML")
+        if "error" in result:
+            return f"Error LLM: {result['error']}"
+
+        ops = result.get("operations", [])
+        if not ops:
+            return "El LLM no genero operaciones."
+
+        if not confirmation.require("edit", "modify", f"Modificar {path.name} con {len(ops)} operaciones"):
+            return "Cancelado."
+
+        try:
+            total = self._apply_json_ops(data, ops)
+            if total == 0:
+                return "Ninguna operacion se aplico."
+
+            out = self._resolve_output(path, output_str)
+            try:
+                out.relative_to(ROOT)
+            except ValueError:
+                return f"Ruta fuera del proyecto: {out}"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(yaml.dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+            return {
+                "thought": f"{total} operaciones aplicadas al YAML",
+                "display": f"YAML modificado: {out.name}\n({total} operaciones)",
+                "voice": f"Listo. Modifique {path.name}.",
+            }
+        except Exception as e:
+            return f"Error aplicando: {e}"
+
+    # ─── CSV ─────────────────────────────────────────────────────────────
+
+    def _csv_modify(self, path_str, instruction, output_str):
+        path = self._resolve_path(path_str)
+        if not path:
+            return f"No encontre el archivo: {path_str}"
+        if path.suffix.lower() != ".csv":
+            return f"No es un .csv: {path}"
+
+        try:
+            import csv
+            content = path.read_text(encoding="utf-8")
+            rows = list(csv.reader(content.splitlines()))
+            if not rows:
+                return "El CSV esta vacio."
+        except Exception as e:
+            return f"Error leyendo CSV: {e}"
+
+        header = rows[0] if rows else []
+        preview = "\n".join([", ".join(r) for r in rows[:20]])[:2500]
+
+        print(f"[EDIT] Interpretando instruccion con {self.model}...")
+
+        prompt = f"""El usuario quiere modificar un CSV.
+
+Instruccion: "{instruction}"
+
+Columnas (primera fila): {header}
+Contenido (primeras 20 filas):
+---INICIO---
+{preview}
+---FIN---
+
+Devuelve un JSON con la lista de operaciones. Cada operacion debe tener:
+- "op": "set_column" (cambiar todos los valores de una columna), "set_cell" (cambiar una celda), "delete_row" (borrar fila por indice), "append_row" (añadir fila al final)
+- "column": nombre de columna (para set_column)
+- "row": numero de fila (para set_cell/delete_row, 1-based sin contar header)
+- "value": valor o lista de valores
+
+Ejemplos:
+- Cambiar todos los precios a 100: [{{"op": "set_column", "column": "precio", "value": 100}}]
+- Cambiar celda fila 3 de la columna nombre a Juan: [{{"op": "set_cell", "row": 3, "column": "nombre", "value": "Juan"}}]
+- Borrar fila 5: [{{"op": "delete_row", "row": 5}}]
+- Añadir fila: [{{"op": "append_row", "value": ["Juan", 30, "Madrid"]}}]
+
+Responde SOLO con el JSON."""
+
+        try:
+            resp = ollama.chat(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                options={"temperature": 0.1, "num_predict": 500},
+                stream=False,
+            )
+            result = self._parse_json(resp["message"]["content"].strip())
+        except Exception as e:
+            return f"Error LLM: {e}"
+
+        if "error" in result:
+            return f"Error LLM: {result['error']}"
+
+        ops = result.get("operations", [])
+        if not ops:
+            return "El LLM no genero operaciones."
+
+        preview_lines = [f"Operaciones ({len(ops)}):"]
+        for o in ops[:10]:
+            preview_lines.append(f"  {o.get('op')} {o.get('column', '')} {o.get('row', '')} = {o.get('value', '')}")
+        print("\n[EDIT] " + "\n       ".join(preview_lines) + "\n")
+
+        if not confirmation.require("edit", "modify", f"Modificar {path.name} con {len(ops)} operaciones"):
+            return "Cancelado."
+
+        try:
+            col_idx = {name: i for i, name in enumerate(header)}
+            changed = 0
+            # Aplicar de atras hacia adelante para delete_row
+            for op in sorted(ops, key=lambda o: -int(o.get("row", 0)) if o.get("op") == "delete_row" else 0):
+                kind = op.get("op")
+
+                if kind == "set_column":
+                    col = op.get("column")
+                    val = op.get("value")
+                    if col in col_idx:
+                        i = col_idx[col]
+                        for r in rows[1:]:
+                            if i < len(r):
+                                r[i] = str(val)
+                                changed += 1
+
+                elif kind == "set_cell":
+                    row_num = op.get("row", 0)
+                    col = op.get("column")
+                    val = op.get("value")
+                    if col in col_idx and 1 <= row_num < len(rows):
+                        i = col_idx[col]
+                        r = rows[row_num]
+                        if i < len(r):
+                            r[i] = str(val)
+                            changed += 1
+
+                elif kind == "delete_row":
+                    row_num = op.get("row", 0)
+                    if 1 <= row_num < len(rows):
+                        del rows[row_num]
+                        changed += 1
+
+                elif kind == "append_row":
+                    val = op.get("value", [])
+                    if isinstance(val, list):
+                        rows.append([str(v) for v in val])
+                        changed += 1
+
+            if changed == 0:
+                return "Ninguna operacion se aplico."
+
+            out = self._resolve_output(path, output_str)
+            try:
+                out.relative_to(ROOT)
+            except ValueError:
+                return f"Ruta fuera del proyecto: {out}"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            with open(out, "w", encoding="utf-8", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerows(rows)
+            return {
+                "thought": f"{changed} cambios aplicados al CSV",
+                "display": f"CSV modificado: {out.name}\n({changed} cambios)",
+                "voice": f"Listo. Modifique {path.name}.",
+            }
+        except Exception as e:
+            return f"Error aplicando: {e}"
 
     def _list_uploads(self):
         if not UPLOADS_DIR.exists():
