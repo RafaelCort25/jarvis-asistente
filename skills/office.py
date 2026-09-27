@@ -33,7 +33,14 @@ class OfficeSkill(Skill):
     description = "Crea y lee documentos Word, Excel y PowerPoint"
 
     def __init__(self):
-        self.model = CONFIG["models"].get("default", "dolphin-directo")
+        # Usar 'agent' (qwen2.5-coder:7b) para documentos mas consistentes.
+        # Es un modelo instruction-tuned que sigue mejor los prompts largos
+        # y evita duplicaciones mejor que llama3.2:3b.
+        from core.model_config import get_model
+        try:
+            self.model = get_model("agent")
+        except Exception:
+            self.model = CONFIG["models"].get("default", "dolphin-directo")
 
     def run(self, action, params):
         if action == "create_doc":
@@ -71,7 +78,10 @@ class OfficeSkill(Skill):
             response = ollama.chat(
                 model=self.model,
                 messages=messages,
-                options={"temperature": 0.5},
+                options={
+                    "temperature": 0.2,
+                    "num_predict": 1500,
+                },
                 stream=False,
             )
             return response["message"]["content"].strip()
@@ -79,6 +89,29 @@ class OfficeSkill(Skill):
             return f"[ERROR LLM] {e}"
 
     # ─── WORD: PARSEO AVANZADO ───────────────────────────────────────────
+
+    def _clean_latex(self, text):
+        """Convierte LaTeX simple a texto plano legible."""
+        if not text:
+            return text
+        # Delimitadores LaTeX
+        text = text.replace("\\[", "").replace("\\]", "")
+        text = text.replace("\\(", "").replace("\\)", "")
+        text = text.replace("$$", "").replace("$", "")
+        # Comandos comunes
+        text = text.replace("\\rightarrow", "->")
+        text = text.replace("\\leftarrow", "<-")
+        text = text.replace("\\times", "x")
+        text = text.replace("\\cdot", "*")
+        # \text{algo} -> algo
+        import re as _re
+        text = _re.sub(r'\\text\{([^}]*)\}', r'\1', text)
+        # Quitar subindices/sobrescritos LaTeX
+        text = _re.sub(r'_\{([^}]*)\}', r'\1', text)
+        text = _re.sub(r'\^\{([^}]*)\}', r'\1', text)
+        text = _re.sub(r'_([0-9])', r'\1', text)
+        text = _re.sub(r'\^([0-9])', r'\1', text)
+        return text.strip()
 
     def _parse_content(self, raw):
         """Convierte markdown-like en estructura:
@@ -144,7 +177,36 @@ class OfficeSkill(Skill):
                 items.append({"type": "paragraph", "text": line.strip()})
 
             i += 1
-        return items
+
+        # Post-procesar: limpiar LaTeX en todos los textos
+        for it in items:
+            if "text" in it:
+                it["text"] = self._clean_latex(it["text"])
+            elif it["type"] == "table":
+                it["rows"] = [[self._clean_latex(cell) for cell in row] for row in it["rows"]]
+
+        # Deduplicar secciones: si un h1/h2/title se repite, ignorar la 2da
+        # ocurrencia y su contenido hasta el siguiente heading
+        items_dedup = []
+        seen_headings = set()
+        skip_until_next_heading = False
+        for it in items:
+            t = it["type"]
+            if t in ("h1", "h2", "title"):
+                key = f"{t}:{it.get('text', '').strip().lower()}"
+                if key in seen_headings:
+                    # Ya visto: marcar para saltar hasta el siguiente heading
+                    skip_until_next_heading = True
+                    continue
+                else:
+                    seen_headings.add(key)
+                    skip_until_next_heading = False
+            elif skip_until_next_heading:
+                # Estamos en contenido duplicado: saltamos
+                continue
+            items_dedup.append(it)
+
+        return items_dedup
 
     def _add_runs_with_format(self, paragraph, text):
         """Anade runs a un parrafo procesando **bold** y *italic*."""
@@ -242,7 +304,7 @@ class OfficeSkill(Skill):
 {description}
 
 Formato:
-- Empieza con un titulo usando "# Titulo del documento"
+- Empieza con UN SOLO titulo usando "# Titulo del documento"
 - Usa "## Subtitulo" para secciones principales
 - Usa "### Sub-subtitulo" si necesitas mas detalle
 - Los parrafos van en texto normal (una linea por parrafo)
@@ -251,6 +313,21 @@ Formato:
 - Puedes incluir tablas en formato markdown: | Col1 | Col2 | con filas debajo
 - Puedes usar "> " para citas destacadas
 - Se claro, estructurado y util
+
+REGLAS CRITICAS DE LONGITUD:
+- MAXIMO 500 palabras en total.
+- MAXIMO 4 secciones principales.
+- Cada seccion: maximo 2 parrafos.
+- Si el tema es muy amplio, cubre solo lo esencial.
+
+REGLAS CRITICAS DE CONTENIDO:
+- NUNCA repitas secciones. Cada seccion va UNA SOLA VEZ.
+- NUNCA repitas el titulo principal. Solo va al inicio.
+- NUNCA repitas el mismo encabezado dos veces.
+- NUNCA escribas un cierre repetido tipo "En resumen..." mas de una vez.
+- NO uses LaTeX. Escribe las formulas en texto plano, por ejemplo:
+  "2CO2 + 4H2O + energia -> glucosa + 6O2"
+- Termina cuando hayas cubierto el tema.
 
 Si el tema lo amerita, incluye al menos una tabla comparativa o de datos.
 NO incluyas explicaciones fuera del contenido. Empieza directamente con el titulo.
@@ -321,9 +398,12 @@ NO uses bloques de codigo ni backticks."""
             doc_es_largo = len(items) >= 25 and n_secciones >= 3
             doc_es_medio = 10 <= len(items) < 25 and n_secciones >= 3
 
-            # ── Portada solo si el documento es LARGO ──
-            if doc_es_largo and tiene_titulo:
+            titulo = None
+            if tiene_titulo:
                 titulo = next((it["text"] for it in items if it["type"] == "title"), description[:80])
+
+            # ── 1. Portada SOLO para documentos largos ──
+            if doc_es_largo and titulo:
                 h = doc.add_heading(titulo, level=0)
                 h.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 sub = doc.add_paragraph()
@@ -333,7 +413,14 @@ NO uses bloques de codigo ni backticks."""
                 run.font.color.rgb = RGBColor(120, 120, 120)
                 doc.add_page_break()
 
-            # ── Indice ──
+            # ── 2. Titulo (siempre visible, salvo que ya este en portada) ──
+            titulo_escrito_arriba = False
+            if titulo and not doc_es_largo:
+                h = doc.add_heading(titulo, level=0)
+                h.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                titulo_escrito_arriba = True
+
+            # ── 3. Indice (solo si hay 3+ secciones) ──
             if n_secciones >= 3:
                 doc.add_heading("Indice", level=1)
                 for it in items:
@@ -341,25 +428,30 @@ NO uses bloques de codigo ni backticks."""
                         doc.add_paragraph(it["text"], style="List Number")
                     elif it["type"] == "h2":
                         doc.add_paragraph("    " + it["text"], style="List Bullet")
-                # Solo salto de pagina si el doc es largo
-                # Si es medio, dejamos el indice y el contenido en la misma pagina
+                # Salto de pagina solo si es largo
                 if doc_es_largo:
                     doc.add_page_break()
                 else:
-                    # Anadir separador visual
+                    # Separador visual para docs medios
                     doc.add_paragraph("─" * 40).alignment = WD_ALIGN_PARAGRAPH.CENTER
                     doc.add_paragraph("")
 
-            # ── Contenido ──
+            # ── 4. Contenido (saltando el titulo si ya lo escribimos) ──
+            titulo_ya_escrito = titulo_escrito_arriba  # ya viene marcado si lo pusimos arriba
             for it in items:
                 t = it["type"]
 
                 if t == "title":
-                    # Si ya pusimos portada con este titulo, no duplicar
-                    if doc_es_largo and tiene_titulo:
+                    # Si el titulo ya se escribio arriba (portada o titulo inicial), skip
+                    if not titulo_ya_escrito and titulo and it["text"].strip() == titulo.strip():
+                        titulo_ya_escrito = True
                         continue
-                    h = doc.add_heading(it["text"], level=0)
-                    h.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    # Si ya lo escribimos antes, skip (evita duplicados del LLM)
+                    if titulo_ya_escrito:
+                        continue
+                    # Si hay otro title distinto, escribirlo como heading normal
+                    h = doc.add_heading(it["text"], level=1)
+                    continue
                 elif t == "h1":
                     doc.add_heading(it["text"], level=1)
                 elif t == "h2":
