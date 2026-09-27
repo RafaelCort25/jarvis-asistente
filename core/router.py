@@ -1914,8 +1914,10 @@ class Router:
         # Unir PDFs
         m = re.search(r"(?:une|unir|combina|junta)\s+(?:los\s+|estos\s+)?pdfs?\s+(.+)", t, re.IGNORECASE)
         if m:
-            files = [f.strip().strip('"').strip("'") for f in m.group(1).split(" y ") + m.group(1).split(",")]
-            files = [f for f in files if f]
+            # Separar por " y ", "," o espacios
+            raw = m.group(1)
+            parts = re.split(r"\s+y\s+|\s*,\s*", raw)
+            files = [f.strip().strip('"').strip("'") for f in parts if f.strip()]
             return [{"skill": "edit", "action": "pdf_merge", "params": {"files": files}}]
 
         # Dividir PDF
