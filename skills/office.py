@@ -315,15 +315,15 @@ NO uses bloques de codigo ni backticks."""
             style.font.name = "Calibri"
             style.font.size = Pt(11)
 
-            # Si hay > 20 elementos, anadir indice al inicio
+            # Analizar el documento
             tiene_titulo = any(it["type"] == "title" for it in items)
             n_secciones = sum(1 for it in items if it["type"] in ("h1", "h2"))
+            doc_es_largo = len(items) >= 25 and n_secciones >= 3
+            doc_es_medio = 10 <= len(items) < 25 and n_secciones >= 3
 
-            # Portada si hay muchos elementos
-            if len(items) > 20 and tiene_titulo:
-                # Encontrar el titulo
+            # ── Portada solo si el documento es LARGO ──
+            if doc_es_largo and tiene_titulo:
                 titulo = next((it["text"] for it in items if it["type"] == "title"), description[:80])
-                # Portada
                 h = doc.add_heading(titulo, level=0)
                 h.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 sub = doc.add_paragraph()
@@ -331,18 +331,63 @@ NO uses bloques de codigo ni backticks."""
                 run = sub.add_run(f"Generado por Senna\n{datetime.now().strftime('%d/%m/%Y')}")
                 run.italic = True
                 run.font.color.rgb = RGBColor(120, 120, 120)
-                # Salto de pagina
                 doc.add_page_break()
 
-            # Indice si hay >= 3 secciones
+            # ── Indice ──
             if n_secciones >= 3:
                 doc.add_heading("Indice", level=1)
                 for it in items:
                     if it["type"] == "h1":
-                        p = doc.add_paragraph(it["text"], style="List Number")
+                        doc.add_paragraph(it["text"], style="List Number")
                     elif it["type"] == "h2":
-                        p = doc.add_paragraph("    " + it["text"], style="List Bullet")
-                doc.add_page_break()
+                        doc.add_paragraph("    " + it["text"], style="List Bullet")
+                # Solo salto de pagina si el doc es largo
+                # Si es medio, dejamos el indice y el contenido en la misma pagina
+                if doc_es_largo:
+                    doc.add_page_break()
+                else:
+                    # Anadir separador visual
+                    doc.add_paragraph("─" * 40).alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    doc.add_paragraph("")
+
+            # ── Contenido ──
+            for it in items:
+                t = it["type"]
+
+                if t == "title":
+                    # Si ya pusimos portada con este titulo, no duplicar
+                    if doc_es_largo and tiene_titulo:
+                        continue
+                    h = doc.add_heading(it["text"], level=0)
+                    h.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                elif t == "h1":
+                    doc.add_heading(it["text"], level=1)
+                elif t == "h2":
+                    doc.add_heading(it["text"], level=2)
+                elif t == "bullet":
+                    p = doc.add_paragraph(style="List Bullet")
+                    self._add_runs_with_format(p, it["text"])
+                elif t == "numbered":
+                    p = doc.add_paragraph(style="List Number")
+                    self._add_runs_with_format(p, it["text"])
+                elif t == "quote":
+                    p = doc.add_paragraph(style="Intense Quote")
+                    self._add_runs_with_format(p, it["text"])
+                elif t == "table":
+                    self._add_table(doc, it["rows"])
+                elif t == "image":
+                    try:
+                        img_path = Path(it["path"])
+                        if not img_path.is_absolute():
+                            img_path = ROOT / img_path
+                        if img_path.exists():
+                            doc.add_picture(str(img_path), width=Inches(5))
+                            doc.add_paragraph("")
+                    except Exception as e:
+                        print(f"[OFFICE] No se pudo anadir imagen: {e}")
+                else:  # paragraph
+                    p = doc.add_paragraph()
+                    self._add_runs_with_format(p, it["text"])
 
             # Contenido
             for it in items:
