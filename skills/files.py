@@ -1,8 +1,24 @@
+"""Skill de archivos: buscar, listar, analizar.
+
+Funciones:
+- find_file: buscar por nombre
+- find_content: buscar TEXTO dentro de archivos (PDF, txt, docx, py, etc.)
+- find_advanced: buscar por extension + rango de fechas + tamano
+- list_folder: listar con orden y filtros
+- recent: los N archivos modificados mas recientemente
+- duplicates: encontrar duplicados por hash
+- pick: elegir un archivo por criterio
+- info: detalles de un archivo
+- open_path: abrir en el explorador
+- create_folder: crear carpeta
+- move: mover archivo
+"""
+import hashlib
 import os
 import shutil
-import subprocess
+from datetime import datetime, timedelta
 from pathlib import Path
-from datetime import datetime
+
 from skills.base import Skill
 
 HOME = Path.home()
@@ -22,20 +38,54 @@ EXCLUDE_DIRS = {
     ".git", "build", "dist", "target", "Library",
 }
 
+# Extensiones de texto que se pueden leer directamente
+TEXT_EXTS = {".txt", ".md", ".py", ".js", ".html", ".css", ".json",
+             ".xml", ".yaml", ".yml", ".ini", ".cfg", ".log", ".csv", ".sql"}
+
+# Extensiones que requieren librerias extra
+RICH_EXTS = {".pdf", ".docx", ".doc", ".xlsx", ".xls", ".pptx"}
+
 
 class FilesSkill(Skill):
     name = "files"
-    description = "Busca, lista, abre archivos y carpetas"
+    description = "Busca, lista, abre y analiza archivos y carpetas"
 
     def run(self, action, params):
         if action == "find_file":
             return self._find_file(params.get("name", ""))
+        if action == "find_content":
+            return self._find_content(
+                params.get("text", ""),
+                params.get("folder", ""),
+                params.get("ext", ""),
+                params.get("limit", 20),
+            )
+        if action == "find_advanced":
+            return self._find_advanced(
+                params.get("folder", ""),
+                params.get("ext", ""),
+                params.get("min_kb", 0),
+                params.get("max_kb", 0),
+                params.get("days", 0),
+                params.get("limit", 30),
+            )
         if action == "list_folder":
             return self._list_folder(
                 params.get("folder", ""),
                 sort=params.get("sort", "name"),
                 filter_ext=params.get("filter_ext", ""),
                 limit=params.get("limit", 20),
+            )
+        if action == "recent":
+            return self._recent(
+                params.get("folder", ""),
+                params.get("limit", 10),
+                params.get("ext", ""),
+            )
+        if action == "duplicates":
+            return self._duplicates(
+                params.get("folder", ""),
+                params.get("limit", 50),
             )
         if action == "pick":
             return self._pick(
@@ -53,10 +103,9 @@ class FilesSkill(Skill):
             return self._move(params.get("src", ""), params.get("dst", ""))
         return f"Accion desconocida: {action}"
 
-    # ─── RESOLVER RUTA ──────────────────────────────────────────────────────
+    # ─── RESOLVER RUTA ────────────────────────────────────────────────────
 
     def _resolve_folder(self, folder):
-        """Convierte 'descargas' o ruta completa a Path."""
         folder = folder.lower().strip()
         if folder in COMMON_DIRS:
             return COMMON_DIRS[folder]
@@ -65,7 +114,7 @@ class FilesSkill(Skill):
             return p
         return None
 
-    # ─── LISTAR CON ORDEN Y FILTROS ─────────────────────────────────────────
+    # ─── LISTAR ───────────────────────────────────────────────────────────
 
     def _list_folder(self, folder, sort="name", filter_ext="", limit=20):
         path = self._resolve_folder(folder)
@@ -79,12 +128,10 @@ class FilesSkill(Skill):
         except Exception as e:
             return f"Error accediendo a {folder}: {e}"
 
-        # Filtrar por extension
         if filter_ext:
             ext = filter_ext.lower().lstrip(".")
             items = [i for i in items if i.is_file() and i.suffix.lower() == f".{ext}"]
 
-        # Ordenar
         try:
             if sort == "date_desc":
                 items.sort(key=lambda x: x.stat().st_mtime, reverse=True)
@@ -94,7 +141,7 @@ class FilesSkill(Skill):
                 items.sort(key=lambda x: x.stat().st_size, reverse=True)
             elif sort == "size_asc":
                 items.sort(key=lambda x: x.stat().st_size)
-            else:  # name
+            else:
                 items.sort(key=lambda x: x.name.lower())
         except Exception:
             pass
@@ -102,7 +149,6 @@ class FilesSkill(Skill):
         total = len(items)
         items = items[:limit]
 
-        # Construir salida
         lines = [f"Carpeta: {path.name} ({total} elementos)"]
         for item in items:
             try:
@@ -116,7 +162,6 @@ class FilesSkill(Skill):
         if total > limit:
             lines.append(f"  ... y {total - limit} mas")
 
-        # Resultado para el agente (JSON estructurado)
         files_data = []
         for item in items:
             try:
@@ -138,7 +183,323 @@ class FilesSkill(Skill):
             "data": files_data,
         }
 
-    # ─── PICK: ELEGIR UN ARCHIVO SEGUN CRITERIO ─────────────────────────────
+    # ─── BUSCAR POR TEXTO DENTRO DE ARCHIVOS ──────────────────────────────
+
+    def _find_content(self, text, folder="", ext="", limit=20):
+        """Busca un texto dentro de archivos."""
+        if not text:
+            return {
+                "thought": "Falta texto a buscar",
+                "display": "Dime que texto buscar dentro de los archivos.",
+                "voice": "No me dijiste que buscar.",
+            }
+
+        text_low = text.lower().strip()
+
+        # Carpetas donde buscar
+        if folder:
+            base = self._resolve_folder(folder)
+            if base is None:
+                return {
+                    "thought": f"Carpeta no encontrada: {folder}",
+                    "display": f"No conozco la carpeta '{folder}'.",
+                    "voice": "No encontre esa carpeta.",
+                }
+            folders = [base]
+        else:
+            folders = [d for d in COMMON_DIRS.values() if d.exists()]
+
+        # Extensiones permitidas
+        ext_filter = None
+        if ext:
+            ext_filter = ext.lower().lstrip(".")
+            if not ext_filter.startswith("."):
+                ext_filter = "." + ext_filter
+
+        matches = []
+
+        for base in folders:
+            for root, dirs, files in os.walk(base):
+                dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS and not d.startswith(".")]
+                for f in files:
+                    if len(matches) >= limit:
+                        break
+                    fp = Path(root) / f
+                    try:
+                        ext_low = fp.suffix.lower()
+                        # Filtro de extension
+                        if ext_filter and ext_low != ext_filter:
+                            continue
+                        # Solo texto plano
+                        if ext_low not in TEXT_EXTS:
+                            continue
+                        # Leer y buscar
+                        content = fp.read_text(encoding="utf-8", errors="ignore")
+                        if text_low in content.lower():
+                            # Extraer contexto (linea donde aparece)
+                            contexto = ""
+                            for linea in content.split("\n"):
+                                if text_low in linea.lower():
+                                    contexto = linea.strip()[:100]
+                                    break
+                            matches.append({
+                                "path": str(fp),
+                                "name": fp.name,
+                                "folder": str(fp.parent),
+                                "size_kb": round(fp.stat().st_size / 1024, 1),
+                                "contexto": contexto,
+                            })
+                    except Exception:
+                        continue
+                if len(matches) >= limit:
+                    break
+            if len(matches) >= limit:
+                break
+
+        if not matches:
+            return {
+                "thought": f"Sin coincidencias de '{text}'",
+                "display": f"No encontre archivos con '{text}'.",
+                "voice": "No encontre nada.",
+            }
+
+        lines = [f"Encontre {len(matches)} archivos con '{text}':"]
+        for m in matches:
+            lines.append(f"  {m['name']} en {m['folder']}")
+            if m["contexto"]:
+                lines.append(f"     > {m['contexto']}")
+
+        return {
+            "thought": f"Buscar '{text}' en contenido ({len(matches)} matches)",
+            "display": "\n".join(lines),
+            "voice": f"Encontre {len(matches)} archivos con ese texto.",
+            "data": matches,
+        }
+
+    # ─── BUSQUEDA AVANZADA ────────────────────────────────────────────────
+
+    def _find_advanced(self, folder="", ext="", min_kb=0, max_kb=0, days=0, limit=30):
+        """Busqueda por extension + rango de fechas + tamano."""
+        if folder:
+            base = self._resolve_folder(folder)
+            if base is None:
+                return {
+                    "thought": f"Carpeta no encontrada: {folder}",
+                    "display": f"No conozco la carpeta '{folder}'.",
+                    "voice": "No encontre esa carpeta.",
+                }
+            folders = [base]
+        else:
+            folders = [d for d in COMMON_DIRS.values() if d.exists()]
+
+        ext_filter = None
+        if ext:
+            ext_filter = ext.lower().lstrip(".")
+            if not ext_filter.startswith("."):
+                ext_filter = "." + ext_filter
+
+        fecha_limite = None
+        if days and int(days) > 0:
+            fecha_limite = datetime.now() - timedelta(days=int(days))
+
+        matches = []
+        for base in folders:
+            for root, dirs, files in os.walk(base):
+                dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS and not d.startswith(".")]
+                for f in files:
+                    if len(matches) >= limit:
+                        break
+                    fp = Path(root) / f
+                    try:
+                        if not fp.is_file():
+                            continue
+                        # Filtro extension
+                        if ext_filter and fp.suffix.lower() != ext_filter:
+                            continue
+                        # Filtro tamano
+                        size_kb = fp.stat().st_size / 1024
+                        if min_kb and size_kb < float(min_kb):
+                            continue
+                        if max_kb and size_kb > float(max_kb):
+                            continue
+                        # Filtro fecha
+                        if fecha_limite:
+                            mtime = datetime.fromtimestamp(fp.stat().st_mtime)
+                            if mtime < fecha_limite:
+                                continue
+                        matches.append({
+                            "path": str(fp),
+                            "name": fp.name,
+                            "size_kb": round(size_kb, 1),
+                            "date": datetime.fromtimestamp(fp.stat().st_mtime).strftime("%Y-%m-%d"),
+                        })
+                    except Exception:
+                        continue
+                if len(matches) >= limit:
+                    break
+            if len(matches) >= limit:
+                break
+
+        if not matches:
+            return {
+                "thought": "Sin resultados en busqueda avanzada",
+                "display": "No encontre archivos con esos criterios.",
+                "voice": "No encontre nada.",
+            }
+
+        lines = [f"Encontre {len(matches)} archivos:"]
+        for m in matches:
+            lines.append(f"  {m['name']} ({m['size_kb']} KB) - {m['date']}")
+
+        return {
+            "thought": f"Busqueda avanzada ({len(matches)} resultados)",
+            "display": "\n".join(lines),
+            "voice": f"Encontre {len(matches)} archivos.",
+            "data": matches,
+        }
+
+    # ─── ARCHIVOS RECIENTES ───────────────────────────────────────────────
+
+    def _recent(self, folder="", limit=10, ext=""):
+        """Devuelve los N archivos mas recientes.
+        
+        Si la carpeta especificada no tiene archivos, busca en TODAS
+        las carpetas comunes como fallback.
+        """
+        if folder:
+            base = self._resolve_folder(folder)
+            if base is None:
+                return {
+                    "thought": f"Carpeta no encontrada: {folder}",
+                    "display": f"No conozco la carpeta '{folder}'.",
+                    "voice": "No encontre esa carpeta.",
+                }
+            folders = [base]
+        else:
+            folders = [d for d in COMMON_DIRS.values() if d.exists()]
+
+        ext_filter = None
+        if ext:
+            ext_filter = ext.lower().lstrip(".")
+            if not ext_filter.startswith("."):
+                ext_filter = "." + ext_filter
+
+        all_files = []
+        for base in folders:
+            for root, dirs, files in os.walk(base):
+                dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS and not d.startswith(".")]
+                for f in files:
+                    fp = Path(root) / f
+                    try:
+                        if not fp.is_file():
+                            continue
+                        if ext_filter and fp.suffix.lower() != ext_filter:
+                            continue
+                        all_files.append(fp)
+                    except Exception:
+                        continue
+
+        # Fallback: si la carpeta especifica no tenia archivos, buscar en todas
+        if not all_files and folder:
+            print(f"[FILES] '{folder}' vacia, buscando en todas las carpetas comunes")
+            folders = [d for d in COMMON_DIRS.values() if d.exists()]
+            for base in folders:
+                for root, dirs, files in os.walk(base):
+                    dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS and not d.startswith(".")]
+                    for f in files:
+                        fp = Path(root) / f
+                        try:
+                            if not fp.is_file():
+                                continue
+                            if ext_filter and fp.suffix.lower() != ext_filter:
+                                continue
+                            all_files.append(fp)
+                        except Exception:
+                            continue
+
+        all_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+        top = all_files[:int(limit)]
+
+        lines = [f"Ultimos {len(top)} archivos modificados:"]
+        for fp in top:
+            try:
+                st = fp.stat()
+                date = datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M")
+                lines.append(f"  {fp.name} ({st.st_size / 1024:.0f} KB) - {date}")
+            except Exception:
+                lines.append(f"  {fp.name}")
+
+        return {
+            "thought": f"Top {len(top)} archivos recientes",
+            "display": "\n".join(lines),
+            "voice": f"Estos son los {len(top)} archivos mas recientes.",
+        }
+
+    # ─── DUPLICADOS ───────────────────────────────────────────────────────
+
+    def _duplicates(self, folder="", limit=50):
+        """Encuentra archivos duplicados por hash MD5."""
+        if folder:
+            base = self._resolve_folder(folder)
+            if base is None:
+                return {
+                    "thought": f"Carpeta no encontrada: {folder}",
+                    "display": f"No conozco la carpeta '{folder}'.",
+                    "voice": "No encontre esa carpeta.",
+                }
+            folders = [base]
+        else:
+            folders = [d for d in COMMON_DIRS.values() if d.exists()]
+
+        hashes = {}
+        for base in folders:
+            for root, dirs, files in os.walk(base):
+                dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS and not d.startswith(".")]
+                for f in files:
+                    fp = Path(root) / f
+                    try:
+                        if not fp.is_file() or fp.stat().st_size == 0:
+                            continue
+                        h = hashlib.md5()
+                        with open(fp, "rb") as fh:
+                            for chunk in iter(lambda: fh.read(8192), b""):
+                                h.update(chunk)
+                        digest = h.hexdigest()
+                        hashes.setdefault(digest, []).append(str(fp))
+                    except Exception:
+                        continue
+
+        duplicados = {h: paths for h, paths in hashes.items() if len(paths) > 1}
+        if not duplicados:
+            return {
+                "thought": "Sin duplicados",
+                "display": "No encontre archivos duplicados.",
+                "voice": "No hay duplicados.",
+            }
+
+        # Calcular espacio desperdiciado
+        total_dup = 0
+        for h, paths in duplicados.items():
+            try:
+                size = Path(paths[0]).stat().st_size
+                total_dup += size * (len(paths) - 1)
+            except Exception:
+                pass
+
+        lines = [f"Encontre {len(duplicados)} grupos de duplicados ({total_dup / 1024 / 1024:.1f} MB):"]
+        for i, (h, paths) in enumerate(list(duplicados.items())[:int(limit)], 1):
+            lines.append(f"\nGrupo {i}:")
+            for p in paths:
+                lines.append(f"  {p}")
+
+        return {
+            "thought": f"{len(duplicados)} grupos de duplicados",
+            "display": "\n".join(lines),
+            "voice": f"Encontre {len(duplicados)} grupos de duplicados.",
+            "data": duplicados,
+        }
+
+    # ─── PICK: ELEGIR UN ARCHIVO ──────────────────────────────────────────
 
     def _pick(self, folder, criteria, filter_ext=""):
         path = self._resolve_folder(folder)
@@ -159,18 +520,14 @@ class FilesSkill(Skill):
 
         try:
             crit = criteria.lower().strip()
-            if crit == "mas_reciente":
+            if crit in ("mas_reciente", "ultimo"):
                 items.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-            elif crit == "mas_antiguo":
+            elif crit in ("mas_antiguo", "primero"):
                 items.sort(key=lambda x: x.stat().st_mtime)
             elif crit == "mas_grande":
                 items.sort(key=lambda x: x.stat().st_size, reverse=True)
             elif crit == "mas_pequeno":
                 items.sort(key=lambda x: x.stat().st_size)
-            elif crit == "ultimo":
-                items.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-            elif crit == "primero":
-                items.sort(key=lambda x: x.stat().st_mtime)
             else:
                 items.sort(key=lambda x: x.name.lower())
         except Exception:
@@ -188,7 +545,7 @@ class FilesSkill(Skill):
         except Exception as e:
             return {"error": str(e)}
 
-    # ─── INFO ───────────────────────────────────────────────────────────────
+    # ─── INFO ─────────────────────────────────────────────────────────────
 
     def _info(self, path):
         if not path:
@@ -204,13 +561,13 @@ class FilesSkill(Skill):
             return (
                 f"{kind.capitalize()}: {p.name}\n"
                 f"Ruta: {p}\n"
-                f"Tamaño: {size_kb:.1f} KB\n"
+                f"Tamano: {size_kb:.1f} KB\n"
                 f"Modificado: {modified}"
             )
         except Exception as e:
             return f"Error: {e}"
 
-    # ─── ABRIR ──────────────────────────────────────────────────────────────
+    # ─── ABRIR ────────────────────────────────────────────────────────────
 
     def _open_path(self, path):
         if not path:
@@ -231,7 +588,7 @@ class FilesSkill(Skill):
         except Exception as e:
             return {"error": str(e)}
 
-    # ─── BUSCAR ─────────────────────────────────────────────────────────────
+    # ─── BUSCAR POR NOMBRE ────────────────────────────────────────────────
 
     def _find_file(self, name):
         if not name:
@@ -268,7 +625,7 @@ class FilesSkill(Skill):
                 lines.append(f"- {m}")
         return "\n".join(lines)
 
-    # ─── CREAR CARPETA ──────────────────────────────────────────────────────
+    # ─── CREAR CARPETA ────────────────────────────────────────────────────
 
     def _create_folder(self, name):
         if not name:
@@ -280,7 +637,7 @@ class FilesSkill(Skill):
         except Exception as e:
             return f"Error al crear carpeta: {e}"
 
-    # ─── MOVER ──────────────────────────────────────────────────────────────
+    # ─── MOVER ────────────────────────────────────────────────────────────
 
     def _move(self, src, dst):
         if not src or not dst:

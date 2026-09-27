@@ -1854,6 +1854,33 @@ class Router:
         ]):
             return [{"skill": "frases", "action": "random", "params": {}}]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # FILES AVANZADO: buscar contenido, busqueda avanzada, recientes, duplicados
+        # ═══════════════════════════════════════════════════════════════════
+        # Buscar TEXTO dentro de archivos
+        m = re.search(r"(?:busca|encuentra|buscar|encontrar)\s+(?:el\s+|la\s+)?(?:texto|contenido|palabra)\s+['\"](.+?)['\"]\s+(?:en\s+(.+))?$", t)
+        if not m:
+            m = re.search(r"(?:busca|encuentra)\s+['\"](.+?)['\"]\s+(?:en\s+(.+))?$", t)
+        if m:
+            texto = m.group(1).strip()
+            carpeta = (m.group(2) or "").strip()
+            return [{"skill": "files", "action": "find_content", "params": {"text": texto, "folder": carpeta}}]
+
+        # Archivos recientes
+        if any(p in t for p in ["archivos recientes", "ultimos archivos", "que he modificado", "archivos modificados"]):
+            return [{"skill": "files", "action": "recent", "params": {"limit": 10}}]
+
+        # Duplicados
+        if any(p in t for p in ["archivos duplicados", "duplicados", "busca duplicados", "encuentra duplicados"]):
+            return [{"skill": "files", "action": "duplicates", "params": {}}]
+
+        # Busqueda avanzada por extension
+        m = re.search(r"(?:busca|encuentra|dame)\s+(?:todos\s+)?(?:los\s+)?(?:archivos?\s+)?([a-z0-9]+)(?:\s+en\s+(.+))?$", t)
+        if m and m.group(1) in ("pdf", "docx", "xlsx", "txt", "py", "jpg", "png", "mp4", "mp3", "zip"):
+            ext = m.group(1)
+            carpeta = (m.group(2) or "").strip()
+            return [{"skill": "files", "action": "find_advanced", "params": {"folder": carpeta, "ext": ext, "limit": 20}}]
+
         return None
 
     def _normalize(self, result):
