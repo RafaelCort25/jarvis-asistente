@@ -390,6 +390,58 @@ class Router:
             return "__N8N_BUILDER__"
 
         # ═══════════════════════════════════════════════════════════════════
+        # ═══════════════════════════════════════════════════════════════════
+        # GMAIL AVANZADO: adjuntos, busqueda, gestion, respuesta
+        # ═══════════════════════════════════════════════════════════════════
+        # Enviar con adjuntos
+        m = re.search(r"(?:envia|manda|env[ií]ame|mandame)\s+(?:un\s+)?(?:correo|email|mail)\s+(?:a\s+)?([^\s]+@[^\s]+)\s+(?:con|adjuntando|adjunto)\s+(?:el\s+|la\s+|los\s+|las\s+)?(?:archivo|archivos|fichero|ficheros)?\s*(.+)$", t, re.IGNORECASE)
+        if m:
+            to = m.group(1).strip()
+            files_str = m.group(2).strip()
+            files = [f.strip().strip('"').strip("'") for f in re.split(r"\s+y\s+|\s*,\s*", files_str) if f.strip()]
+            return [{"skill": "gmail", "action": "send_attachment", "params": {"to": to, "files": files, "subject": "(sin asunto)", "body": ""}}]
+        # Listar adjuntos
+        m = re.search(r"(?:que\s+)?adjuntos\s+(?:tiene|hay en)\s+(?:el\s+)?correo\s+(\d+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "gmail", "action": "list_attachments", "params": {"uid": m.group(1)}}]
+        # Descargar adjuntos
+        m = re.search(r"(?:descarga|baja|guarda)\s+(?:los\s+)?adjuntos\s+(?:de|del)\s+(?:el\s+)?correo\s+(\d+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "gmail", "action": "download_attachments", "params": {"uid": m.group(1)}}]
+        # Busqueda avanzada: correos de X
+        m = re.search(r"(?:busca|muestra|dame|tengo)\s+(?:los\s+)?correos\s+(?:de|del?)\s+([^\s]+(?:@[^\s]+)?)(?:\s+sobre\s+(.+))?$", t, re.IGNORECASE)
+        if m:
+            frm = m.group(1).strip()
+            subj = (m.group(2) or "").strip()
+            params = {"from_addr": frm, "limit": 5}
+            if subj:
+                params["subject"] = subj
+            return [{"skill": "gmail", "action": "search_advanced", "params": params}]
+        # Busqueda por fecha
+        m = re.search(r"(?:correos?|emails?)\s+(?:de|desde)\s+(?:el\s+)?(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}|\d{4}[/\-]\d{1,2}[/\-]\d{1,2})", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "gmail", "action": "search_advanced", "params": {"since": m.group(1).strip()}}]
+        # Marcar como leido
+        m = re.search(r"(?:marca|pon)\s+(?:como\s+)?leido\s+(?:el\s+)?correo\s+(\d+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "gmail", "action": "mark_read", "params": {"uid": m.group(1)}}]
+        # Marcar como no leido
+        m = re.search(r"(?:marca|pon)\s+(?:como\s+)?(?:no\s+)?leido\s+(?:el\s+)?correo\s+(\d+)", t, re.IGNORECASE)
+        if m and "no leido" in t.lower():
+            return [{"skill": "gmail", "action": "mark_unread", "params": {"uid": m.group(1)}}]
+        # Archivar
+        m = re.search(r"(?:archiva|guarda)\s+(?:el\s+)?correo\s+(\d+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "gmail", "action": "archive", "params": {"uid": m.group(1)}}]
+        # Borrar
+        m = re.search(r"(?:borra|elimina)\s+(?:el\s+)?correo\s+(\d+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "gmail", "action": "delete", "params": {"uid": m.group(1)}}]
+        # Responder
+        m = re.search(r"(?:responde|contesta)\s+(?:al\s+)?correo\s+(\d+)\s*(?::|con)?\s*(.*)$", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "gmail", "action": "reply", "params": {"uid": m.group(1), "body": m.group(2).strip()}}]
+
         # GMAIL: correos
         # ═══════════════════════════════════════════════════════════════════
 
@@ -1996,57 +2048,6 @@ class Router:
             return [{"skill": "edit", "action": "csv_modify",
                      "params": {"path": m.group(1).strip(), "instruction": m.group(2).strip()}}]
 
-        # ═══════════════════════════════════════════════════════════════════
-        # GMAIL AVANZADO: adjuntos, busqueda, gestion, respuesta
-        # ═══════════════════════════════════════════════════════════════════
-        # Enviar con adjuntos
-        m = re.search(r"(?:envia|manda|env[ií]ame|mandame)\s+(?:un\s+)?(?:correo|email|mail)\s+(?:a\s+)?([^\s]+@[^\s]+)\s+(?:con|adjuntando|adjunto)\s+(?:el\s+|la\s+|los\s+|las\s+)?(?:archivo|archivos|fichero|ficheros)?\s*(.+)$", t, re.IGNORECASE)
-        if m:
-            to = m.group(1).strip()
-            files_str = m.group(2).strip()
-            files = [f.strip().strip('"').strip("'") for f in re.split(r"\s+y\s+|\s*,\s*", files_str) if f.strip()]
-            return [{"skill": "gmail", "action": "send_attachment", "params": {"to": to, "files": files, "subject": "(sin asunto)", "body": ""}}]
-        # Listar adjuntos
-        m = re.search(r"(?:que\s+)?adjuntos\s+(?:tiene|hay en)\s+(?:el\s+)?correo\s+(\d+)", t, re.IGNORECASE)
-        if m:
-            return [{"skill": "gmail", "action": "list_attachments", "params": {"uid": m.group(1)}}]
-        # Descargar adjuntos
-        m = re.search(r"(?:descarga|baja|guarda)\s+(?:los\s+)?adjuntos\s+(?:de|del)\s+(?:el\s+)?correo\s+(\d+)", t, re.IGNORECASE)
-        if m:
-            return [{"skill": "gmail", "action": "download_attachments", "params": {"uid": m.group(1)}}]
-        # Busqueda avanzada: correos de X
-        m = re.search(r"(?:busca|muestra|dame|tengo)\s+(?:los\s+)?correos\s+(?:de|del?)\s+([^\s]+(?:@[^\s]+)?)(?:\s+sobre\s+(.+))?$", t, re.IGNORECASE)
-        if m:
-            frm = m.group(1).strip()
-            subj = (m.group(2) or "").strip()
-            params = {"from_addr": frm, "limit": 5}
-            if subj:
-                params["subject"] = subj
-            return [{"skill": "gmail", "action": "search_advanced", "params": params}]
-        # Busqueda por fecha
-        m = re.search(r"(?:correos?|emails?)\s+(?:de|desde)\s+(?:el\s+)?(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}|\d{4}[/\-]\d{1,2}[/\-]\d{1,2})", t, re.IGNORECASE)
-        if m:
-            return [{"skill": "gmail", "action": "search_advanced", "params": {"since": m.group(1).strip()}}]
-        # Marcar como leido
-        m = re.search(r"(?:marca|pon)\s+(?:como\s+)?leido\s+(?:el\s+)?correo\s+(\d+)", t, re.IGNORECASE)
-        if m:
-            return [{"skill": "gmail", "action": "mark_read", "params": {"uid": m.group(1)}}]
-        # Marcar como no leido
-        m = re.search(r"(?:marca|pon)\s+(?:como\s+)?(?:no\s+)?leido\s+(?:el\s+)?correo\s+(\d+)", t, re.IGNORECASE)
-        if m and "no leido" in t.lower():
-            return [{"skill": "gmail", "action": "mark_unread", "params": {"uid": m.group(1)}}]
-        # Archivar
-        m = re.search(r"(?:archiva|guarda)\s+(?:el\s+)?correo\s+(\d+)", t, re.IGNORECASE)
-        if m:
-            return [{"skill": "gmail", "action": "archive", "params": {"uid": m.group(1)}}]
-        # Borrar
-        m = re.search(r"(?:borra|elimina)\s+(?:el\s+)?correo\s+(\d+)", t, re.IGNORECASE)
-        if m:
-            return [{"skill": "gmail", "action": "delete", "params": {"uid": m.group(1)}}]
-        # Responder
-        m = re.search(r"(?:responde|contesta)\s+(?:al\s+)?correo\s+(\d+)\s*(?::|con)?\s*(.*)$", t, re.IGNORECASE)
-        if m:
-            return [{"skill": "gmail", "action": "reply", "params": {"uid": m.group(1), "body": m.group(2).strip()}}]
 
         # ═══════════════════════════════════════════════════════════════════
         # PDF: info, extract_text, to_images, watermark, compress
