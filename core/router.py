@@ -1257,24 +1257,68 @@ class Router:
         # ═══════════════════════════════════════════════════════════════════
 
 
-        # VISION: analizar pantalla
         # ═══════════════════════════════════════════════════════════════════
-        if any(p in t for p in [
-            "que hay en mi pantalla", "que se ve en mi pantalla",
-            "describe mi pantalla", "describe lo que ves",
-            "que estoy viendo", "mira mi pantalla",
-            "analiza mi pantalla",
-        ]):
-            return [{"skill": "vision", "action": "describe_screen", "params": {}}]
+        # VISION: analizar pantalla e imagenes
+        # ═══════════════════════════════════════════════════════════════════
+        # Cambiar modelo de vision
+        m = re.search(r"(?:usa|pon|configura)\s+(?:el\s+)?modelo\s+(?:de\s+)?vision\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "vision", "action": "set_model", "params": {"model": m.group(1).strip()}}]
 
-        if any(p in t for p in [
-            "explica el codigo de mi pantalla", "explica lo que se ve",
-            "explícame el código", "explica este codigo",
-            "que hace este codigo en pantalla",
-        ]):
+        if any(p in t for p in ["lista modelos de vision", "que modelos de vision tengo", "modelos vision disponibles"]):
+            return [{"skill": "vision", "action": "list_models", "params": {}}]
+
+        if any(p in t for p in ["ocr", "extrae el texto de la pantalla", "lee el texto de la pantalla", "transcribe la pantalla"]):
+            return [{"skill": "vision", "action": "ocr", "params": {}}]
+
+        if any(p in t for p in ["explica el codigo de la pantalla", "explica el codigo de mi pantalla", "explica este codigo", "que hace este codigo"]):
             return [{"skill": "vision", "action": "explain_screen_code", "params": {}}]
 
-        # ═══════════════════════════════════════════════════════════════════
+        if any(p in t for p in ["lee el error de la pantalla", "que error hay en pantalla", "que error se ve", "explica este error", "lee el error"]):
+            return [{"skill": "vision", "action": "read_error", "params": {}}]
+
+        if any(p in t for p in ["describe la interfaz", "que botones hay", "analiza la interfaz"]):
+            return [{"skill": "vision", "action": "describe_ui", "params": {}}]
+
+        if any(p in t for p in ["detecta objetos", "que objetos hay", "detecta lo que hay"]):
+            return [{"skill": "vision", "action": "detect_objects", "params": {}}]
+
+        if any(p in t for p in ["lee la tabla", "extrae la tabla", "pasa la tabla a markdown"]):
+            return [{"skill": "vision", "action": "read_table", "params": {}}]
+
+        if any(p in t for p in ["traduce la pantalla", "traduce lo que ves", "traduce el texto de la pantalla"]):
+            return [{"skill": "vision", "action": "translate_screen", "params": {}}]
+
+        # Buscar texto en pantalla (con comillas simples o dobles)
+        m = re.search(r"(?:busca|encuentra|donde esta)\s+(.+?)\s+(?:en\s+)?(?:la\s+)?pantalla", t, re.IGNORECASE)
+        if m:
+            texto = m.group(1).strip().strip(chr(34)).strip(chr(39))
+            return [{"skill": "vision", "action": "find_text", "params": {"text": texto}}]
+
+        if any(p in t for p in ["captura la pantalla", "haz un screenshot", "haz una captura de pantalla"]):
+            return [{"skill": "vision", "action": "capture", "params": {}}]
+
+        # Describir imagen de disco
+        m = re.search(r"(?:describe|analiza|que hay en|que ves en)\s+(?:la\s+)?(?:imagen|foto|archivo)\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "vision", "action": "describe_image", "params": {"path": m.group(1).strip()}}]
+
+        # OCR de imagen
+        m = re.search(r"(?:ocr|extrae el texto|lee el texto)\s+(?:de\s+)?(?:la\s+)?(?:imagen|foto)\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "vision", "action": "ocr_image", "params": {"path": m.group(1).strip()}}]
+
+        # Comparar imagenes
+        m = re.search(r"(?:compara|compara\s+las?)\s+(?:las?\s+)?imagen(?:es)?\s+(\S+)\s+y\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "vision", "action": "compare_images", "params": {"path1": m.group(1).strip(), "path2": m.group(2).strip()}}]
+
+        # Describir pantalla (generico)
+        if any(p in t for p in ["describe la pantalla", "que ves en la pantalla", "analiza la pantalla",
+                                "describe mi pantalla", "que hay en mi pantalla", "que se ve en mi pantalla",
+                                "que estoy viendo", "mira mi pantalla"]):
+            return [{"skill": "vision", "action": "describe_screen", "params": {}}]
+
         # BLENDER: render de 3 vistas (planta/fachada/corte) — ANTES de MAPS
         # ═══════════════════════════════════════════════════════════════════
         if any(p in t for p in [
