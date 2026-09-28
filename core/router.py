@@ -3125,6 +3125,53 @@ class Router:
             return [{"skill": "canva", "action": "whoami", "params": {}}]
 
 
+        # ═══════════════════════════════════════════════════════════════════
+        # N8N: workflows y templates
+        # ═══════════════════════════════════════════════════════════════════
+        import re as _re_n8
+
+        # Listar workflows
+        if any(p in t for p in ["lista workflows de n8n", "que workflows tengo en n8n",
+                                 "workflows de n8n", "mis workflows de n8n",
+                                 "listar workflows n8n"]):
+            return [{"skill": "n8n", "action": "list_workflows", "params": {}}]
+
+        # Listar ejecuciones
+        if any(p in t for p in ["ejecuciones de n8n", "ultimas ejecuciones n8n",
+                                 "que ejecuciones hay", "listar ejecuciones"]):
+            return [{"skill": "n8n", "action": "list_executions", "params": {}}]
+
+        # Info de un workflow
+        _m = _re_n8.search(r"(?:info|detalles|que hay en)\s+(?:del?\s+)?workflow\s+[\x22\x27]?(.+?)[\x22\x27]?$", t, _re_n8.IGNORECASE)
+        if _m:
+            return [{"skill": "n8n", "action": "get_workflow", "params": {"id_or_name": _m.group(1).strip()}}]
+
+        # Activar
+        _m = _re_n8.search(r"(?:activa|activar)\s+(?:el\s+)?workflow\s+[\x22\x27]?(.+?)[\x22\x27]?$", t, _re_n8.IGNORECASE)
+        if _m:
+            return [{"skill": "n8n", "action": "activate", "params": {"id_or_name": _m.group(1).strip()}}]
+
+        # Desactivar
+        _m = _re_n8.search(r"(?:desactiva|desactivar)\s+(?:el\s+)?workflow\s+[\x22\x27]?(.+?)[\x22\x27]?$", t, _re_n8.IGNORECASE)
+        if _m:
+            return [{"skill": "n8n", "action": "deactivate", "params": {"id_or_name": _m.group(1).strip()}}]
+
+        # Buscar templates
+        _m = _re_n8.search(r"(?:busca|search)\s+templates?\s+(?:de\s+n8n\s+)?(?:sobre\s+|de\s+)?(.+)$", t, _re_n8.IGNORECASE)
+        if _m:
+            return [{"skill": "n8n", "action": "search_templates", "params": {"query": _m.group(1).strip(), "limit": 5}}]
+
+        # Importar template
+        _m = _re_n8.search(r"(?:importa|trae)\s+(?:el\s+)?template\s+(\S+)", t, _re_n8.IGNORECASE)
+        if _m:
+            return [{"skill": "n8n", "action": "import_template", "params": {"id": _m.group(1).strip()}}]
+
+        # Crear workflow desde descripcion
+        _m = _re_n8.search(r"(?:crea|genera)\s+(?:un\s+)?workflow\s+(?:en\s+n8n\s+)?(?:que\s+|para\s+|de\s+)(.+)$", t, _re_n8.IGNORECASE)
+        if _m and "n8n" in t.lower():
+            return [{"skill": "n8n", "action": "create_workflow", "params": {"description": _m.group(1).strip()}}]
+
+
         return None
 
     def _normalize(self, result):
