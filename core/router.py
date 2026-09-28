@@ -42,6 +42,7 @@ from skills.telegram import TelegramSkill
 from skills.edit import EditSkill
 from skills.education import EducationSkill
 from skills.macro import MacroSkill
+from skills.audio import AudioSkill
 from skills.n8n import N8nSkill
 from skills.gmail import GmailSkill
 from skills.canva import CanvaSkill
@@ -100,6 +101,7 @@ class Router:
             "edit": EditSkill(),
             "education": EducationSkill(),
             "macro": MacroSkill(),
+            "audio": AudioSkill(),
             "n8n": N8nSkill(),
             "gmail": GmailSkill(),
             "canva": CanvaSkill(),
@@ -390,6 +392,41 @@ class Router:
             return "__N8N_BUILDER__"
 
         # ═══════════════════════════════════════════════════════════════════
+        # ═══════════════════════════════════════════════════════════════════
+        # AUDIO: transcribir, subtitulos SRT, batch
+        # ═══════════════════════════════════════════════════════════════════
+        # Info del audio
+        m = re.search(r"(?:info|detalles|cuanto\s+dura)\s+(?:de|del?)\s+(?:el\s+)?(?:audio|archivo)\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "audio", "action": "info", "params": {"path": m.group(1).strip()}}]
+        # Transcribir a SRT (subtitulos)
+        m = re.search(r"(?:transcribe|pasa|convierte)\s+(?:el\s+)?(?:audio\s+)?(\S+)\s+(?:a\s+)?(?:subtitulos?|srt)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "audio", "action": "transcribe_srt", "params": {"path": m.group(1).strip()}}]
+        m = re.search(r"(?:genera|crea|haz)\s+(?:los\s+)?(?:subtitulos?|srt)\s+(?:de|del?)\s+(?:el\s+)?(?:audio\s+)?(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "audio", "action": "transcribe_srt", "params": {"path": m.group(1).strip()}}]
+        # Transcribir a Word
+        m = re.search(r"(?:transcribe|pasa|convierte)\s+(?:el\s+)?(?:audio\s+)?(\S+)\s+(?:a\s+)?(?:word|documento|docx)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "audio", "action": "to_word", "params": {"path": m.group(1).strip()}}]
+        # Transcribir a texto (generico)
+        m = re.search(r"(?:transcribe|pasa|convierte)\s+(?:el\s+)?(?:audio\s+)?(\S+)\s+(?:a\s+)?(?:texto|txt)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "audio", "action": "transcribe", "params": {"path": m.group(1).strip()}}]
+        m = re.search(r"(?:transcribe|pasa\s+a\s+texto)\s+(?:el\s+)?(?:audio\s+)?(\S+)", t, re.IGNORECASE)
+        if m and "audio" in t.lower():
+            return [{"skill": "audio", "action": "transcribe", "params": {"path": m.group(1).strip()}}]
+        # Transcribir carpeta entera
+        m = re.search(r"(?:transcribe|pasa\s+a\s+texto)\s+(?:la\s+)?carpeta\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "audio", "action": "batch", "params": {"path": m.group(1).strip()}}]
+        # Listar transcripciones
+        if any(p in t for p in ["lista transcripciones", "que transcripciones tengo",
+                                 "transcripciones hechas", "muestra las transcripciones",
+                                 "lista los subtitulos", "que audios he transcrito"]):
+            return [{"skill": "audio", "action": "list", "params": {}}]
+
         # ═══════════════════════════════════════════════════════════════════
         # RETOUCH: quitar fondo, upscaling, sombras, watermark
         # ═══════════════════════════════════════════════════════════════════
