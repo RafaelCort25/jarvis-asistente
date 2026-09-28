@@ -2011,10 +2011,17 @@ class Router:
         m = re.search(r"(?:convierte|pasa|transforma)\s+(?:el\s+)?pdf\s+(.+?)\s+(?:a|en)\s+(?:imagenes|png|imagen)", t, re.IGNORECASE)
         if m:
             return [{"skill": "pdf", "action": "to_images", "params": {"path": m.group(1).strip()}}]
-        # Marca de agua
-        m = re.search(r"(?:pon|anade|agrega|marca)\s+(?:una\s+)?marca\s+de\s+agua\s+(?:con\s+)?[\"']?(.+?)[\"']?\s+(?:al?|en el)\s+pdf\s+(.+)", t, re.IGNORECASE)
+        # Marca de agua CON texto entre comillas: 'pon marca de agua "X" al pdf Y'
+        m = re.search(r"(?:pon|anade|agrega)\s+(?:una\s+)?marca\s+de\s+agua\s+(?:con\s+)?[\"']([^\"']+)[\"']\s+(?:al?|en el)\s+pdf\s+(.+)", t, re.IGNORECASE)
+        if not m:
+            # Marca de agua CON texto sin comillas: "pon marca de agua CONFIDENCIAL al pdf X"
+            m = re.search(r"(?:pon|anade|agrega)\s+(?:una\s+)?marca\s+de\s+agua\s+(?!al?\s|en\s+el)(?:con\s+)?([A-Za-z0-9_\-]+)\s+(?:al?|en el)\s+pdf\s+(.+)", t, re.IGNORECASE)
         if m:
             return [{"skill": "pdf", "action": "watermark", "params": {"text": m.group(1).strip(), "path": m.group(2).strip()}}]
+        # Marca de agua SIN texto (usa default): "pon una marca de agua al pdf X"
+        m = re.search(r"(?:pon|anade|agrega)\s+(?:una\s+)?marca\s+de\s+agua\s+(?:al?|en el)\s+pdf\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "pdf", "action": "watermark", "params": {"text": "CONFIDENCIAL", "path": m.group(1).strip()}}]
         # Comprimir
         m = re.search(r"(?:comprime|reduce|optimiza)\s+(?:el\s+)?pdf\s+(.+)", t, re.IGNORECASE)
         if m:
