@@ -976,6 +976,60 @@
   .combo-item .sub { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 10px; }
   .combo-item p { font-size: 0.82rem; color: var(--text-dim); line-height: 1.5; margin-bottom: 10px; }
   .combo-item .example { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--gold-bright); font-style: italic; border-left: 2px solid var(--gold); padding-left: 10px; }
+
+  /* ═══ ONBOARDING REDISENADO ═══ */
+  .onb-status-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+    margin: 20px 0;
+  }
+  .onb-check {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    font-size: 0.85rem; color: var(--text);
+  }
+  .onb-check.ok { border-color: rgba(127,176,105,0.3); background: rgba(127,176,105,0.05); }
+  .onb-check.ok svg { color: #7fb069; }
+  .onb-check.warn { border-color: rgba(224,164,88,0.3); background: rgba(224,164,88,0.05); }
+  .onb-check.warn svg { color: #e0a458; }
+  .onb-check svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .onb-problems {
+    padding: 12px 16px; border-radius: 8px;
+    border: 1px solid rgba(224,164,88,0.2); background: rgba(224,164,88,0.04);
+    margin-bottom: 16px; font-size: 0.82rem; color: var(--text);
+  }
+  .onb-problems ul { margin: 8px 0 0 1.2em; color: var(--text-dim); line-height: 1.7; }
+  .onb-problems p { margin: 0 0 8px; color: var(--text-dim); }
+  .onb-examples { margin: 22px 0; }
+  .onb-examples-title {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+    color: var(--gold); letter-spacing: 0.2em; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .onb-example {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 12px 14px; margin-bottom: 6px;
+    border-radius: 8px; border: 1px solid var(--panel-border);
+    background: rgba(20,17,13,0.4); cursor: pointer;
+    font-family: inherit; color: var(--text); font-size: 0.86rem;
+    transition: all 0.2s; text-align: left;
+  }
+  .onb-example:hover { border-color: var(--gold); background: rgba(201,166,104,0.06); }
+  .onb-example svg:first-child { width: 16px; height: 16px; color: var(--gold); flex-shrink: 0; }
+  .onb-example span { flex: 1; }
+  .onb-example .onb-example-arrow { width: 14px; height: 14px; color: var(--text-dim); opacity: 0; transition: opacity 0.2s; }
+  .onb-example:hover .onb-example-arrow { opacity: 1; }
+  .onb-skills-link {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 12px;
+    border-radius: 8px; border: 1px dashed var(--panel-border);
+    background: transparent; cursor: pointer;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+    color: var(--gold-bright); letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+  .onb-skills-link:hover { border-color: var(--gold); border-style: solid; background: rgba(201,166,104,0.08); }
+  .onb-skills-link svg { width: 14px; height: 14px; }
 </style>
 </head>
 <body>
@@ -1117,14 +1171,18 @@
 <!-- ═══════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modalOnboarding">
   <div class="modal modal-relative">
-    <h2>Bienvenido a Senna</h2>
-    <p class="subtitle">Voy a revisar tu sistema para asegurarme de que todo funcione.</p>
+    <h2>✨ Bienvenido a Senna</h2>
+    <p class="subtitle">Tu asistente personal con IA local. Sin nube, sin suscripciones, sin compartir tus datos.</p>
     <div id="onboardingBody">
-      <p style="color:var(--text-dim); text-align:center; padding:20px;">Analizando...</p>
+      <p style="color:var(--text-dim); text-align:center; padding:20px;">Analizando sistema...</p>
     </div>
+    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.78rem; color:var(--text-dim); margin:16px 0 8px;">
+      <input type="checkbox" id="onboardingDontShow" style="width:auto;">
+      <span>No volver a mostrar este mensaje</span>
+    </label>
     <div class="modal-actions">
-      <button class="modal-btn" id="btnOnboardingLater">Más tarde</button>
-      <button class="modal-btn primary" id="btnOnboardingOk">Entendido</button>
+      <button class="modal-btn" id="btnOnboardingConfig">Configurar</button>
+      <button class="modal-btn primary" id="btnOnboardingOk">Empezar</button>
     </div>
   </div>
 </div>
@@ -2319,28 +2377,82 @@ function renderCreds(integraciones) {
 
 // ─── Render de onboarding ───
 function renderOnboarding(data) {
-  const d = data.detalle;
   let html = '';
 
-  // Resumen general
-  if (data.ok) {
-    html += '<div style="text-align:center; padding:20px 0;">';
-    html += '<div style="font-size:3rem; margin-bottom:12px;">✨</div>';
-    html += '<p style="font-size:1rem; color:var(--gold-bright);">Todo está listo. ¡Puedes empezar a usar Nitro!</p>';
-    html += '</div>';
-  } else {
-    html += '<div style="margin-bottom:20px;">';
-    html += '<p style="font-size:0.9rem; color:#e8b06a; margin-bottom:14px;">⚠️ Hay algunos elementos opcionales que faltan:</p>';
-    html += '<ul style="margin-left:1.2em; font-size:0.84rem; line-height:1.8; color:var(--text-dim);">';
-    for (const p of data.problemas) {
-      html += `<li>${p}</li>`;
-    }
+  // ─── Estado del sistema con iconos Lucide ───
+  html += '<div class="onb-status-grid">';
+  const checks = [
+    { name: 'Python',     ok: !(data.problemas||[]).some(p => /python/i.test(p)) },
+    { name: 'Ollama',     ok: !(data.problemas||[]).some(p => /ollama/i.test(p)) },
+    { name: 'Modelos IA', ok: !(data.problemas||[]).some(p => /modelo/i.test(p)) },
+    { name: '38 skills',  ok: true },
+  ];
+  for (const ch of checks) {
+    html += '<div class="onb-check ' + (ch.ok ? 'ok' : 'warn') + '">' +
+      '<i data-lucide="' + (ch.ok ? 'check-circle' : 'alert-circle') + '"></i>' +
+      '<span>' + ch.name + '</span>' +
+    '</div>';
+  }
+  html += '</div>';
+
+  // ─── Problemas (si hay) ───
+  if (!data.ok && data.problemas && data.problemas.length) {
+    html += '<div class="onb-problems">';
+    html += '<p><strong>Elementos opcionales que faltan:</strong></p>';
+    html += '<ul>';
+    for (const p of data.problemas) html += '<li>' + p + '</li>';
     html += '</ul>';
+    html += '<p style="font-size:0.72rem;">No es obligatorio. Configuralo cuando quieras desde <strong>Sistema</strong>.</p>';
     html += '</div>';
-    html += '<p style="font-size:0.84rem; color:var(--text-dim); text-align:center;">No es obligatorio. Puedes configurarlo cuando quieras desde <strong>⚙️ Sistema</strong>.</p>';
   }
 
+  // ─── Ejemplos clickables ───
+  html += '<div class="onb-examples">';
+  html += '<div class="onb-examples-title">Empieza probando:</div>';
+  const examples = [
+    { cmd: 'Que hora es?',                                icon: 'clock' },
+    { cmd: 'Cuentame un chiste',                          icon: 'smile' },
+    { cmd: 'Genera una imagen de un gato',                icon: 'image' },
+    { cmd: 'Apunta en Notion que tengo reunion el lunes', icon: 'notebook-pen' },
+  ];
+  for (const ex of examples) {
+    html += '<button class="onb-example" data-cmd="' + ex.cmd.replace(/"/g, '&quot;') + '">' +
+      '<i data-lucide="' + ex.icon + '"></i>' +
+      '<span>' + ex.cmd + '</span>' +
+      '<i data-lucide="arrow-right" class="onb-example-arrow"></i>' +
+    '</button>';
+  }
+  html += '</div>';
+
+  // ─── Link a skills ───
+  html += '<button class="onb-skills-link" id="onbOpenSkills">' +
+    '<i data-lucide="layout-grid"></i>' +
+    '<span>Explorar las 38 skills disponibles</span>' +
+    '<i data-lucide="arrow-right"></i>' +
+  '</button>';
+
   document.getElementById('onboardingBody').innerHTML = html;
+
+  if (window.lucide) lucide.createIcons();
+
+  document.querySelectorAll('.onb-example').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cmd = btn.dataset.cmd;
+      cerrarModal('modalOnboarding');
+      const ti = document.getElementById('textInput');
+      if (ti) ti.value = cmd;
+      if (typeof respondTo === 'function') respondTo(cmd);
+      if (ti) ti.value = '';
+    });
+  });
+
+  const skBtn = document.getElementById('onbOpenSkills');
+  if (skBtn) {
+    skBtn.addEventListener('click', () => {
+      cerrarModal('modalOnboarding');
+      setTimeout(() => { if (typeof abrirSkills === 'function') abrirSkills(); }, 250);
+    });
+  }
 }
 
 // ─── Cargar datos del backend ───
@@ -2386,7 +2498,9 @@ async function comprobarOnboarding() {
     if (!data) return;
 
     // Mostrar el modal si no se ha completado antes
-    if (!data.done) {
+    // y el usuario no marco "no volver a mostrar"
+    const hidden = localStorage.getItem('senna_onb_hidden') === '1';
+    if (!data.done && !hidden) {
       renderOnboarding(data);
       abrirModal('modalOnboarding');
     }
@@ -2420,14 +2534,23 @@ document.getElementById('btnOpenCredentials').addEventListener('click', () => {
   abrirCreds();
 });
 document.getElementById('btnOnboardingOk').addEventListener('click', async () => {
+  const noShow = document.getElementById('onboardingDontShow')?.checked;
   cerrarModal('modalOnboarding');
   try {
     await fetch('/onboarding/mark_done', { method: 'POST' });
+    if (noShow) {
+      localStorage.setItem('senna_onb_hidden', '1');
+    }
   } catch (e) {}
 });
-document.getElementById('btnOnboardingLater').addEventListener('click', () => {
-  cerrarModal('modalOnboarding');
-});
+// Boton "Configurar" abre credenciales
+(function() {
+  const bc = document.getElementById('btnOnboardingConfig');
+  if (bc) bc.addEventListener('click', () => {
+    cerrarModal('modalOnboarding');
+    setTimeout(() => { if (typeof abrirCreds === 'function') abrirCreds(); }, 250);
+  });
+})();
 
 // ─── Al cargar: comprobar estado ───
 setTimeout(comprobarOnboarding, 800);
