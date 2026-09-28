@@ -1200,7 +1200,24 @@ class Router:
             }]
 
         # ═══════════════════════════════════════════════════════════════════
-        # BLENDER: prioridad si pide "render" (antes que Maps)
+                # ═══════════════════════════════════════════════════════════════════
+        # SPOTIFY: interceptar antes (entertainment/browser tambien capturan)
+        # ═══════════════════════════════════════════════════════════════════
+        import re as _re_sp_prio
+
+        # Siguiente / anterior (con palabra "cancion" o "spotify")
+        if any(p in t.lower() for p in ["siguiente cancion", "siguiente tema", "salta la cancion",
+                                         "pasa la cancion", "next cancion"]):
+            return [{"skill": "spotify", "action": "next", "params": {}}]
+        if any(p in t.lower() for p in ["cancion anterior", "tema anterior", "vuelve a la anterior"]):
+            return [{"skill": "spotify", "action": "previous", "params": {}}]
+
+        # Play en spotify (aqui o antes de browser)
+        _m = _re_sp_prio.search(r"(?:reproduce|pon|ponme|toca)\s+en\s+spotify\s+[\x22\x27]?(.+?)[\x22\x27]?$", t, _re_sp_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "spotify", "action": "play", "params": {"query": _m.group(1).strip()}}]
+
+# BLENDER: prioridad si pide "render" (antes que Maps)
         # ═══════════════════════════════════════════════════════════════════
         if any(p in t for p in ["haz un render", "hazme un render", "render del", "render de el", "render de la"]):
             from core.paths import SANDBOX_FREECAD as sandbox_fc
