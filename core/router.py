@@ -53,6 +53,8 @@ from skills.blender import BlenderSkill
 from skills.dwg import DwgSkill
 from skills.chiste import JokeSkill
 from skills.frases import FrasesSkill
+from skills.video import VideoSkill
+from skills.notion import NotionSkill
 
 
 # Timeout maximo por skill (segundos)
@@ -116,6 +118,8 @@ class Router:
             "chiste": JokeSkill(),
         
             "frases": FrasesSkill(),
+            "video": VideoSkill(),
+            "notion": NotionSkill(),
         }
 
     # ─── HELPERS ────────────────────────────────────────────────────────────
@@ -2549,6 +2553,99 @@ class Router:
         m = re.search(r"(?:comprime|reduce|optimiza)\s+(?:el\s+)?pdf\s+(.+)", t, re.IGNORECASE)
         if m:
             return [{"skill": "pdf", "action": "compress", "params": {"path": m.group(1).strip()}}]
+        # ═══════════════════════════════════════════════════════════════════
+        # NOTION: crear paginas, guardar notas, buscar
+        # ═══════════════════════════════════════════════════════════════════
+        m = re.search(r"(?:apunta|guarda|anota|apuntame|guardame)\s+(?:en\s+)?notion\s+(?:que\s+)?(.+)$", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "notion", "action": "save_note", "params": {"content": m.group(1).strip()}}]
+
+        m = re.search(r"(?:crea|haz|anade|creame)\s+(?:una\s+)?(?:pagina|nota)\s+(?:en\s+)?notion\s+(?:sobre|de|llamada|titulada|con\s+titulo)\s+['\x22]?(.+?)['\x22]?(?:\s+con\s+(.+))?$", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "notion", "action": "create_page", "params": {"title": m.group(1).strip(), "content": (m.group(2) or "").strip()}}]
+
+        m = re.search(r"(?:busca|encuentra|buscar)\s+(?:en\s+)?notion\s+(.+)$", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "notion", "action": "search", "params": {"query": m.group(1).strip()}}]
+
+        if any(p in t for p in ["lista paginas de notion", "que paginas tengo en notion",
+                                "paginas de notion", "mis paginas de notion",
+                                "paginas recientes en notion"]):
+            return [{"skill": "notion", "action": "list_pages", "params": {}}]
+
+        if any(p in t for p in ["test notion", "probar notion", "estado notion", "conexion notion"]):
+            return [{"skill": "notion", "action": "whoami", "params": {}}]
+
+        if any(p in t for p in ["config notion", "configuracion notion", "configuracion de notion"]):
+            return [{"skill": "notion", "action": "config", "params": {}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # VIDEO: recortar, unir, convertir, gif, subtitulos
+        # ═══════════════════════════════════════════════════════════════════
+        m = re.search(r"(?:info|detalles|cuanto\s+dura)\s+(?:del?\s+)?video\s+(.+?)$", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "video", "action": "info", "params": {"path": m.group(1).strip()}}]
+
+        m = re.search(r"(?:recorta|corta|trim)\s+(?:el\s+)?video\s+(\S+)\s+(?:del?\s+)?(\S+)\s+(?:al?\s+|hasta\s+)(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "video", "action": "trim", "params": {"path": m.group(1).strip(), "start": m.group(2).strip(), "end": m.group(3).strip()}}]
+
+        m = re.search(r"(?:recorta|corta|trim)\s+(?:el\s+)?video\s+(\S+)\s+(?:desde\s+)?(\S+)\s+por\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "video", "action": "trim", "params": {"path": m.group(1).strip(), "start": m.group(2).strip(), "duration": m.group(3).strip()}}]
+
+        m = re.search(r"(?:une|junta|combina|merge)\s+(?:los\s+)?videos\s+(.+)$", t, re.IGNORECASE)
+        if m:
+            paths_str = m.group(1)
+            paths = [p.strip().strip('"').strip("'") for p in re.split(r"\s+y\s+|\s*,\s*", paths_str) if p.strip()]
+            return [{"skill": "video", "action": "merge", "params": {"paths": paths}}]
+
+        m = re.search(r"(?:extrae|saca|separa)\s+(?:el\s+)?audio\s+(?:de|del?)\s+(?:el\s+)?video\s+(\S+)(?:\s+en\s+(mp3|wav|m4a|aac|flac|ogg))?", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "video", "action": "extract_audio", "params": {"path": m.group(1).strip(), "format": (m.group(2) or "mp3").lower()}}]
+
+        m = re.search(r"(?:extrae|saca|separa)\s+(?:los\s+)?frames?\s+(?:de|del?)\s+(?:el\s+)?video\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "video", "action": "extract_frames", "params": {"path": m.group(1).strip()}}]
+
+        m = re.search(r"(?:convierte|transforma|pasa)\s+(?:el\s+)?video\s+(\S+)\s+(?:a|en)\s+(mp4|mkv|avi|mov|webm|flv|wmv)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "video", "action": "convert", "params": {"path": m.group(1).strip(), "format": m.group(2).lower()}}]
+
+        m = re.search(r"(?:comprime|reduce)\s+(?:el\s+)?video\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "video", "action": "compress", "params": {"path": m.group(1).strip()}}]
+
+        m = re.search(r"(?:haz|crea|genera)\s+(?:un\s+)?gif\s+(?:de|del?)\s+(?:el\s+)?video\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "video", "action": "gif", "params": {"path": m.group(1).strip()}}]
+
+        m = re.search(r"(?:captura|extrae|saca)\s+(?:un\s+)?(?:frame|fotograma|thumbnail)\s+(?:de|del?)\s+(?:el\s+)?video\s+(\S+)(?:\s+en\s+(?:el\s+)?(?:segundo\s+)?(\S+))?", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "video", "action": "thumbnail", "params": {"path": m.group(1).strip(), "at": (m.group(2) or "0").strip()}}]
+
+        m = re.search(r"(?:pon|anade|quema)\s+subtitulos\s+(?:a|en)\s+(?:el\s+)?video\s+(\S+)\s+(?:con|usando)\s+(?:el\s+)?(\S+\.srt)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "video", "action": "add_subtitles", "params": {"path": m.group(1).strip(), "srt": m.group(2).strip()}}]
+
+        m = re.search(r"(?:quita|silencia|mutea)\s+(?:el\s+)?audio\s+(?:de|del?)\s+(?:el\s+)?video\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "video", "action": "mute", "params": {"path": m.group(1).strip()}}]
+
+        m = re.search(r"(?:acelera|ralentiza)\s+(?:el\s+)?video\s+(\S+)\s+(?:a|por)\s+(\d+(?:\.\d+)?)\s*x?", t, re.IGNORECASE)
+        if m:
+            factor = float(m.group(2))
+            if "ralentiza" in t.lower():
+                factor = 1 / factor if factor > 0 else 0.5
+            return [{"skill": "video", "action": "speed", "params": {"path": m.group(1).strip(), "factor": factor}}]
+
+        m = re.search(r"(?:rota|gira)\s+(?:el\s+)?video\s+(\S+)\s+(\d+)\s*(?:grados|°)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "video", "action": "rotate", "params": {"path": m.group(1).strip(), "angle": int(m.group(2))}}]
+
+        if any(p in t for p in ["lista videos", "que videos tengo", "videos recientes", "muestra los videos"]):
+            return [{"skill": "video", "action": "list", "params": {}}]
+
         return None
 
     def _normalize(self, result):
