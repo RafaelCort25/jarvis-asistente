@@ -3038,6 +3038,41 @@ class Router:
 
 
 
+        # ═══════════════════════════════════════════════════════════════════
+        # SPOTIFY: control completo
+        # ═══════════════════════════════════════════════════════════════════
+        import re as _re_sp
+
+        # Que esta sonando
+        if any(p in t for p in ["que esta sonando", "que suena", "que cancion suena",
+                                 "que se esta reproduciendo", "cancion actual"]):
+            return [{"skill": "spotify", "action": "current", "params": {}}]
+
+        # Pausa
+        if any(p in t for p in ["pausa la musica", "pausa spotify", "para la musica",
+                                 "pausa la cancion", "pausa lo que suena"]):
+            return [{"skill": "spotify", "action": "pause", "params": {}}]
+
+        # Siguiente
+        if any(p in t for p in ["siguiente cancion", "siguiente tema", "pasa la cancion",
+                                 "salta la cancion", "next cancion", "siguiente"]):
+            return [{"skill": "spotify", "action": "next", "params": {}}]
+
+        # Anterior
+        if any(p in t for p in ["cancion anterior", "tema anterior", "vuelve a la anterior",
+                                 "anterior cancion"]):
+            return [{"skill": "spotify", "action": "previous", "params": {}}]
+
+        # Reproducir cancion especifica (en Spotify)
+        _m = _re_sp.search(r"(?:reproduce|pon|ponme|toca)\s+en\s+spotify\s+[\x22\x27]?(.+?)[\x22\x27]?$", t, _re_sp.IGNORECASE)
+        if _m:
+            return [{"skill": "spotify", "action": "play", "params": {"query": _m.group(1).strip()}}]
+
+        # Volumen de Spotify
+        _m = _re_sp.search(r"(?:volumen\s+(?:de\s+)?spotify|spotify\s+al?)\s+(\d+)\s*%?", t, _re_sp.IGNORECASE)
+        if _m:
+            return [{"skill": "spotify", "action": "volume", "params": {"percent": int(_m.group(1))}}]
+
         return None
 
     def _normalize(self, result):
