@@ -54,6 +54,7 @@ from skills.dwg import DwgSkill
 from skills.chiste import JokeSkill
 from skills.frases import FrasesSkill
 from skills.video import VideoSkill
+from skills.retouch import RetouchSkill
 from skills.notion import NotionSkill
 
 
@@ -119,6 +120,7 @@ class Router:
         
             "frases": FrasesSkill(),
             "video": VideoSkill(),
+            "retouch": RetouchSkill(),
             "notion": NotionSkill(),
         }
 
