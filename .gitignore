@@ -68,3 +68,11 @@ _*.txt
 # Binarios externos (ffmpeg, upscayl, etc.)
 tools/
 
+
+*.bak
+*.onb-bak
+
+
+verify_*.py
+jarvis-orb.html.*-bak
+
