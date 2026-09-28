@@ -76,3 +76,7 @@ tools/
 verify_*.py
 jarvis-orb.html.*-bak
 
+
+*.bak-wake
+*.wakebak
+
