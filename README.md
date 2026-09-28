@@ -1,27 +1,55 @@
-# Senna - Asistente Personal
+﻿# Senna - Asistente Personal con IA Local
 
 Asistente de escritorio con IA local que controla tu PC, automatiza
-tareas y se integra con servicios externos.
+tareas, se integra con servicios externos y ejecuta pipelines CAD/BIM.
 
 ## Caracteristicas
 
-- **31 skills** operativas (sistema, archivos, dev, Gmail, Canva, n8n, CAD, etc.)
+- **38 skills operativas** con **338 acciones** en total
 - **Multiagente profesional** - Supervisor + DEV / RESEARCH / EXECUTE / CHAT
 - **RAG local** - Indexa tus documentos y pregunta sobre ellos
 - **Pipeline CAD/BIM** - DWG -> analisis -> muros 3D -> IFC (Revit/ArchiCAD)
+- **Retoque profesional** - Quitar fondo, upscaling 4x, sombras, watermark
+- **Transcripcion con IA** - Whisper local (multiidioma)
+- **Vision artificial** - Analizar pantalla e imagenes (OCR, descripcion, comparacion)
+- **Modelado 3D** - Blender + FreeCAD para arquitectura y diseno interior
+- **Generacion de imagenes** - Flux Schnell (Cloudflare) + Agnes AI
 - **Voz + Wake word** - "Oye Senna" (proximamente)
 - **GUI moderna** - Panel de sistema, credenciales, historial y modelos
 - **100% local** - Ollama + ChromaDB, sin enviar datos a la nube
 
+## Skills por categoria
+
+| Categoria | Skills | Ejemplos |
+|---|---|---|
+| Fundamentales | 7 | system, desktop, browser, files, clipboard |
+| Productividad | 10 | office, edit, pdf, gmail, calendar, notion, n8n |
+| Dev y tecnologia | 3 | dev, git, vision |
+| Multimedia | 5 | image, audio, video, retouch, education |
+| CAD y 3D | 4 | dwg, freecad, blender, maps |
+| Integraciones | 3 | spotify, canva, telegram |
+| Entretenimiento | 6 | frases, chiste, entertainment, weather, alarm, macro |
+
+Ver [SKILLS.md](SKILLS.md) para el catalogo completo.
+
 ## Requisitos
 
 - **Windows 10/11** (64 bits)
+- **Python 3.10+** (probado con 3.14)
 - **Ollama** con modelos descargados:
   - llama3.2:3b (rapido, chat)
-  - qwen2.5-coder:7b (codigo)
-  - llava-phi3:latest (vision)
+  - qwen2.5-coder:7b (codigo, documentos)
+  - qwen2.5vl:7b (vision, el mejor)
+  - llava-phi3:latest (vision alternativa)
+  - nomic-embed-text (embeddings RAG)
 - **RAM:** 8 GB minimo, 16 GB recomendado
 - **GPU:** opcional pero muy recomendado (RTX 3060+)
+- **Software externo** (opcional):
+  - Blender 4.x (para skill blender)
+  - FreeCAD 1.x (para skill freecad)
+  - ODA File Converter (para DWG <-> DXF)
+  - Upscayl (para upscaling de imagenes)
+  - n8n (para skill n8n)
 
 ## Instalacion
 
@@ -41,13 +69,16 @@ Descarga SennaSetup.exe y ejecutalo.
 ## Uso
 
 1. Arranca Ollama: ollama serve
-2. Arranca Senna: & "C:/jarvis-electron/dist/Jarvis.exe"
+2. Arranca Senna: & "C:/jarvis-electron/dist/Senna.exe"
 3. Escribe o habla. Ejemplos:
    - "Que hora es?"
    - "Hazme un script que sume dos numeros"
-   - "Toma una captura"
-   - "Que es la fotosintesis?"
+   - "Analiza el codigo de skills/dev.py"
+   - "Quita el fondo de esta foto"
+   - "Transcribe este audio"
    - "Cuadro de superficies del plano X.dxf"
+   - "Renderiza 8 angulos del modelo 3D"
+   - "Apunta en Notion que tengo reunion el lunes"
 
 ## Configuracion
 
@@ -57,45 +88,55 @@ Abre Sistema -> Agentes Multiagente y elige el modelo de cada uno.
 
 ### Integraciones
 
-Abre Sistema -> Configurar integraciones y pega tus API keys
-(Gmail, Canva, n8n, Telegram, Maps).
+Crea un archivo .env.personal en la raiz del proyecto con:
 
-## Estructura
+    NOTION_TOKEN=tu_token_aqui
+    PEXELS_API_KEY=tu_key_aqui
 
-    C:/JARVIS/
-    |- core/              # Router, agente, brain, multiagente
-    |- skills/            # 31 skills
-    |- integrations/      # Telegram bot, etc.
-    |- config/            # settings.yaml, models.json, agents.json
-    |- memory/            # Conversaciones, preferencias, trazas
-    |- sandbox/           # Archivos generados
-    |- api_server.py      # Servidor FastAPI
-    |- jarvis-orb.html    # GUI
-    |- requirements.txt
+Y en .env:
 
-## Problemas comunes
+    SPOTIFY_CLIENT_ID=...
+    SPOTIFY_CLIENT_SECRET=...
+    SPOTIFY_REFRESH_TOKEN=...
 
-### "Ollama no responde"
-Abre una terminal y ejecuta ollama serve. Debe quedar corriendo.
+Otras integraciones (Gmail, Canva, n8n) usan archivos especificos:
 
-### "Failed to connect"
-Verifica que el puerto 8000 este libre: netstat -ano | Select-String ":8000".
+- .env.gmail.tmp - Gmail (usuario + app password)
+- .env.canva.tmp - Canva (OAuth client_id + secret)
+- .env.n8n.tmp - n8n (url + API key)
 
-### "Modelo no instalado"
-Descarga el modelo: ollama pull llama3.2:3b.
+## Estructura del proyecto
 
-## Licencia
+    C:\JARVIS\
+    |-- api_server.py        # Servidor FastAPI
+    |-- core/                # Nucleo: router, agentes, RAG, config
+    |-- skills/              # 38 skills modulares
+    |-- sandbox/             # Archivos generados (imagenes, videos, docs...)
+    |-- scripts/             # Utilidades (setup, generadores)
+    |-- tools/               # Binarios externos (ffmpeg, etc.)
+    |-- venv/                # Entorno virtual de Python
+    |-- requirements.txt
+    |-- SKILLS.md            # Catalogo de skills (generado auto)
+    |-- README.md            # Este archivo
 
-Propietario - Todos los derechos reservados. Ver LICENSE.txt.
+## Desarrollo
 
-## Disclaimer
+    # Activar entorno
+    .\venv\Scripts\Activate.ps1
 
-Senna puede ejecutar acciones destructivas. Lee DISCLAIMER.md
-antes de usarlo.
+    # Regenerar SKILLS.md tras anadir/modificar una skill
+    python scripts\generate_skills_md.py
 
-## Documentacion
+    # Arrancar servidor API
+    python -m uvicorn api_server:app --port 8000 --reload
 
-- SKILLS.md - Catalogo completo de skills
-- TERMS.md - Terminos de uso
-- PRIVACY.md - Politica de privacidad
-- DISCLAIMER.md - Descargo de responsabilidad
+## Documentacion adicional
+
+- [SKILLS.md](SKILLS.md) - Catalogo de las 38 skills
+- [DISCLAIMER.md](DISCLAIMER.md) - Aviso legal
+- [PRIVACY.md](PRIVACY.md) - Politica de privacidad
+- [TERMS.md](TERMS.md) - Terminos de uso
+
+---
+
+**Ultima actualizacion:** 2026-09-28

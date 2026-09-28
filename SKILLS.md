@@ -1,8 +1,8 @@
-# SKILLS.md — Catálogo completo de skills de Nitro
+# SKILLS.md — Catálogo completo de skills de Senna
 
-Documentación de las 30 skills operativas de JARVIS/Nitro, con acciones, parámetros, ejemplos y niveles de riesgo.
+Documentación de las **38 skills operativas** de Senna con un total de **338 acciones**.
 
-**Última actualización:** Bloque 1 de auditoría (30/30 skills integradas).
+**Última actualización:** 2026-09-28 (generado automáticamente por `scripts/generate_skills_md.py`)
 
 **Niveles de riesgo:**
 - 🟢 **low** — No requiere confirmación. Solo lectura o acciones inocuas.
@@ -13,715 +13,682 @@ Documentación de las 30 skills operativas de JARVIS/Nitro, con acciones, parám
 
 ## 📑 Índice por categoría
 
-1. [Fundamentales](#fundamentales)
-2. [Dev y Productividad](#dev-y-productividad)
-3. [Contenido](#contenido)
-4. [Comunicación](#comunicación)
-5. [Automatización](#automatización)
-6. [Integraciones Externas](#integraciones-externas)
-7. [Entretenimiento](#entretenimiento)
+1. [Fundamentales](#fundamentales) (7 skills)
+2. [Productividad](#productividad) (10 skills)
+3. [Dev y tecnologia](#dev-y-tecnologia) (3 skills)
+4. [Multimedia](#multimedia) (5 skills)
+5. [CAD y 3D](#cad-y-3d) (4 skills)
+6. [Integraciones](#integraciones) (3 skills)
+7. [Entretenimiento](#entretenimiento) (6 skills)
 
 ---
 
 ## Fundamentales
 
-### `system` 🖥️
-Sistema, discos, hora, fecha, limpieza.
+### `browser`
+Skill browser
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `time` | 🟢 | — | Hora actual |
-| `date` | 🟢 | — | Fecha actual |
-| `disk_info` | 🟢 | — | Info de todos los discos |
-| `clean_temp` | 🔴 | — | Limpia temporales de Windows |
-| `empty_recycle` | 🔴 | — | Vacía la papelera |
-| `list_big_files` | 🟢 | `folder` (str), `min_mb` (int) | Archivos grandes |
-| `list_startup` | 🟢 | — | Programas de inicio de Windows |
+**Clase:** `BrowserSkill`  
+**Archivo:** `skills/browser.py`  
+**Acciones:** 5
 
-**Ejemplos:**
-- "¿Qué hora es?" → `system.time`
-- "¿Cuánto espacio tengo?" → `system.disk_info`
-- "Lista los archivos grandes de descargas" → `system.list_big_files(folder="descargas")`
-- "Limpia los temporales" → `system.clean_temp`
+- `cancel_pending`
+- `open_url`
+- `play_pending`
+- `search_google`
+- `search_youtube`
 
----
+### `clipboard`
+Skill clipboard
 
-### `desktop` 🪟
-Control de apps, volumen, carpetas.
+**Clase:** `ClipboardSkill`  
+**Archivo:** `skills/clipboard.py`  
+**Acciones:** 2
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `open_app` | 🟢 | `app` (str) | Abre app conocida |
-| `open_folder` | 🟢 | `path` (str) | Abre carpeta |
-| `volume_up` | 🟢 | — | Sube volumen |
-| `volume_down` | 🟢 | — | Baja volumen |
-| `mute` | 🟢 | — | Silencia |
+- `read`
+- `write`
 
-**Apps soportadas:** `brave`, `chrome`, `notepad`, `calculadora`, `explorador`, `paint`, `cmd`, `spotify`
+### `desktop`
+Skill desktop
 
-**Ejemplos:**
-- "Abre Chrome" → `desktop.open_app(app="chrome")`
-- "Abre la calculadora" → `desktop.open_app(app="calculadora")`
-- "Sube el volumen" → `desktop.volume_up`
-- "Silencia" → `desktop.mute`
+**Clase:** `DesktopSkill`  
+**Archivo:** `skills/desktop.py`  
+**Acciones:** 5
 
----
+- `mute`
+- `open_app`
+- `open_folder`
+- `volume_down`
+- `volume_up`
 
-### `browser` 🌐
-Búsquedas y reproducción en YouTube.
+### `files`
+Skill de archivos: buscar, listar, analizar.
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `search_google` | 🟢 | `query` (str) | Busca en Google |
-| `search_youtube` | 🟢 | `query` (str) | Busca en YouTube |
-| `play_pending` | 🟢 | `index` (int) | Reproduce video pendiente |
-| `has_pending` | 🟢 | — | ¿Hay videos pendientes? |
-| `clear_pending` | 🟢 | — | Limpia pendientes |
+**Clase:** `FilesSkill`  
+**Archivo:** `skills/files.py`  
+**Acciones:** 11
 
-**Ejemplos:**
-- "Busca en Google recetas de pasta" → `browser.search_google`
-- "Busca en YouTube música relajante" → `browser.search_youtube`
-- "Pon música de jazz" → `browser.search_youtube`
+- `create_folder`
+- `duplicates`
+- `find_advanced`
+- `find_content`
+- `find_file`
+- `info`
+- `list_folder`
+- `move`
+- `open_path`
+- `pick`
+- `recent`
 
----
+### `system`
+Skill system
 
-### `files` 📁
-Búsqueda y listado de archivos.
+**Clase:** `SystemSkill`  
+**Archivo:** `skills/system.py`  
+**Acciones:** 13
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `find_file` | 🟢 | `name` (str) | Busca archivo por nombre |
-| `list_folder` | 🟢 | `folder` (str) | Lista carpeta común |
+- `cancel_shutdown`
+- `clean_temp`
+- `date`
+- `disk_info`
+- `empty_recycle`
+- `list_big_files`
+- `list_startup`
+- `lock`
+- `restart`
+- `screenshot`
+- `shutdown`
+- `sleep`
+- `time`
 
-**Carpetas soportadas:** `descargas`, `documentos`, `escritorio`, `imagenes`, `musica`, `videos`
+### `terminal`
+Skill terminal
 
-**Ejemplos:**
-- "Busca el archivo informe.pdf" → `files.find_file`
-- "¿Qué hay en la carpeta de descargas?" → `files.list_folder`
+**Clase:** `TerminalSkill`  
+**Archivo:** `skills/terminal.py`  
+**Acciones:** 2
 
----
+- `run`
+- `suggest`
 
-### `clipboard` 📋
-Portapapeles.
+### `translate`
+Skill translate
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `read` | 🟢 | — | Lee el portapapeles |
-| `write` | 🟢 | `text` (str) | Escribe en portapapeles |
+**Clase:** `TranslateSkill`  
+**Archivo:** `skills/translate.py`  
+**Acciones:** 1
 
-**Ejemplos:**
-- "¿Qué tengo copiado?" → `clipboard.read`
-- "Copia esto: hola mundo" → `clipboard.write(text="hola mundo")`
-
----
-
-### `productivity` 📝
-Notas rápidas.
-
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `save_note` | 🟢 | `text` (str) | Guarda nota |
-| `read_notes` | 🟢 | — | Lee todas las notas |
-| `clear_notes` | 🟡 | — | Borra todas las notas |
-
-**Ejemplos:**
-- "Guarda una nota que diga comprar pan" → `productivity.save_note(text="comprar pan")`
-- "Lee mis notas" → `productivity.read_notes`
-- "Borra mis notas" → `productivity.clear_notes`
+- `text`
 
 ---
 
-### `weather` ☀️
-Clima actual.
+## Productividad
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `current` | 🟢 | `city` (str) | Clima de una ciudad |
+### `calendar`
+Skill de calendario: gestion de eventos locales con export a .ics.
 
-**Ejemplos:**
-- "¿Qué clima hace en Lima?" → `weather.current(city="Lima")`
-- "¿Cómo está el clima en Cusco?" → `weather.current(city="Cusco")`
-- "¿Va a llover?" → `weather.current(city="")` (usa ubicación por defecto)
+**Clase:** `CalendarSkill`  
+**Archivo:** `skills/calendar.py`  
+**Acciones:** 8
 
----
+- `add`
+- `delete`
+- `export`
+- `find_free`
+- `list`
+- `today`
+- `tomorrow`
+- `week`
 
-### `alarm` ⏰
-Alarmas y recordatorios temporales.
+### `docs`
+Skill docs
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `set` | 🟢 | `minutes` (int), `text` (str) | Programa alarma |
-| `list` | 🟢 | — | Lista alarmas activas |
-| `cancel` | 🟢 | — | Cancela alarmas |
+**Clase:** `DocsSkill`  
+**Archivo:** `skills/docs.py`  
+**Acciones:** 9
 
-**Ejemplos:**
-- "Pon una alarma en 5 minutos" → `alarm.set(minutes=5, text="Alarma")`
-- "Despiértame en 10 minutos" → `alarm.set(minutes=10, text="Recordatorio")`
-- "¿Qué alarmas tengo?" → `alarm.list`
+- `ask`
+- `ask_to_word`
+- `delete`
+- `index_file`
+- `index_folder`
+- `index_folder_advanced`
+- `list`
+- `list_detailed`
+- `stats`
 
----
+### `edit`
+Skill de edicion: modifica archivos existentes con instrucciones en lenguaje natural.
 
-### `scheduler` 📅
-Tareas programadas recurrentes.
+**Clase:** `EditSkill`  
+**Archivo:** `skills/edit.py`  
+**Acciones:** 13
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `add_once` | 🟡 | `minutes` (int), `task` (str) | Tarea única |
-| `add_daily` | 🟡 | `hour` (int), `minute` (int), `task` (str) | Tarea diaria |
-| `add_interval` | 🟡 | `interval_minutes` (int), `task` (str) | Tarea cada N min |
-| `list` | 🟢 | — | Lista tareas programadas |
-| `cancel` | 🟡 | — | Cancela tareas |
+- `csv_modify`
+- `image_convert`
+- `image_crop`
+- `image_resize`
+- `image_rotate`
+- `json_modify`
+- `list_uploads`
+- `modify`
+- `pdf_merge`
+- `pdf_remove_pages`
+- `pdf_rotate`
+- `pdf_split`
+- `yaml_modify`
 
-**Ejemplos:**
-- "Todos los días a las 9 haz backup" → `scheduler.add_daily(hour=9, task="backup")`
-- "En 5 minutos abre notepad" → `scheduler.add_once(minutes=5, task="notepad")`
-- "¿Qué tareas tengo programadas?" → `scheduler.list`
+### `gmail`
+Skill de Gmail: leer, buscar y enviar correos via IMAP/SMTP.
 
----
+**Clase:** `GmailSkill`  
+**Archivo:** `skills/gmail.py`  
+**Acciones:** 14
 
-### `translate` 🌍
-Traducción de texto.
+- `archive`
+- `count_unread`
+- `delete`
+- `download_attachments`
+- `list_attachments`
+- `list_recent`
+- `mark_read`
+- `mark_unread`
+- `read`
+- `reply`
+- `search`
+- `search_advanced`
+- `send`
+- `send_attachment`
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `text` | 🟢 | `text` (str), `to` (str) | Traduce texto |
+### `n8n`
+Skill de n8n: controla workflows + busca/importa templates de n8n.io.
 
-**Idiomas:** `en`, `es`, `fr`, `de`, `it`, `pt`, `ja`, `zh`, `ru`
+**Clase:** `N8nSkill`  
+**Archivo:** `skills/n8n.py`  
+**Acciones:** 10
 
-**Ejemplos:**
-- "Traduce al inglés hola mundo" → `translate.text(text="hola mundo", to="en")`
-- "Traduce al francés buenos días" → `translate.text(text="buenos días", to="fr")`
+- `activate`
+- `create_workflow`
+- `deactivate`
+- `delete_workflow`
+- `get_template`
+- `get_workflow`
+- `import_template`
+- `list_executions`
+- `list_workflows`
+- `search_templates`
 
----
+### `notion`
+Skill de Notion: crear paginas, notas y buscar en el workspace.
 
-### `vision` 👁️
-Análisis de pantalla con IA de visión.
+**Clase:** `NotionSkill`  
+**Archivo:** `skills/notion.py`  
+**Acciones:** 8
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `describe_screen` | 🟢 | — | Describe lo que se ve |
-| `explain_screen_code` | 🟢 | — | Explica código visible |
+- `append_block`
+- `config`
+- `create_page`
+- `list_pages`
+- `save_note`
+- `search`
+- `set_default_parent`
+- `whoami`
 
-**Ejemplos:**
-- "¿Qué hay en mi pantalla?" → `vision.describe_screen`
-- "Describe lo que ves" → `vision.describe_screen`
-- "Explica el código de mi pantalla" → `vision.explain_screen_code`
+### `office`
+Skill de Office: Word, Excel y PowerPoint.
 
----
+**Clase:** `OfficeSkill`  
+**Archivo:** `skills/office.py`  
+**Acciones:** 6
 
-### `entertainment` 🎬
-Control de reproducción multimedia del sistema.
+- `create_doc`
+- `create_ppt`
+- `create_xlsx`
+- `read_doc`
+- `read_ppt`
+- `read_xlsx`
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `play_pause` | 🟢 | — | Play/Pausa |
-| `next_track` | 🟢 | — | Siguiente pista |
-| `prev_track` | 🟢 | — | Pista anterior |
+### `pdf`
+Skill de PDF: convierte Word a PDF + utilidades avanzadas.
 
-**Nota:** No confundir con `spotify.*`. Este controla reproductores del sistema (VLC, navegador, etc.).
+**Clase:** `PdfSkill`  
+**Archivo:** `skills/pdf.py`  
+**Acciones:** 18
 
-**Ejemplos:**
-- "Pausa la película" → `entertainment.play_pause`
-- "Siguiente canción" → `entertainment.next_track`
-- "Canción anterior" → `entertainment.prev_track`
+- `blank_page`
+- `compress`
+- `extract_pages`
+- `extract_text`
+- `from_docx`
+- `info`
+- `insert_pages`
+- `list`
+- `merge_images`
+- `metadata`
+- `page_numbers`
+- `remove_password`
+- `reorder`
+- `set_password`
+- `sign`
+- `stamp`
+- `to_images`
+- `watermark`
 
----
+### `productivity`
+Skill productivity
 
-## Dev y Productividad
+**Clase:** `ProductivitySkill`  
+**Archivo:** `skills/productivity.py`  
+**Acciones:** 3
 
-### `dev` 💻
-Generación, análisis y testing de código.
+- `clear_notes`
+- `read_notes`
+- `save_note`
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `generate_code` | 🟢 | `description`, `language` | Genera código |
-| `create_and_test` | 🟡 | `description`, `language`, `path` | Genera + guarda + ejecuta |
-| `write_file` | 🟡 | `path`, `content` | Escribe archivo |
-| `run_file` | 🟡 | `path` | Ejecuta archivo |
-| `review_file` | 🟢 | `path` | Revisa archivo |
-| `review_project` | 🟢 | `path` | Revisa proyecto |
-| `explain` | 🟢 | `path` | Explica código |
-| `find_issues` | 🟢 | `path` | Encuentra problemas |
-| `review_to_excel` | 🟡 | `path`, `output` | Revisión → Excel con bugs |
-| `review_to_word` | 🟡 | `path`, `output` | Revisión → Word con análisis |
+### `scheduler`
+Skill scheduler
 
-**Ejemplos:**
-- "Crea un archivo .py que sume dos números en sandbox/suma.py" → `dev.create_and_test`
-- "Revisa este archivo codigo.py y hazme un excel con los bugs" → `dev.review_to_excel`
-- "Explícame sandbox/test.py" → `dev.explain`
+**Clase:** `SchedulerSkill`  
+**Archivo:** `skills/scheduler.py`  
+**Acciones:** 5
 
----
-
-### `terminal` 💲
-Ejecución de comandos seguros.
-
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `run` | 🔴 | `command` (str) | Ejecuta comando |
-| `suggest` | 🟢 | `description` (str) | Sugiere comando |
-
-**Comandos permitidos:** `git`, `pip`, `python`, `npm`, `node`, `dir`, `ls`, `where`, `echo`, `ping`, `curl`
-
-**Ejemplos:**
-- "Ejecuta git status" → `terminal.run(command="git status")`
-- "Ejecuta pip list" → `terminal.run(command="pip list")`
-
----
-
-### `git` 🔀
-Control de versiones rápido.
-
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `status` | 🟢 | — | Estado del repo |
-| `diff` | 🟢 | — | Cambios sin commitear |
-| `log` | 🟢 | `n` (int) | Últimos commits |
-| `add` | 🟡 | `paths` (str) | Staging |
-| `push` | 🟡 | — | Sube al remoto |
-| `pull` | 🟡 | — | Baja del remoto |
-
-**Ejemplos:**
-- "¿Qué cambios tengo?" → `git.status`
-- "Muéstrame los últimos commits" → `git.log(n=5)`
-- "Sube los cambios" → `git.push`
-
----
-
-### `office` 📄
-Documentos Word, Excel, PowerPoint.
-
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `create_doc` | 🟡 | `description`, `path`, `title` | Crea Word |
-| `create_xlsx` | 🟡 | `description`, `path` | Crea Excel |
-| `create_ppt` | 🟡 | `description`, `path` | Crea PowerPoint |
-| `read_doc` | 🟢 | `path` | Lee Word |
-| `read_xlsx` | 🟢 | `path` | Lee Excel |
-| `read_ppt` | 🟢 | `path` | Lee PowerPoint |
-
-**Ejemplos:**
-- "Hazme un Word sobre el cambio climático" → `office.create_doc`
-- "Crea un Excel con gastos mensuales" → `office.create_xlsx`
-- "Hazme una presentación sobre el mar" → `office.create_ppt`
-
----
-
-### `pdf` 📕
-Conversión a PDF.
-
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `from_docx` | 🟡 | `path`, `output` | Word → PDF |
-| `list` | 🟢 | — | Lista PDFs generados |
-
-**Ejemplos:**
-- "Convierte informe.docx a PDF" → `pdf.from_docx(path="informe.docx")`
-- "¿Qué PDFs tengo?" → `pdf.list`
+- `add_daily`
+- `add_interval`
+- `add_once`
+- `cancel`
+- `list`
 
 ---
 
-### `spotify` 🎵
-Control de Spotify.
+## Dev y tecnologia
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `play` | 🟢 | `query` (str) | Reproduce |
-| `pause` | 🟢 | — | Pausa |
-| `next` | 🟢 | — | Siguiente |
-| `previous` | 🟢 | — | Anterior |
-| `current` | 🟢 | — | ¿Qué suena? |
+### `dev`
+Skill dev
 
-**Ejemplos:**
-- "Pon jazz en Spotify" → `spotify.play(query="jazz")`
-- "¿Qué está sonando?" → `spotify.current`
+**Clase:** `DevSkill`  
+**Archivo:** `skills/dev.py`  
+**Acciones:** 16
 
----
+- `count_lines`
+- `create_and_test`
+- `create_venv`
+- `explain`
+- `find_issues`
+- `format_code`
+- `generate_code`
+- `lint_code`
+- `review_file`
+- `review_project`
+- `review_to_excel`
+- `review_to_word`
+- `run_file`
+- `run_tests`
+- `search_code`
+- `write_file`
 
-## Contenido
+### `git`
+Skill git
 
-### `image` 🎨
-Generación de imágenes con doble motor (fast/HQ).
+**Clase:** `GitSkill`  
+**Archivo:** `skills/git.py`  
+**Acciones:** 17
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `generate` | 🟡 | `prompt`, `width`, `height`, `quality` | Genera imagen |
-| `list` | 🟢 | — | Lista imágenes |
-| `to_word` | 🟡 | `prompt`, `count`, `title` | Imágenes → Word |
+- `add`
+- `blame`
+- `branches`
+- `checkout`
+- `commit`
+- `config`
+- `diff`
+- `log`
+- `pull`
+- `push`
+- `remotes`
+- `reset`
+- `show`
+- `stash`
+- `stash_list`
+- `stash_pop`
+- `status`
 
-**Calidades:** `fast` (rápido), `hq` (alta calidad)
+### `vision`
+Skill de vision: analisis de pantalla e imagenes con Ollama (vision-language models).
 
-**Ejemplos:**
-- "Genera una imagen de un gato" → `image.generate(quality="fast")`
-- "Genera 4 logos profesionales para mi marca" → `image.generate(count=4, quality="hq")`
-- "Hazme un Word con imágenes de paisajes" → `image.to_word`
+**Clase:** `VisionSkill`  
+**Archivo:** `skills/vision.py`  
+**Acciones:** 15
 
----
-
-### `docs` 📚
-RAG — preguntas sobre documentos indexados.
-
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `index_file` | 🟡 | `path` (str) | Indexa archivo |
-| `index_folder` | 🟡 | `path` (str) | Indexa carpeta |
-| `list` | 🟢 | — | Lista documentos |
-| `ask` | 🟢 | `query` (str) | Pregunta sobre docs |
-| `ask_to_word` | 🟡 | `query`, `title` | Pregunta → Word |
-
-**Ejemplos:**
-- "Indexa mi CV" → `docs.index_file`
-- "¿Qué dice mi CV sobre mi experiencia?" → `docs.ask`
-- "Hazme un Word según mi CV" → `docs.ask_to_word`
-
----
-
-### `edit` ✏️
-Edición de archivos subidos.
-
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `modify` | 🟡 | `path`, `instruction`, `output` | Modifica archivo |
-| `list_uploads` | 🟢 | — | Lista uploads |
-
-**Ejemplos:**
-- "Modifica el último archivo de uploads cambiando 'hola' por 'adiós'" → `edit.modify`
-- "¿Qué archivos tengo en uploads?" → `edit.list_uploads`
-
----
-
-### `education` 🎓
-PSeInt, diagramas, conversión de código.
-
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `pseint` | 🟡 | `description` (str) | Algoritmo PSeInt |
-| `diagram` | 🟡 | `description`, `kind` | Diagrama |
-| `convert` | 🟢 | `code`, `to_language` | Convierte código |
-
-**Tipos de diagrama:** `flowchart`, `sequence`, `class`, `state`, `er`
-
-**Ejemplos:**
-- "Hazme un algoritmo PSeInt que sume dos números" → `education.pseint`
-- "Hazme un diagrama de flujo de login" → `education.diagram(kind="flowchart")`
-- "Hazme un diagrama ER de una tienda" → `education.diagram(kind="er")`
+- `capture`
+- `compare_images`
+- `describe_image`
+- `describe_screen`
+- `describe_ui`
+- `detect_objects`
+- `explain_screen_code`
+- `find_text`
+- `list_models`
+- `ocr`
+- `ocr_image`
+- `read_error`
+- `read_table`
+- `set_model`
+- `translate_screen`
 
 ---
 
-## Comunicación
+## Multimedia
 
-### `telegram` 📱
-Envío de archivos por Telegram.
+### `audio`
+Skill de audio: transcripcion con faster-whisper (OpenAI Whisper optimizado).
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `send_last` | 🟡 | `tipo` (str) | Envía último de tipo |
-| `send_file` | 🟡 | `path` (str) | Envía archivo específico |
+**Clase:** `AudioSkill`  
+**Archivo:** `skills/audio.py`  
+**Acciones:** 6
 
-**Tipos:** `pdf`, `word`, `excel`, `imagen`, `codigo`
+- `batch`
+- `info`
+- `list`
+- `to_word`
+- `transcribe`
+- `transcribe_srt`
 
-**Ejemplos:**
-- "Envíame el último PDF por Telegram" → `telegram.send_last(tipo="pdf")`
-- "Manda informe.docx por Telegram" → `telegram.send_file(path="informe.docx")`
+### `education`
+Skill de educacion: PSeInt, conversion de lenguajes, diagramas Mermaid.
 
----
+**Clase:** `EducationSkill`  
+**Archivo:** `skills/education.py`  
+**Acciones:** 5
 
-### `gmail` ✉️
-Correo Gmail.
+- `convert`
+- `diagram`
+- `list_diagrams`
+- `pseint`
+- `render`
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `list_recent` | 🟢 | `n` (int) | Últimos correos |
-| `read` | 🟢 | `uid` (str) | Lee correo |
-| `search` | 🟢 | `query` (str) | Busca correos |
-| `send` | 🟡 | `to`, `subject`, `body` | Envía correo |
-| `count_unread` | 🟢 | — | Cuenta sin leer |
+### `image`
+Skill de generacion de imagenes: Agnes AI (hq) + Cloudflare Flux (fast).
 
-**Ejemplos:**
-- "Lee mis correos" → `gmail.list_recent(n=5)`
-- "¿Cuántos correos sin leer tengo?" → `gmail.count_unread`
-- "Busca correos de Amazon" → `gmail.search(query="Amazon")`
-- "Envía un correo a juan@x.com diciendo hola" → `gmail.send`
+**Clase:** `ImageSkill`  
+**Archivo:** `skills/image.py`  
+**Acciones:** 8
 
----
+- `generate`
+- `generate_advanced`
+- `history`
+- `list`
+- `regenerate`
+- `search_history`
+- `to_word`
+- `variations`
 
-## Automatización
+### `retouch`
+Skill de retouch profesional: quitar fondo, upscaling, sombras, watermark.
 
-### `macro` 🎥
-Grabación y reproducción de secuencias.
+**Clase:** `RetouchSkill`  
+**Archivo:** `skills/retouch.py`  
+**Acciones:** 8
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `start` | 🟡 | `name` (str) | Empieza a grabar |
-| `stop` | 🟡 | — | Para de grabar |
-| `play` | 🟡 | `name` (str) | Reproduce macro |
-| `list` | 🟢 | — | Lista macros |
-| `delete` | 🔴 | `name` (str) | Borra macro |
+- `batch`
+- `enhance`
+- `pipeline`
+- `remove_bg`
+- `shadow`
+- `upscale`
+- `watermark`
+- `white_bg`
 
-**Nota:** Skill blindada con verificación de ventana activa, lista negra y delay.
+### `video`
+Skill de video: recortar, unir, convertir, comprimir, subtitulos, GIF.
 
-**Ejemplos:**
-- "Empieza a grabar macro abrir_chrome" → `macro.start`
-- "Para de grabar" → `macro.stop`
-- "Ejecuta macro abrir_chrome" → `macro.play`
+**Clase:** `VideoSkill`  
+**Archivo:** `skills/video.py`  
+**Acciones:** 15
 
----
-
-### `n8n` ⚙️
-Automatización de workflows con n8n.
-
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `list_workflows` | 🟢 | — | Lista workflows |
-| `get_workflow` | 🟢 | `id_or_name` | Detalle workflow |
-| `activate` | 🟡 | `id_or_name` | Activa |
-| `deactivate` | 🟡 | `id_or_name` | Desactiva |
-| `delete_workflow` | 🔴 | `id_or_name` | Borra |
-| `list_executions` | 🟢 | — | Últimas ejecuciones |
-| `search_templates` | 🟢 | `query`, `limit` | Busca 12k+ templates |
-| `get_template` | 🟢 | `id` | Detalle template |
-| `import_template` | 🟡 | `id`, `name` | Importa template |
-| `create_workflow` | 🟡 | `description`, `name` | Crea desde cero con LLM |
-
-**Ejemplos:**
-- "¿Qué workflows tengo en n8n?" → `n8n.list_workflows`
-- "Activa el workflow Backup diario" → `n8n.activate`
-- "Busca templates de WhatsApp" → `n8n.search_templates`
-- "Crea un workflow que cada día a las 9 me mande un Telegram" → `n8n.create_workflow`
-- "Créame un chatbot de WhatsApp para una clínica" → agente con flujo conversacional (Fase 4)
-
----
-
-## Integraciones Externas
-### `dwg` 📐
-Lectura, análisis y generación de planos DWG/DXF.
-
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `convert_to_dxf` | 🟡 | `path` | DWG → DXF |
-| `convert_to_dwg` | 🟡 | `path` | DXF → DWG |
-| `analyze` | 🟢 | `path` | Estadísticas del plano |
-| `list_layers` | 🟢 | `path` | Capas |
-| `list_texts` | 🟢 | `path` | Textos limpios |
-| `list_blocks` | 🟢 | `path` | Bloques |
-| `list_rooms` | 🟢 | `path` | Ambientes (por textos) |
-| `info` | 🟢 | `path` | Dimensiones |
-| `extract_layer` | 🟢 | `path`, `layer_name` | Extrae capa a DXF limpio |
-| `annotate` | 🟡 | `path`, `output`, `offset` | Acotado automático |
-| `extract_walls_3d` | 🟡 | `path`, `height` | Muros a STEP |
-| `extract_all_layers_3d` | 🟡 | `path`, `output` | Todas las capas a STEP |
-| `add_hatch` | 🟡 | `path`, `output` | Relleno rayado de muros (ANSI31) |
-| `extract_rooms_with_areas` | 🟢 | `path` | Lista ambientes con sus áreas en m² |
-| `cuadro_superficies_excel` | 🟡 | `path`, `output`, `titulo` | Genera Excel con cuadro de superficies |
-| `export_ifc` | 🟡 | `path`, `output`, `nombre_proyecto`, `altura`, `grosor` | Exporta muros a formato IFC (BIM) |
-| `export_ifc_full` | 🟡 | `path`, `output`, `puertas`, `ventanas`, `nombre_proyecto`, `altura`, `grosor` | Exporta muros + puertas + ventanas a IFC (BIM) |
-
-**Requiere:** ODA File Converter + shapely + openpyxl.
-
-**Límite conocido:** la extracción automática de ambientes funciona con planos bien dibujados (muros cerrados). Planos con gaps de puertas grandes requieren detección manual.
-
-**Ejemplos:**
-- "Analiza mi_plano.dwg" → `dwg.analyze`
-- "Lista los ambientes del plano" → `dwg.extract_rooms_with_areas`
-- "Cuadro de superficies del plano test_plan_fixture" → `dwg.cuadro_superficies_excel`
-- "Acota el plano" → `dwg.annotate`
-- "Convierte los muros a 3D" → `dwg.extract_walls_3d`
+- `add_music`
+- `add_subtitles`
+- `compress`
+- `convert`
+- `extract_audio`
+- `extract_frames`
+- `gif`
+- `info`
+- `list`
+- `merge`
+- `mute`
+- `rotate`
+- `speed`
+- `thumbnail`
+- `trim`
 
 ---
 
-### `canva` 🎨
-Diseño gráfico con Canva.
+## CAD y 3D
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `authorize` | 🟢 | — | Conecta Canva (OAuth) |
-| `whoami` | 🟢 | — | Info de conexión |
-| `list_designs` | 🟢 | `limit` (int) | Lista diseños |
-| `get_design` | 🟢 | `id` (str) | Detalle diseño |
-| `create_design` | 🟡 | `design_type`, `title` | Crea diseño |
-| `export_design` | 🟢 | `id`, `format` | Exporta |
-| `list_assets` | 🟢 | — | Lista assets |
-| `upload_asset_from_url` | 🟡 | `url`, `name` | Sube imagen |
+### `blender`
+Skill de Blender: render arquitectonico, vistas, interiores, animaciones, export.
 
-**Tipos válidos:** `doc`, `email`, `presentation`, `whiteboard` (los demás requieren Enterprise)
+**Clase:** `BlenderSkill`  
+**Archivo:** `skills/blender.py`  
+**Acciones:** 15
 
-**Ejemplos:**
-- "¿Qué diseños tengo en Canva?" → `canva.list_designs`
-- "Crea una presentación sobre el mar" → `canva.create_design(design_type="presentation", title="el mar")`
-- "Exporta el diseño DAHVe_mH89A a PDF" → `canva.export_design`
-- "Conecta Canva" → `canva.authorize`
+- `add_lighting_preset`
+- `apply_material`
+- `export_gltf`
+- `import_fbx`
+- `import_obj`
+- `optimize_mesh`
+- `render_360`
+- `render_animation`
+- `render_interior`
+- `render_multiple_angles`
+- `render_step`
+- `render_topdown`
+- `render_views`
+- `render_views_clean`
+- `save_blend`
 
----
+### `dwg`
+Skill de DWG/DXF: lee, convierte y analiza planos CAD.
 
-### `freecad` 🏗️
-Geometría CAD, planos técnicos, export DXF.
+**Clase:** `DwgSkill`  
+**Archivo:** `skills/dwg.py`  
+**Acciones:** 21
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `new_document` | 🟡 | `name` | Nuevo documento |
-| `add_rectangle` | 🟢 | `x1`, `y1`, `x2`, `y2`, `label` | Rectángulo |
-| `add_line` | 🟢 | `x1`, `y1`, `z1`, `x2`, `y2`, `z2`, `label` | Línea |
-| `add_circle` | 🟢 | `cx`, `cy`, `radius`, `label` | Círculo |
-| `add_text` | 🟢 | `x`, `y`, `text`, `label` | Texto |
-| `add_wall` | 🟢 | `x1`, `y1`, `x2`, `y2`, `label` | Muro |
-| `list_objects` | 🟢 | — | Lista objetos |
-| `export_dxf` | 🟡 | `path` | Exporta DXF |
-| `export_pdf` | 🟡 | `path` | Exporta PDF |
-| `save_as` | 🟡 | `path` | Guarda FCStd |
-| `clear_workspace` | 🔴 | — | Limpia workspace |
-| `add_room_labels` | 🟡 | `labels` (list) | Etiquetas de ambientes en 3D |
-| `add_level_dimensions` | 🟡 | `height`, `num_floors` | Cotas de nivel (+0.00, +2.80...) |
+- `add_dimensions`
+- `add_hatch`
+- `analyze`
+- `annotate`
+- `convert_to_dwg`
+- `convert_to_dxf`
+- `cuadro_superficies_excel`
+- `export_ifc`
+- `export_ifc_full`
+- `export_pdf`
+- `extract_all_layers_3d`
+- `extract_layer`
+- `extract_rooms_with_areas`
+- `extract_walls_3d`
+- `info`
+- `list_blocks`
+- `list_layers`
+- `list_rooms`
+- `list_texts`
+- `merge_dxf`
+- `search_text`
 
-**Nota:** cada acción tarda 2-4s porque abre `freecadcmd` como subproceso.
+### `freecad`
+Skill de FreeCAD: crea geometria 2D/3D y exporta DXF/PDF via freecadcmd.
 
-**Ejemplos:**
-- "Nuevo plano" → `freecad.new_document`
-- "Dibuja un rectángulo de 4x3" → `freecad.add_rectangle(x2=4, y2=3)`
-- "Dibuja un círculo de radio 0.5" → `freecad.add_circle(radius=0.5)`
-- "Exporta el plano a DXF" → `freecad.export_dxf`
+**Clase:** `FreeCadSkill`  
+**Archivo:** `skills/freecad.py`  
+**Acciones:** 31
 
----
+- `add_circle`
+- `add_column`
+- `add_dimension`
+- `add_door`
+- `add_level_dimensions`
+- `add_line`
+- `add_rectangle`
+- `add_room_labels`
+- `add_slab`
+- `add_text`
+- `add_wall`
+- `add_wall_3d`
+- `add_window`
+- `array_objects`
+- `boolean_op`
+- `clear_workspace`
+- `create_room`
+- `delete_object`
+- `export_dxf`
+- `export_obj`
+- `export_pdf`
+- `export_pdf_techdraw`
+- `export_step`
+- `export_stl`
+- `import_step`
+- `list_objects`
+- `move_object`
+- `new_document`
+- `rotate_object`
+- `save_as`
+- `set_color`
 
-### `maps` 🗺️
-Búsqueda de edificios reales y generación de modelos 3D.
+### `maps`
+Skill de Maps: busca edificios en OpenStreetMap y genera modelos CAD.
 
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `search` | 🟢 | `query` | Busca lugar |
-| `get_building` | 🟢 | `query` | Info del edificio |
-| `create_model` | 🟡 | `query`, `output`, `formato`, `altura` | Modelo simple (prisma) |
-| `create_detailed` | 🟡 | `query`, `num_pisos`, `altura`, `wall_thickness` | Modelo detallado |
+**Clase:** `MapsSkill`  
+**Archivo:** `skills/maps.py`  
+**Acciones:** 10
 
-**Fuente:** OpenStreetMap + Nominatim + Overpass. **No requiere API key.**
-
-**Formatos:** `step` (3D), `dxf` (2D)
-
-**Ejemplos:**
-- "Info del Sheraton Lima Historic Center" → `maps.get_building`
-- "Modela el Sheraton Lima" → `maps.create_model`
-- "Hazme un modelo detallado de la Catedral de Lima" → `maps.create_detailed`
-
----
-
-### `blender` 🎬
-Renderizado de STEP a PNG.
-
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `render_step` | 🟢 | `step_path`, `output`, `res_x`, `res_y`, `cam_angulo` | Render rápido |
-| `save_blend` | 🟡 | `step_path`, `output_blend` | Guarda escena .blend |
-| `save_professional` | 🟡 | `step_path`, `output_blend` | Escena pro (materiales + 4 cámaras) |
-
-**Ángulos de cámara:** `0` (frontal), `45` (isométrico), `90` (planta)
-
-**Ejemplos:**
-- "Renderiza el último step" → `blender.render_step`
-- "Haz un render del Sheraton" → `blender.render_step` con último STEP
-- "Muéstrame el modelo en 3D" → `blender.render_step`
-**Nota (CAD-4b):** la acción `render_views` genera 3 vistas ortográficas (planta/fachada/corte). La fachada y el corte funcionan correctamente; la planta tiene un bug conocido de orientación de cámara. Pendiente de polish en una sesión futura. Para visualización 3D completa, usar el IFC (abrible en Revit/ArchiCAD o viewer.ifcopenshell.org).
----
-
-### `dwg` 📐
-Lectura y análisis de planos DWG/DXF.
-
-| Acción | Riesgo | Parámetros | Descripción |
-|---|---|---|---|
-| `convert_to_dxf` | 🟡 | `path` | DWG → DXF |
-| `convert_to_dwg` | 🟡 | `path` | DXF → DWG |
-| `analyze` | 🟢 | `path` | Estadísticas del plano |
-| `list_layers` | 🟢 | `path` | Capas |
-| `list_texts` | 🟢 | `path` | Textos limpios |
-| `list_blocks` | 🟢 | `path` | Bloques |
-| `list_rooms` | 🟢 | `path` | Ambientes |
-| `info` | 🟢 | `path` | Dimensiones |
-| `extract_layer` | 🟢 | `path`, `layer_name` | Extrae capa |
-| `annotate` | 🟡 | `path`, `output`, `offset` | Acotado automático |
-| `extract_walls_3d` | 🟡 | `path`, `height` | Muros a STEP |
-| `extract_all_layers_3d` | 🟡 | `path`, `output` | Todas las capas a STEP |
-| `add_hatch` | 🟡 | `path`, `output` | Relleno rayado de muros (ANSI31) |
-| `extract_rooms_with_areas` | 🟢 | `path` | Lista ambientes con sus áreas en m² |
-| `cuadro_superficies_excel` | 🟡 | `path`, `output`, `titulo` | Genera Excel con cuadro de superficies |
-
-**Requiere:** ODA File Converter instalado.
-
-**Ejemplos:**
-- "Analiza mi_plano.dwg" → `dwg.analyze`
-- "Lista los ambientes del plano" → `dwg.list_rooms`
-- "Extrae la capa MUROS" → `dwg.extract_layer(layer_name="MUROS")`
-- "Acota el plano" → `dwg.annotate`
-- "Convierte los muros a 3D" → `dwg.extract_walls_3d`
+- `create_detailed`
+- `create_model`
+- `distance`
+- `get_building`
+- `get_coordinates`
+- `get_elevation`
+- `get_route`
+- `nearby_search`
+- `reverse_geocode`
+- `search`
 
 ---
 
-### `n8n` (ver arriba)
+## Integraciones
+
+### `canva`
+Skill de Canva: crear, leer y exportar diseños via Connect API.
+
+**Clase:** `CanvaSkill`  
+**Archivo:** `skills/canva.py`  
+**Acciones:** 8
+
+- `authorize`
+- `create_design`
+- `export_design`
+- `get_design`
+- `list_assets`
+- `list_designs`
+- `upload_asset_from_url`
+- `whoami`
+
+### `spotify`
+Skill de control de Spotify via Web API (requiere Premium).
+
+**Clase:** `SpotifySkill`  
+**Archivo:** `skills/spotify.py`  
+**Acciones:** 6
+
+- `current`
+- `next`
+- `pause`
+- `play`
+- `previous`
+- `volume`
+
+### `telegram`
+Skill de Telegram: envia archivos generados al chat del usuario.
+
+**Clase:** `TelegramSkill`  
+**Archivo:** `skills/telegram.py`  
+**Acciones:** 2
+
+- `send_file`
+- `send_last`
 
 ---
 
 ## Entretenimiento
 
-### `entertainment` (ver arriba)
+### `alarm`
+Skill alarm
+
+**Clase:** `AlarmSkill`  
+**Archivo:** `skills/alarm.py`  
+**Acciones:** 3
+
+- `cancel`
+- `list`
+- `set`
+
+### `chiste`
+Skill chiste
+
+**Clase:** `JokeSkill`  
+**Archivo:** `skills/chiste.py`  
+**Acciones:** 2
+
+- `tell`
+- `tell_es`
+
+### `entertainment`
+Skill entertainment
+
+**Clase:** `EntertainmentSkill`  
+**Archivo:** `skills/entertainment.py`  
+**Acciones:** 3
+
+- `next_track`
+- `play_pause`
+- `prev_track`
+
+### `frases`
+Frases motivacionales curadas.
+
+**Clase:** `FrasesSkill`  
+**Archivo:** `skills/frases.py`  
+**Acciones:** 4
+
+- `by_author`
+- `count`
+- `list`
+- `random`
+
+### `macro`
+Skill de macro recorder: graba y reproduce secuencias de teclado/raton.
+
+**Clase:** `MacroSkill`  
+**Archivo:** `skills/macro.py`  
+**Acciones:** 9
+
+- `delete`
+- `duplicate`
+- `edit_speed`
+- `info`
+- `list`
+- `play`
+- `rename`
+- `start`
+- `stop`
+
+### `weather`
+Skill weather
+
+**Clase:** `WeatherSkill`  
+**Archivo:** `skills/weather.py`  
+**Acciones:** 1
+
+- `current`
 
 ---
-
-## 🔒 Reglas críticas de enrutamiento
-
-Para evitar confusiones, el router aplica estas reglas antes del clasificador LLM:
-
-- **n8n vs dev/files/terminal:** Si el usuario habla de workflows/n8n/templates → solo `n8n.*`.
-- **macro vs dev/terminal:** Si el usuario dice grabar/reproducir/macro → solo `macro.*`.
-- **gmail vs browser/dev:** Si el usuario habla de correos/gmail → solo `gmail.*`.
-- **canva vs browser/image:** Si el usuario habla de diseños/canva → solo `canva.*`.
-- **maps vs browser/dev:** Si el usuario habla de edificios reales/lugares → solo `maps.*`.
-- **blender vs maps:** Si el usuario dice "render" → **blender primero** (prioridad absoluta).
-- **scheduler vs maps:** Si el usuario dice "todos los días a las X" → scheduler primero.
-- **entertainment vs spotify:** Control del sistema → `entertainment.*`; solo Spotify → `spotify.*`.
-
----
-
-## 📋 Cómo añadir una nueva skill
-
-Checklist para que una skill quede 100% integrada:
-
-1. ✅ Crear `skills/nombre.py` con `class NombreSkill(Skill)` y método `run(action, params)`.
-2. ✅ Importar y registrar en `core/router.py` (`self.skills["nombre"] = NombreSkill()`).
-3. ✅ Añadir entradas en `_quick_match` para frases obvias.
-4. ✅ Añadir esquema en `core/schemas.py` (parámetros por acción).
-5. ✅ Añadir niveles de riesgo en `core/confirmation.py`.
-6. ✅ Añadir reglas en `core/intent.py` (prompt del clasificador).
-7. ✅ Añadir descripción + acciones en `core/agent.py` (`AGENT_SYSTEM_PROMPT`).
-8. ✅ Añadir regla crítica si puede confundirse con otra skill.
-9. ✅ Probar 5-10 frases típicas.
-10. ✅ Documentar en este `SKILLS.md`.
-
----
-
-**Total:** 31 skills · 4 combos · n8n 100% · Gmail 100% · Canva 100% · Maps 100% · FreeCAD 100% · Blender 100% · DWG 100%.
-
-## 🎨 Características de la GUI
-
-### Selección de modelos (chat/classifier/agent/vision)
-
-Panel en **⚙️ Sistema → 🤖 Modelos de IA** para cambiar en tiempo real:
-- **Chat general** — conversaciones abiertas (default: `llama3.2:3b`)
-- **Clasificador de intent** — detección de skills (default: `llama3.2:3b`)
-- **Agente (multi-paso)** — tareas complejas (default: `qwen2.5-coder:7b`)
-- **Visión** — análisis de imágenes (default: `llava-phi3:latest`)
-
-Config guardada en `config/models.json`. Cambios aplicados sin reiniciar.
-
-### Historial de conversaciones
-
-Panel lateral (**💬 Historial** en el header):
-- Agrupación por día (Hoy, Ayer, fecha)
-- Lista de conversaciones con título autogenerado y N mensajes
-- Clic en una → la carga en el chat
-- Botón "+ Nueva conversación"
-- Botón ✕ para borrar
-
-Archivos en `memory/conversations/*.json`. Endpoints en `/conversations/*`.
-
----
-
-Estado: **Bloque 1 CERRADO** · **CAD-1 CERRADO** · **CAD-2 CERRADO** · **CAD-3 CERRADO**.
-Próximo: CAD-4 (puertas/ventanas reales + planta/fachada/corte).
-
-Estado: **Bloque 1 (auditoría) CERRADO.** Próximo: Bloque 2 (portabilidad + onboarding + .exe).
