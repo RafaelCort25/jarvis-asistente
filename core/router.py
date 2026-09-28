@@ -408,8 +408,8 @@ class Router:
         m = re.search(r"(?:descarga|baja|guarda)\s+(?:los\s+)?adjuntos\s+(?:de|del)\s+(?:el\s+)?correo\s+(\d+)", t, re.IGNORECASE)
         if m:
             return [{"skill": "gmail", "action": "download_attachments", "params": {"uid": m.group(1)}}]
-        # Busqueda avanzada: correos de X
-        m = re.search(r"(?:busca|muestra|dame|tengo)\s+(?:los\s+)?correos\s+(?:de|del?)\s+([^\s]+(?:@[^\s]+)?)(?:\s+sobre\s+(.+))?$", t, re.IGNORECASE)
+        # Busqueda avanzada: correos de X (verbos opcionales)
+        m = re.search(r"(?:busca\s+|muestra\s+|dame\s+|tengo\s+|ver\s+)?(?:los\s+)?correos\s+(?:de|del)\s+([^\s]+(?:@[^\s]+)?)(?:\s+sobre\s+(.+))?$", t, re.IGNORECASE)
         if m:
             frm = m.group(1).strip()
             subj = (m.group(2) or "").strip()
