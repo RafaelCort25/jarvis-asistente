@@ -395,6 +395,92 @@ class Router:
 
         # ═══════════════════════════════════════════════════════════════════
         # ═══════════════════════════════════════════════════════════════════
+        # GIT: operaciones locales
+        # ═══════════════════════════════════════════════════════════════════
+        # Status
+        if any(p in t for p in ["git status", "estado del repo", "estado del git",
+                                 "que cambios hay en git", "que hay sin commitear"]):
+            return [{"skill": "git", "action": "status", "params": {}}]
+        # Log
+        m = re.search(r"(?:ultimos|muestra|ver)\s+(\d+)?\s*commits?", t, re.IGNORECASE)
+        if m:
+            n = int(m.group(1)) if m.group(1) else 5
+            return [{"skill": "git", "action": "log", "params": {"n": n}}]
+        if any(p in t for p in ["git log", "historial de commits", "ver commits"]):
+            return [{"skill": "git", "action": "log", "params": {"n": 10}}]
+        # Diff
+        if any(p in t for p in ["git diff", "que cambios he hecho", "muestra el diff",
+                                 "diferencias sin commitear"]):
+            return [{"skill": "git", "action": "diff", "params": {}}]
+        # Add
+        if any(p in t for p in ["git add todo", "anade todo al staging", "agrega todo al staging",
+                                 "prepara todo para commit", "anade al staging"]):
+            return [{"skill": "git", "action": "add", "params": {"paths": "."}}]
+        m = re.search(r"(?:git add|anade al staging|agrega al staging)\s+(.+)$", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "git", "action": "add", "params": {"paths": m.group(1).strip()}}]
+        # Commit
+        m = re.search(r"(?:haz|hazle|crea)\s+(?:un\s+)?commit\s+(?:con\s+(?:el\s+)?mensaje\s+)?[\"']?(.+?)[\"']?$", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "git", "action": "commit", "params": {"message": m.group(1).strip()}}]
+        # Push
+        if any(p in t for p in ["git push", "sube los cambios", "sube al remoto", "sube al github",
+                                 "empuja al remoto"]):
+            return [{"skill": "git", "action": "push", "params": {}}]
+        # Pull
+        if any(p in t for p in ["git pull", "baja los cambios", "baja del remoto", "actualiza del remoto",
+                                 "trae los cambios del remoto"]):
+            return [{"skill": "git", "action": "pull", "params": {}}]
+        # Branches
+        if any(p in t for p in ["lista las ramas", "que ramas tengo", "git branch", "ramas del repo",
+                                 "muestra las ramas"]):
+            return [{"skill": "git", "action": "branches", "params": {}}]
+        # Checkout (cambiar rama)
+        m = re.search(r"(?:cambia|cambiate|vete|pasate)\s+(?:a\s+)?(?:la\s+)?rama\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "git", "action": "checkout", "params": {"branch": m.group(1).strip()}}]
+        # Crear rama nueva
+        m = re.search(r"(?:crea|haz)\s+(?:una\s+)?(?:rama|branch)\s+(?:nueva\s+)?(?:llamada\s+)?(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "git", "action": "checkout", "params": {"branch": m.group(1).strip(), "create": True}}]
+        # Stash
+        if any(p in t for p in ["guarda los cambios temporalmente", "haz stash", "git stash",
+                                 "guardar cambios sin commitear"]):
+            return [{"skill": "git", "action": "stash", "params": {}}]
+        # Stash pop
+        if any(p in t for p in ["restaura los cambios guardados", "recupera el stash", "haz stash pop",
+                                 "saca los cambios del stash"]):
+            return [{"skill": "git", "action": "stash_pop", "params": {}}]
+        # Stash list
+        if any(p in t for p in ["lista los stashes", "que stashes tengo", "git stash list"]):
+            return [{"skill": "git", "action": "stash_list", "params": {}}]
+        # Reset
+        m = re.search(r"(?:deshaz|revierte|quita)\s+(?:el\s+|los\s+)?(\d+)?\s*(?:ultimo\s+|ultimos\s+)?commits?", t, re.IGNORECASE)
+        if m:
+            n = int(m.group(1)) if m.group(1) else 1
+            return [{"skill": "git", "action": "reset", "params": {"mode": "soft", "n": n}}]
+        # Show
+        m = re.search(r"(?:muestra|ver|detalles\s+de)\s+(?:el\s+)?commit\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "git", "action": "show", "params": {"ref": m.group(1).strip()}}]
+        if any(p in t for p in ["muestra el ultimo commit", "detalles del ultimo commit", "ver el ultimo commit"]):
+            return [{"skill": "git", "action": "show", "params": {"ref": "HEAD"}}]
+        # Blame
+        m = re.search(r"(?:quien|quién)\s+(?:escribi[oó]|hizo)\s+(?:el\s+archivo\s+)?(\S+\.\w+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "git", "action": "blame", "params": {"file": m.group(1).strip()}}]
+        m = re.search(r"(?:git blame|blame)\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "git", "action": "blame", "params": {"file": m.group(1).strip()}}]
+        # Remotes
+        if any(p in t for p in ["lista los remotos", "que remotos tengo", "git remote", "remotos del repo"]):
+            return [{"skill": "git", "action": "remotes", "params": {}}]
+        # Config
+        if any(p in t for p in ["config de git", "configuracion de git", "git config",
+                                 "usuario de git", "quien soy en git"]):
+            return [{"skill": "git", "action": "config", "params": {}}]
+
+        # ═══════════════════════════════════════════════════════════════════
         # CALENDAR: eventos y citas
         # ═══════════════════════════════════════════════════════════════════
         # Crear evento (varias formas)

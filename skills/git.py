@@ -55,6 +55,33 @@ class GitSkill(Skill):
             return self._push()
         if action == "pull":
             return self._pull()
+        # ── Nuevas acciones ──
+        if action == "branches":
+            return self._branches()
+        if action == "checkout":
+            return self._checkout(
+                params.get("branch", ""),
+                create=params.get("create", False),
+            )
+        if action == "stash":
+            return self._stash(params.get("message", ""))
+        if action == "stash_pop":
+            return self._stash_pop()
+        if action == "stash_list":
+            return self._stash_list()
+        if action == "reset":
+            return self._reset(
+                params.get("mode", "soft"),
+                params.get("n", 1),
+            )
+        if action == "show":
+            return self._show(params.get("ref", "HEAD"))
+        if action == "blame":
+            return self._blame(params.get("file", ""))
+        if action == "remotes":
+            return self._remotes()
+        if action == "config":
+            return self._config()
         return f"Accion desconocida en git: {action}"
 
     # ── Read-only ──────────────────────────────────────────────
@@ -147,3 +174,145 @@ class GitSkill(Skill):
         if code != 0:
             return f"Error git pull: {err or out}"
         return f"Pull hecho.\n{_clip(out)}"
+
+    # ─── RAMAS ────────────────────────────────────────────────────────────
+
+    def _branches(self):
+        """Lista las ramas locales y remotas."""
+        code, out, err = _git(["branch", "-a", "-vv"])
+        if code != 0:
+            return f"Error git branch: {err or out}"
+        if not out:
+            return "No hay ramas."
+        return f"Ramas:\n{_clip(out)}"
+
+    def _checkout(self, branch, create=False):
+        """Cambia de rama (opcionalmente la crea)."""
+        branch = (branch or "").strip()
+        if not branch:
+            return "Necesito el nombre de la rama."
+
+        accion = "Crear y cambiar a" if create else "Cambiar a"
+        if not confirmation.require("git", "checkout", f"{accion} rama '{branch}'"):
+            return "Cancelado."
+
+        args = ["checkout", "-b", branch] if create else ["checkout", branch]
+        code, out, err = _git(args)
+        if code != 0:
+            return f"Error git checkout: {err or out}"
+        return f"En rama '{branch}'.\n{_clip(out)}"
+
+    # ─── STASH ────────────────────────────────────────────────────────────
+
+    def _stash(self, message=""):
+        """Guarda los cambios temporalmente en el stash."""
+        message = (message or "").strip()
+        if not confirmation.require("git", "stash", f"Guardar cambios en stash"):
+            return "Cancelado."
+        args = ["stash", "push"]
+        if message:
+            args += ["-m", message]
+        code, out, err = _git(args)
+        if code != 0:
+            return f"Error git stash: {err or out}"
+        return f"Cambios guardados en stash.\n{_clip(out)}"
+
+    def _stash_pop(self):
+        """Restaura los cambios del ultimo stash."""
+        if not confirmation.require("git", "stash_pop", "Restaurar cambios del stash"):
+            return "Cancelado."
+        code, out, err = _git(["stash", "pop"])
+        if code != 0:
+            return f"Error git stash pop: {err or out}"
+        return f"Stash restaurado.\n{_clip(out)}"
+
+    def _stash_list(self):
+        """Lista los stashes guardados."""
+        code, out, err = _git(["stash", "list"])
+        if code != 0:
+            return f"Error: {err or out}"
+        if not out:
+            return "No hay stashes guardados."
+        return f"Stashes:\n{_clip(out)}"
+
+    # ─── RESET ────────────────────────────────────────────────────────────
+
+    def _reset(self, mode="soft", n=1):
+        """Deshace los ultimos N commits (soft/media/hard)."""
+        try:
+            n = int(n)
+        except (ValueError, TypeError):
+            n = 1
+        n = max(1, min(n, 10))
+
+        mode = (mode or "soft").lower()
+        if mode not in ("soft", "mixed", "hard"):
+            mode = "soft"
+
+        descripciones = {
+            "soft": "sin perder cambios (staging intacto)",
+            "mixed": "sin perder cambios (staging limpio)",
+            "hard": "PERDIENDO los cambios (cuidado!)",
+        }
+
+        summary = f"Deshacer {n} commit(s) ({mode}: {descripciones[mode]})"
+        if not confirmation.require("git", "reset", summary):
+            return "Cancelado."
+
+        code, out, err = _git(["reset", f"--{mode}", f"HEAD~{n}"])
+        if code != 0:
+            return f"Error git reset: {err or out}"
+        return f"Reset {mode} de {n} commit(s) hecho.\n{_clip(out)}"
+
+    # ─── SHOW ─────────────────────────────────────────────────────────────
+
+    def _show(self, ref="HEAD"):
+        """Muestra los detalles de un commit."""
+        ref = (ref or "HEAD").strip()
+        code, out, err = _git(["show", "--stat", ref])
+        if code != 0:
+            return f"Error git show: {err or out}"
+        return _clip(out, 3000)
+
+    # ─── BLAME ────────────────────────────────────────────────────────────
+
+    def _blame(self, filepath):
+        """Muestra quien escribio cada linea de un archivo."""
+        filepath = (filepath or "").strip()
+        if not filepath:
+            return "Necesito el archivo para hacer blame."
+        code, out, err = _git(["blame", "--line-porcelain", filepath])
+        if code != 0:
+            # Fallback: formato normal
+            code, out, err = _git(["blame", filepath])
+            if code != 0:
+                return f"Error git blame: {err or out}"
+        return _clip(out, 2500)
+
+    # ─── REMOTES ──────────────────────────────────────────────────────────
+
+    def _remotes(self):
+        """Lista los remotos configurados."""
+        code, out, err = _git(["remote", "-v"])
+        if code != 0:
+            return f"Error: {err or out}"
+        if not out:
+            return "No hay remotos configurados."
+        return f"Remotos:\n{_clip(out)}"
+
+    # ─── CONFIG ───────────────────────────────────────────────────────────
+
+    def _config(self):
+        """Muestra la configuracion de git (usuario, email)."""
+        code_u, user, _ = _git(["config", "user.name"])
+        code_e, email, _ = _git(["config", "user.email"])
+        code_b, branch, _ = _git(["rev-parse", "--abbrev-ref", "HEAD"])
+        code_r, remote, _ = _git(["remote", "get-url", "origin"])
+
+        lineas = [
+            f"Usuario: {user or '(no configurado)'}",
+            f"Email: {email or '(no configurado)'}",
+            f"Rama actual: {branch or '?'}",
+            f"Remoto origin: {remote or '(no configurado)'}",
+        ]
+        return "\n".join(lineas)
