@@ -31,8 +31,31 @@ class DocsSkill(Skill):
             return answer
         if action == "list":
             return self.rag.list_documents()
+        if action == "list_detailed":
+            return self.rag.list_documents_detailed()
         if action == "delete":
             return self.rag.delete_document(params.get("name", ""))
+        if action == "stats":
+            stats = self.rag.get_stats()
+            return {
+                "thought": f"RAG: {stats['total_documents']} docs, {stats['total_chunks']} chunks",
+                "display": (
+                    f"**Indice RAG:**\n"
+                    f"- Documentos: {stats['total_documents']}\n"
+                    f"- Fragmentos: {stats['total_chunks']}\n"
+                    f"- Tamano: {stats['index_size_mb']} MB\n"
+                    f"- Ubicacion: {stats['rag_dir']}"
+                ),
+                "voice": f"Tengo {stats['total_documents']} documentos indexados.",
+            }
+        if action == "index_folder_advanced":
+            return self.rag.index_folder(
+                params.get("path", ""),
+                recursive=params.get("recursive", True),
+                extensions=params.get("extensions"),
+                max_size_mb=params.get("max_size_mb"),
+                reindex_only_changed=params.get("reindex_only_changed", False),
+            )
         return f"Accion desconocida en docs: {action}"
     def _ask_to_word(self, query, title):
         """Combo: consulta el RAG y guarda la respuesta en un Word."""

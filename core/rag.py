@@ -17,6 +17,18 @@ EMBED_MODEL = "nomic-embed-text"
 
 SUPPORTED_EXT = {".pdf", ".txt", ".md", ".docx", ".py", ".json", ".yaml", ".yml"}
 
+# Carpetas que NUNCA se indexan (pesadas o irrelevantes)
+EXCLUDE_DIRS = {
+    "venv", ".venv", "env", ".env",
+    "node_modules", "__pycache__", ".git", ".svn",
+    "dist", "build", "target", "out", "bin", "obj",
+    "site-packages", ".cache", ".pytest_cache", ".mypy_cache",
+    "Library", "Temp", "tmp", "$RECYCLE.BIN", "System Volume Information",
+}
+
+# Tamaño maximo de archivo individual (MB) — evita archivos gigantes
+MAX_FILE_MB = 50
+
 
 def _read_pdf(path):
     from pypdf import PdfReader
@@ -155,38 +167,124 @@ class RAG:
             ids=ids,
         )
 
-        registry[doc_key] = {"name": path.name, "chunks": len(chunks)}
+        try:
+            mtime = path.stat().st_mtime
+            size_kb = round(path.stat().st_size / 1024, 1)
+        except Exception:
+            mtime = 0
+            size_kb = 0
+
+        registry[doc_key] = {
+            "name": path.name,
+            "chunks": len(chunks),
+            "mtime": mtime,
+            "size_kb": size_kb,
+        }
         self._save_registry(registry)
 
         return f"Indexado {path.name}: {len(chunks)} fragmentos."
 
-    def index_folder(self, folder, recursive=True):
+    def _collect_files(self, folder, recursive=True, extensions=None, max_size_mb=None):
+        """Recolecta archivos validos saltando carpetas excluidas."""
+        folder = Path(folder).resolve()
+        exts = set(extensions) if extensions else SUPPORTED_EXT
+        max_bytes = (max_size_mb or MAX_FILE_MB) * 1024 * 1024
+
+        valid = []
+        if recursive:
+            for root, dirs, files in folder.walk():
+                # Filtrar dirs in-place (asi os.walk/path.walk no entra en ellos)
+                dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS and not d.startswith(".")]
+                for f in files:
+                    fp = root / f
+                    if fp.suffix.lower() not in exts:
+                        continue
+                    try:
+                        if fp.stat().st_size > max_bytes:
+                            continue
+                    except Exception:
+                        continue
+                    valid.append(fp)
+        else:
+            for fp in folder.iterdir():
+                if not fp.is_file():
+                    continue
+                if fp.suffix.lower() not in exts:
+                    continue
+                try:
+                    if fp.stat().st_size > max_bytes:
+                        continue
+                except Exception:
+                    continue
+                valid.append(fp)
+
+        return valid
+
+    def index_folder(self, folder, recursive=True, extensions=None, max_size_mb=None, reindex_only_changed=False):
+        """Indexa una carpeta. Filtra carpetas pesadas (venv, node_modules, etc.).
+
+        Args:
+            folder: ruta de la carpeta
+            recursive: si True, entra en subcarpetas
+            extensions: lista de extensiones (ej. ['.pdf', '.docx']). Si None, usa todas
+            max_size_mb: tamano maximo de archivo. Si None, usa MAX_FILE_MB (50)
+            reindex_only_changed: si True, solo re-indexa archivos nuevos o modificados
+        """
         folder = Path(folder).resolve()
         if not folder.exists() or not folder.is_dir():
             return f"No existe la carpeta: {folder}"
 
-        pattern = "**/*" if recursive else "*"
-        files = [
-            p for p in folder.glob(pattern)
-            if p.is_file() and p.suffix.lower() in SUPPORTED_EXT
-        ]
+        files = self._collect_files(folder, recursive=recursive, extensions=extensions, max_size_mb=max_size_mb)
 
         if not files:
             return f"No hay archivos compatibles en {folder}"
 
+        registry = self._load_registry()
         total_chunks = 0
         indexed = 0
-        for f in files:
-            result = self.index_file(f)
-            if result.startswith("Indexado"):
-                indexed += 1
+        skipped = 0
+        failed = 0
+
+        print(f"[RAG] Indexando {len(files)} archivos de {folder.name}...")
+
+        for i, f in enumerate(files, 1):
+            doc_key = str(f)
+
+            # Si reindex_only_changed, comprobar mtime
+            if reindex_only_changed and doc_key in registry:
                 try:
-                    n = int(result.split(":")[1].split()[0])
-                    total_chunks += n
+                    mtime_actual = f.stat().st_mtime
+                    mtime_indexado = registry[doc_key].get("mtime", 0)
+                    if mtime_actual <= mtime_indexado:
+                        skipped += 1
+                        continue
                 except Exception:
                     pass
 
-        return f"Indexados {indexed} archivos ({total_chunks} fragmentos) desde {folder.name}."
+            if i % 10 == 0:
+                print(f"[RAG] {i}/{len(files)}...")
+
+            try:
+                result = self.index_file(f)
+                if result.startswith("Indexado"):
+                    indexed += 1
+                    try:
+                        n = int(result.split(":")[1].split()[0])
+                        total_chunks += n
+                    except Exception:
+                        pass
+                elif result.startswith("Sin contenido") or result.startswith("No se pudo"):
+                    failed += 1
+            except Exception as e:
+                failed += 1
+                print(f"[RAG] Error con {f.name}: {e}")
+
+        msg = f"Indexados {indexed} archivos ({total_chunks} fragmentos) de {folder.name}."
+        if skipped:
+            msg += f" Saltados {skipped} (sin cambios)."
+        if failed:
+            msg += f" Fallaron {failed}."
+        return msg
 
     def ask(self, query, n_results=4):
         if not query.strip():
@@ -219,20 +317,34 @@ class RAG:
         if not relevant:
             return {"answer": "No encontre nada suficientemente relevante.", "sources": []}
 
-        context = "\n\n---\n\n".join(d for d, _ in relevant)
-        sources = list({m.get("name", "?") for _, m in relevant})
+        # Construir contexto con MARCADORES de fuente numerados
+        context_parts = []
+        sources = []
+        for i, (d, m) in enumerate(relevant, 1):
+            name = m.get("name", "?")
+            chunk_idx = m.get("chunk", 0)
+            marker = f"[FUENTE {i}]"
+            context_parts.append(f"{marker} {name} (fragmento {chunk_idx})\n{d}")
+            sources.append({
+                "index": i,
+                "name": name,
+                "chunk": chunk_idx,
+                "source": m.get("source", ""),
+            })
+
+        context = "\n\n---\n\n".join(context_parts)
 
         prompt = (
             "Eres un asistente que responde basandose en el contexto proporcionado.\n\n"
             "REGLAS:\n"
-            "1. Puedes INFERIR y SINTETIZAR a partir de la informacion del contexto "
-            "(ej: si el CV lista experiencia laboral, puedes deducir fortalezas profesionales).\n"
+            "1. Puedes INFERIR y SINTETIZAR a partir de la informacion del contexto.\n"
             "2. NO inventes datos concretos (fechas, nombres, empresas, cifras).\n"
             "3. Si te piden una lista (ej: '5 fortalezas'), genera una lista coherente "
             "basada en lo que hay en el contexto.\n"
             "4. Si el contexto es TOTALMENTE irrelevante a la pregunta, di: "
             "'No tengo informacion sobre eso en los documentos'.\n"
-            "5. Responde en espanol, claro y directo. Usa bullets si es una lista.\n\n"
+            "5. Cuando uses informacion de una fuente, cita el marcador asi: [FUENTE 1].\n"
+            "6. Responde en espanol, claro y directo. Usa bullets si es una lista.\n\n"
             f"Contexto:\n{context}\n\n"
             f"Pregunta: {query}\n\n"
             "Respuesta:"
@@ -249,7 +361,59 @@ class RAG:
         except Exception as e:
             answer = f"Error al consultar el modelo: {e}"
 
-        return {"answer": answer, "sources": sources}
+        # Devolver fuentes como strings bonitos (compatibilidad) + detalle
+        sources_str = [f"{s['name']} (fragmento {s['chunk']})" for s in sources]
+        return {
+            "answer": answer,
+            "sources": sources_str,
+            "sources_detail": sources,
+        }
+
+    def get_stats(self):
+        """Devuelve estadisticas del indice."""
+        registry = self._load_registry()
+        try:
+            total_chunks = self.collection.count()
+        except Exception:
+            total_chunks = 0
+
+        total_docs = len(registry)
+
+        # Tamano del indice en disco
+        total_size = 0
+        if RAG_DIR.exists():
+            for f in RAG_DIR.rglob("*"):
+                if f.is_file():
+                    total_size += f.stat().st_size
+        size_mb = round(total_size / 1024 / 1024, 2)
+
+        return {
+            "total_documents": total_docs,
+            "total_chunks": total_chunks,
+            "index_size_mb": size_mb,
+            "rag_dir": str(RAG_DIR),
+        }
+
+    def list_documents_detailed(self):
+        """Lista de documentos con detalles (fecha, tamano, chunks)."""
+        registry = self._load_registry()
+        if not registry:
+            return "No hay documentos indexados."
+
+        lineas = [f"Documentos indexados ({len(registry)}):"]
+        for k, v in registry.items():
+            name = v.get("name", "?")
+            chunks = v.get("chunks", 0)
+            mtime = v.get("mtime", 0)
+            from datetime import datetime as _dt
+            fecha = _dt.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M") if mtime else "?"
+            lineas.append(f"  - {name} ({chunks} fragmentos, {fecha})")
+
+        stats = self.get_stats()
+        lineas.append("")
+        lineas.append(f"Total: {stats['total_documents']} docs, {stats['total_chunks']} fragmentos, {stats['index_size_mb']} MB")
+
+        return "\n".join(lineas)
 
     def list_documents(self):
         registry = self._load_registry()

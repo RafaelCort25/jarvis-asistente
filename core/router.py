@@ -391,6 +391,32 @@ class Router:
 
         # ═══════════════════════════════════════════════════════════════════
         # ═══════════════════════════════════════════════════════════════════
+        # DOCS / RAG: indexar carpetas, stats, listado detallado
+        # ═══════════════════════════════════════════════════════════════════
+        # Stats del indice
+        if any(p in t for p in ["stats del rag", "estadisticas del rag", "estadisticas del indice",
+                                 "cuantos documentos tengo indexados", "cuantos docs tengo",
+                                 "info del indice", "info del rag"]):
+            return [{"skill": "docs", "action": "stats", "params": {}}]
+        # Listado detallado
+        if any(p in t for p in ["lista detallada de documentos", "listado detallado de docs",
+                                 "documentos indexados detalle"]):
+            return [{"skill": "docs", "action": "list_detailed", "params": {}}]
+        # Indexar carpeta con exclusiones automaticas
+        m = re.search(r"(?:indexa|analiza|lee)\s+(?:la\s+)?carpeta\s+(.+?)(?:\s+recursiv(?:o|amente))?$", t, re.IGNORECASE)
+        if m:
+            path = m.group(1).strip().strip('"').strip("'")
+            recursive = "recursiv" in t.lower()
+            return [{"skill": "docs", "action": "index_folder_advanced",
+                     "params": {"path": path, "recursive": recursive, "reindex_only_changed": False}}]
+        # Re-indexar solo archivos cambiados
+        m = re.search(r"(?:re-?indexa|actualiza\s+el\s+indice\s+de)\s+(?:la\s+)?carpeta\s+(.+)", t, re.IGNORECASE)
+        if m:
+            path = m.group(1).strip().strip('"').strip("'")
+            return [{"skill": "docs", "action": "index_folder_advanced",
+                     "params": {"path": path, "recursive": True, "reindex_only_changed": True}}]
+
+        # ═══════════════════════════════════════════════════════════════════
         # GMAIL AVANZADO: adjuntos, busqueda, gestion, respuesta
         # ═══════════════════════════════════════════════════════════════════
         # Enviar con adjuntos
