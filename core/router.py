@@ -1388,7 +1388,9 @@ class Router:
             # Excluir conversion a imagenes (lo maneja el bloque PDF avanzado mas abajo)
             es_a_imagenes = any(w in t.lower() for w in ["imagenes", "imagen", "png", "jpg", "jpeg", "foto"])
             if not es_a_imagenes:
-                m = re.search(r'\b(?:convierte|convertir|pasa|exporta)\s+(.+\.docx)\s+(?:a\s+|en\s+)?pdf', t, re.IGNORECASE)
+                m = re.search(r'\b(?:convierte|convertir|pasa|exporta)\s+(?:el\s+|la\s+|un\s+|una\s+)?(?:docx|word|documento)\s+([^\s]+\.docx)\s+(?:a\s+|en\s+)?pdf', t, re.IGNORECASE)
+                if not m:
+                    m = re.search(r'\b(?:convierte|convertir|pasa|exporta)\s+([^\s]+\.docx)\s+(?:a\s+|en\s+)?pdf', t, re.IGNORECASE)
                 if m:
                     return [{
                         "skill": "pdf",
