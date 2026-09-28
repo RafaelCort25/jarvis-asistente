@@ -1370,7 +1370,27 @@ class Router:
         
 
         # ═══════════════════════════════════════════════════════════════════
-        # MAPS: buscar edificios reales en OpenStreetMap
+                # ═══════════════════════════════════════════════════════════════════
+        # DWG: interceptar antes de maps (para no confundir con "info de X")
+        # ═══════════════════════════════════════════════════════════════════
+        import re as _re_dwg_prio
+
+        # Info del plano
+        _m = _re_dwg_prio.search(r"(?:info|informacion|detalles)\s+(?:del?\s+)?(?:plano|dwg|dxf)\s+(\S+\.(?:dwg|dxf))", t, _re_dwg_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "info", "params": {"path": _m.group(1).strip()}}]
+
+        # Export plano a PDF
+        _m = _re_dwg_prio.search(r"(?:exporta|convierte|guarda)\s+(?:el\s+)?(?:plano|dwg|dxf)\s+(\S+\.(?:dwg|dxf))\s+a\s+pdf", t, _re_dwg_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "export_pdf", "params": {"path": _m.group(1).strip()}}]
+
+        # Analizar plano (adelantado tambien para evitar conflictos)
+        _m = _re_dwg_prio.search(r"(?:analiza|analizar)\s+(?:el\s+)?(?:plano|dwg|dxf)\s+(\S+\.(?:dwg|dxf))", t, _re_dwg_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "analyze", "params": {"path": _m.group(1).strip()}}]
+
+# MAPS: buscar edificios reales en OpenStreetMap
         # ═══════════════════════════════════════════════════════════════════
 
         # Info de un edificio
