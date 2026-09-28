@@ -29,10 +29,23 @@
     font-family:'Inter',sans-serif;
     color: var(--text);
   }
+  /* ═══ PARALLAX MULTICAPA ═══ */
+  :root { --mx: 0; --my: 0; }
+
   #scene{position:fixed; inset:0; z-index:0; transition: opacity .6s ease;}
   body.conversation #scene{ opacity:0.35; }
 
-  /* Grid de fondo sutil */
+  /* Orbe 3D: reacciona al raton con inercia */
+  #scene > canvas {
+    transform: translate3d(calc(var(--mx) * 15px), calc(var(--my) * 15px), 0)
+               rotateX(calc(var(--my) * 1.5deg))
+               rotateY(calc(var(--mx) * 1.5deg));
+    transform-origin: center center;
+    transition: transform 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+
+  /* Grid: parallax opuesto (mas rapido) */
   #grid{
     position:fixed; inset:0; z-index:0; pointer-events:none;
     background-image:
@@ -40,6 +53,25 @@
       linear-gradient(90deg, rgba(201,166,104,0.025) 1px, transparent 1px);
     background-size: 60px 60px;
     opacity:0.6;
+    transform: translate3d(calc(var(--mx) * -25px), calc(var(--my) * -25px), 0);
+    transition: transform 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+    background-position: calc(var(--mx) * 30px) calc(var(--my) * 30px);
+    transition: transform 1.6s cubic-bezier(0.16, 1, 0.3, 1),
+                background-position 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Nebulosa: parallax lento (efecto lejano) */
+  #nebula {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    will-change: transform;
+  }
+
+  /* Vignette: parallax minimo (efecto de marco) */
+  #vignette {
+    transform: translate3d(calc(var(--mx) * -8px), calc(var(--my) * -8px), 0);
+    transition: transform 2.4s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
   }
 
   #vignette{
@@ -785,6 +817,21 @@
     border-radius: 50%;
     mix-blend-mode: screen;
     filter: blur(80px);
+    transition: transform 2.2s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+  /* Parallax con propiedad "translate" (no conflictua con animation:transform) */
+  .nebula-1 {
+    translate: calc(var(--mx) * 25px) calc(var(--my) * 25px);
+    transition: translate 2.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .nebula-2 {
+    translate: calc(var(--mx) * -30px) calc(var(--my) * -30px);
+    transition: translate 2.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .nebula-3 {
+    translate: calc(var(--mx) * 18px) calc(var(--my) * 18px);
+    transition: translate 2.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .nebula-1 {
     width: 80vw;
@@ -1981,8 +2028,14 @@ micBtn.addEventListener('click', () => {
   }
 });
 
-renderer.domElement.addEventListener('click', () => {
-  if (currentState === 'idle') {
+renderer.domElement.addEventListener('click', (e) => {
+  // Solo activar si el clic esta cerca del orbe central (radio ~180px)
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  const dx = e.clientX - cx;
+  const dy = e.clientY - cy;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  if (dist < 180 && currentState === 'idle') {
     startRecording();
   }
 });
@@ -3140,6 +3193,63 @@ function abrirSkillDetalle(skillId) {
   }
 })();
 
+
+// ═══════════════════════════════════════════════════════════
+// PARALLAX MULTICAPA v2 — Movimiento directo (sin CSS vars)
+// ═══════════════════════════════════════════════════════════
+(function senna_parallax_v2() {
+  let targetMx = 0, targetMy = 0;
+  let curMx = 0, curMy = 0;
+  let rafPending = false;
+
+  // Elementos con parallax (multiplicador en px)
+  const LAYERS = [
+    { sel: '#nebula',             mult: 30,  invert: false },
+    { sel: '#grid',               mult: -20, invert: false },
+    { sel: '#scene > canvas',     mult: 15,  invert: false, tilt: 2 },
+    { sel: '#vignette',           mult: -8,  invert: false },
+    { sel: '.nebula-1',           mult: 25,  invert: false },
+    { sel: '.nebula-2',           mult: -30, invert: false },
+    { sel: '.nebula-3',           mult: 20,  invert: false },
+  ];
+
+  function updateMouse(e) {
+    targetMx = (e.clientX / window.innerWidth)  * 2 - 1;
+    targetMy = (e.clientY / window.innerHeight) * 2 - 1;
+    if (!rafPending) {
+      rafPending = true;
+      requestAnimationFrame(loop);
+    }
+  }
+
+  function loop() {
+    curMx += (targetMx - curMx) * 0.10;
+    curMy += (targetMy - curMy) * 0.10;
+
+    for (const layer of LAYERS) {
+      const el = document.querySelector(layer.sel);
+      if (!el) continue;
+      const dx = curMx * layer.mult;
+      const dy = curMy * layer.mult;
+      if (layer.tilt) {
+        el.style.transform = 'translate3d(' + dx + 'px, ' + dy + 'px, 0) ' +
+                             'rotateX(' + (curMy * layer.tilt) + 'deg) ' +
+                             'rotateY(' + (curMx * layer.tilt) + 'deg)';
+      } else {
+        el.style.transform = 'translate3d(' + dx + 'px, ' + dy + 'px, 0)';
+      }
+    }
+
+    if (Math.abs(targetMx - curMx) > 0.001 || Math.abs(targetMy - curMy) > 0.001) {
+      requestAnimationFrame(loop);
+    } else {
+      rafPending = false;
+    }
+  }
+
+  window.addEventListener('mousemove', updateMouse, { passive: true });
+  console.log('[PARALLAX v2] Listo. Elementos:', LAYERS.length);
+})();
 </script>
 </body>
 </html>
