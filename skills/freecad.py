@@ -1051,6 +1051,156 @@ class FreeCadSkill(Skill):
 
         return self._run_script_list(L, f"Color {label}", f"RGB({r},{g},{b})", "OK_COLOR")
 
+    # ═══════════════════════════════════════════════════════════════════
+    # IMPORT/EXPORT (STEP, OBJ, STL)
+    # ═══════════════════════════════════════════════════════════════════
+
+    def _export_step(self, out_path):
+        if not out_path:
+            out_path = str(SANDBOX / f"export_{uuid.uuid4().hex[:8]}.step")
+        out_path = str(Path(out_path))
+        L = [chr(34) + "import FreeCAD" + chr(34),
+             chr(34) + "import Part" + chr(34),
+             chr(34) + "import os" + chr(34),
+             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
+             chr(34) + "if not os.path.exists(path):" + chr(34),
+             chr(34) + "    print('ERR_NO_WORKSPACE')" + chr(34),
+             chr(34) + "    import sys; sys.exit(1)" + chr(34),
+             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
+             "f" + chr(34) + "objs = [o for o in doc.Objects]" + chr(34),
+             "f" + chr(34) + "Part.export(objs, r'" + out_path.replace(chr(92), chr(47)) + "')" + chr(34),
+             chr(34) + "print('OK_EXPORT_STEP')" + chr(34)]
+
+        r = self._run_script_list(L, "STEP exportado", out_path, "OK_EXPORT_STEP")
+        if isinstance(r, dict) and "display" in r and "STEP" in r.get("display", ""):
+            r["display"] = "STEP exportado:\n  " + out_path + "\n\nAbre en FreeCAD, Fusion 360, SolidWorks, etc."
+        return r
+
+    def _export_obj(self, out_path):
+        if not out_path:
+            out_path = str(SANDBOX / f"export_{uuid.uuid4().hex[:8]}.obj")
+        out_path = str(Path(out_path))
+        L = [chr(34) + "import FreeCAD" + chr(34),
+             chr(34) + "import Mesh" + chr(34),
+             chr(34) + "import os" + chr(34),
+             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
+             chr(34) + "if not os.path.exists(path):" + chr(34),
+             chr(34) + "    print('ERR_NO_WORKSPACE')" + chr(34),
+             chr(34) + "    import sys; sys.exit(1)" + chr(34),
+             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
+             "f" + chr(34) + "output = r'" + out_path.replace(chr(92), chr(47)) + "'" + chr(34),
+             chr(34) + "import Part" + chr(34),
+             chr(34) + "for obj in doc.Objects:" + chr(34),
+             chr(34) + "    if hasattr(obj, 'Shape') and obj.Shape:" + chr(34),
+             chr(34) + "        try:" + chr(34),
+             chr(34) + "            mesh = Mesh.Mesh(obj.Shape.tessellate(0.1))" + chr(34),
+             chr(34) + "        except Exception:" + chr(34),
+             chr(34) + "            pass" + chr(34),
+             chr(34) + "        try:" + chr(34),
+             chr(34) + "            __import__('MeshPart').export([obj], output)" + chr(34),
+             chr(34) + "            break" + chr(34),
+             chr(34) + "        except Exception as e:" + chr(34),
+             chr(34) + "            print('WARN: ' + str(e))" + chr(34),
+             chr(34) + "print('OK_EXPORT_OBJ')" + chr(34)]
+
+        return self._run_script_list(L, "OBJ exportado", out_path, "OK_EXPORT_OBJ")
+
+    def _export_stl(self, out_path):
+        if not out_path:
+            out_path = str(SANDBOX / f"export_{uuid.uuid4().hex[:8]}.stl")
+        out_path = str(Path(out_path))
+        L = [chr(34) + "import FreeCAD" + chr(34),
+             chr(34) + "import Mesh" + chr(34),
+             chr(34) + "import MeshPart" + chr(34),
+             chr(34) + "import os" + chr(34),
+             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
+             chr(34) + "if not os.path.exists(path):" + chr(34),
+             chr(34) + "    print('ERR_NO_WORKSPACE')" + chr(34),
+             chr(34) + "    import sys; sys.exit(1)" + chr(34),
+             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
+             "f" + chr(34) + "output = r'" + out_path.replace(chr(92), chr(47)) + "'" + chr(34),
+             chr(34) + "exportado = False" + chr(34),
+             chr(34) + "for obj in doc.Objects:" + chr(34),
+             chr(34) + "    if hasattr(obj, 'Shape') and obj.Shape:" + chr(34),
+             chr(34) + "        try:" + chr(34),
+             chr(34) + "            mesh = doc.addObject('Mesh::Feature', 'STLExport')" + chr(34),
+             chr(34) + "            mesh.Mesh = MeshPart.meshFromShape(Shape=obj.Shape, LinearDeflection=0.1, AngularDeflection=0.5, Relative=False)" + chr(34),
+             chr(34) + "            mesh.Mesh.write(output)" + chr(34),
+             chr(34) + "            doc.removeObject(mesh.Name)" + chr(34),
+             chr(34) + "            exportado = True" + chr(34),
+             chr(34) + "            break" + chr(34),
+             chr(34) + "        except Exception as e:" + chr(34),
+             chr(34) + "            print('WARN: ' + str(e))" + chr(34),
+             chr(34) + "print('OK_EXPORT_STL')" + chr(34)]
+
+        return self._run_script_list(L, "STL exportado", out_path, "OK_EXPORT_STL")
+
+    def _import_step(self, step_path):
+        if not step_path or not Path(step_path).exists():
+            return {"thought": "", "display": f"No encuentro: {step_path}", "voice": "No encontrado."}
+        step_path = str(Path(step_path))
+        if not confirmation.require("freecad", "import_step", f"Importar {Path(step_path).name}"):
+            return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
+
+        L = [chr(34) + "import FreeCAD" + chr(34),
+             chr(34) + "import Part" + chr(34),
+             chr(34) + "import Import" + chr(34),
+             chr(34) + "import os" + chr(34),
+             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
+             chr(34) + "if os.path.exists(path):" + chr(34),
+             chr(34) + "    doc = FreeCAD.openDocument(path)" + chr(34),
+             chr(34) + "else:" + chr(34),
+             chr(34) + "    doc = FreeCAD.newDocument('NitroWorkspace')" + chr(34),
+             "f" + chr(34) + "Import.insert(r'" + step_path.replace(chr(92), chr(47)) + "', doc.Name)" + chr(34),
+             chr(34) + "doc.recompute()" + chr(34),
+             chr(34) + "doc.saveAs(path)" + chr(34),
+             chr(34) + "print('OK_IMPORT_STEP')" + chr(34),
+             "f" + chr(34) + "print('NUM_OBJ=' + str(len(doc.Objects)))" + chr(34)]
+
+        return self._run_script_list(L, "STEP importado", Path(step_path).name, "OK_IMPORT_STEP")
+
+    def _export_pdf_techdraw(self, out_path):
+        """Exporta las vistas a PDF usando TechDraw (mas fiable que importPDF)."""
+        if not out_path:
+            out_path = str(SANDBOX / f"export_{uuid.uuid4().hex[:8]}.pdf")
+        out_path = str(Path(out_path))
+        if not confirmation.require("freecad", "export_pdf_techdraw", f"Exportar a PDF: {Path(out_path).name}"):
+            return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
+
+        L = [chr(34) + "import FreeCAD" + chr(34),
+             chr(34) + "import TechDraw" + chr(34),
+             chr(34) + "import os" + chr(34),
+             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
+             chr(34) + "if not os.path.exists(path):" + chr(34),
+             chr(34) + "    print('ERR_NO_WORKSPACE')" + chr(34),
+             chr(34) + "    import sys; sys.exit(1)" + chr(34),
+             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
+             "f" + chr(34) + "output = r'" + out_path.replace(chr(92), chr(47)) + "'" + chr(34),
+             chr(34) + "try:" + chr(34),
+             chr(34) + "    page = doc.addObject('TechDraw::DrawPage', 'Page')" + chr(34),
+             chr(34) + "    template = doc.addObject('TechDraw::DrawSVGTemplate', 'Template')" + chr(34),
+             chr(34) + "    import TechDraw" + chr(34),
+             chr(34) + "    import os.path" + chr(34),
+             chr(34) + "    template.Template = os.path.join(TechDraw.getUserMacroDir(True), 'A4_LandscapeTD.svg')" + chr(34),
+             chr(34) + "    page.Template = template" + chr(34),
+             chr(34) + "    objs = [o for o in doc.Objects if hasattr(o, 'Shape') and o.Shape]" + chr(34),
+             chr(34) + "    for i, obj in enumerate(objs):" + chr(34),
+             chr(34) + "        view = doc.addObject('TechDraw::DrawViewPart', 'View' + str(i))" + chr(34),
+             chr(34) + "        view.Source = [obj]" + chr(34),
+             chr(34) + "        view.Direction = FreeCAD.Vector(1, 1, 1)" + chr(34),
+             chr(34) + "        view.Scale = 1.0" + chr(34),
+             chr(34) + "        page.addView(view)" + chr(34),
+             chr(34) + "    doc.recompute()" + chr(34),
+             chr(34) + "    TechDraw.writePageAsPdf(page, output)" + chr(34),
+             chr(34) + "    print('OK_PDF_TECHDRAW')" + chr(34),
+             chr(34) + "except Exception as e:" + chr(34),
+             chr(34) + "    print('ERR_PDF: ' + str(e))" + chr(34)]
+
+        r = self._run_script_list(L, "PDF exportado", out_path, "OK_PDF_TECHDRAW")
+        if isinstance(r, dict) and "display" in r and "PDF" in r.get("display", ""):
+            r["display"] = "PDF exportado (TechDraw):\n  " + out_path
+        return r
+
     def _run_script_list(self, lineas, nombre, info, marcador):
         """Helper: ejecuta un script de FreeCAD desde una lista de lineas."""
         script = chr(10).join(lineas)
