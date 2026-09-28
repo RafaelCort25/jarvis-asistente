@@ -402,19 +402,24 @@ class Router:
         if any(p in t for p in ["lista detallada de documentos", "listado detallado de docs",
                                  "documentos indexados detalle"]):
             return [{"skill": "docs", "action": "list_detailed", "params": {}}]
-        # Indexar carpeta con exclusiones automaticas
-        m = re.search(r"(?:indexa|analiza|lee)\s+(?:la\s+)?carpeta\s+(.+?)(?:\s+recursiv(?:o|amente))?$", t, re.IGNORECASE)
+        # Re-indexar SOLO archivos cambiados (va primero, es mas especifico)
+        m = re.search(r"re-?indexa\s+(?:la\s+)?carpeta\s+(.+)", t, re.IGNORECASE)
         if m:
-            path = m.group(1).strip().strip('"').strip("'")
-            recursive = "recursiv" in t.lower()
-            return [{"skill": "docs", "action": "index_folder_advanced",
-                     "params": {"path": path, "recursive": recursive, "reindex_only_changed": False}}]
-        # Re-indexar solo archivos cambiados
-        m = re.search(r"(?:re-?indexa|actualiza\s+el\s+indice\s+de)\s+(?:la\s+)?carpeta\s+(.+)", t, re.IGNORECASE)
-        if m:
-            path = m.group(1).strip().strip('"').strip("'")
+            path = m.group(1).strip().strip('"').strip("'").rstrip(".")
             return [{"skill": "docs", "action": "index_folder_advanced",
                      "params": {"path": path, "recursive": True, "reindex_only_changed": True}}]
+        # Indexar carpeta con exclusiones automaticas (varias formas)
+        # Formato 1: "indexa la carpeta X [recursivamente]"
+        # Formato 2: "indexa recursivamente la carpeta X"
+        m = re.search(
+            r"(?:indexa|analiza|lee)\s+(?:(recursiv\w*)\s+)?(?:la\s+)?carpeta\s+(.+?)(?:\s+(recursiv\w*))?$",
+            t, re.IGNORECASE
+        )
+        if m:
+            path = m.group(2).strip().strip('"').strip("'").rstrip(".")
+            recursive = bool(m.group(1) or m.group(3)) or "recursiv" in t.lower()
+            return [{"skill": "docs", "action": "index_folder_advanced",
+                     "params": {"path": path, "recursive": recursive, "reindex_only_changed": False}}]
 
         # ═══════════════════════════════════════════════════════════════════
         # GMAIL AVANZADO: adjuntos, busqueda, gestion, respuesta
