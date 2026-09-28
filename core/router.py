@@ -1962,7 +1962,14 @@ class Router:
         if m:
             return [{"skill": "files", "action": "list_folder", "params": {"folder": m.group(1)}}]
 
-        # PDF: convertir Word a PDF
+                # ═══════════════════════════════════════════════════════════════════
+        # FREECAD: pdf tecnico (ANTES del bloque PDF general)
+        # ═══════════════════════════════════════════════════════════════════
+        if any(p in t for p in ["exporta a pdf tecnico", "exporta plano a pdf",
+                                 "pdf techdraw", "exporta planos a pdf"]):
+            return [{"skill": "freecad", "action": "export_pdf_techdraw", "params": {}}]
+
+# PDF: convertir Word a PDF
         if re.search(r'\bpdf\b', t) and any(w in t for w in ["convierte", "convertir", "pasa", "exporta", "haz"]):
             # Excluir conversion a imagenes (lo maneja el bloque PDF avanzado mas abajo)
             es_a_imagenes = any(w in t.lower() for w in ["imagenes", "imagen", "png", "jpg", "jpeg", "foto"])
@@ -2813,9 +2820,6 @@ class Router:
         if any(p in t for p in ["exporta a dxf", "exporta el proyecto a dxf"]):
             return [{"skill": "freecad", "action": "export_dxf", "params": {}}]
 
-        # Export PDF techdraw
-        if any(p in t for p in ["exporta a pdf tecnico", "exporta plano a pdf", "pdf techdraw"]):
-            return [{"skill": "freecad", "action": "export_pdf_techdraw", "params": {}}]
 
         # Import STEP
         _m = _re_fc.search(r"importa\s+(?:el\s+)?(?:archivo\s+)?(?:step\s+)?(\S+\.step)", t, _re_fc.IGNORECASE)
