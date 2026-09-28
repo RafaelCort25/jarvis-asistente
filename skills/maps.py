@@ -626,6 +626,28 @@ class MapsSkill(Skill):
             )
         if action == "create_detailed":
             return self._create_detailed(params)
+        # ── Nuevas acciones (geo utilidades) ──
+        if action == "get_coordinates":
+            return self._get_coordinates(params.get("query", ""))
+        if action == "reverse_geocode":
+            return self._reverse_geocode(
+                params.get("lat", 0),
+                params.get("lon", 0),
+            )
+        if action == "distance":
+            return self._distance(
+                params.get("lat1", 0), params.get("lon1", 0),
+                params.get("lat2", 0), params.get("lon2", 0),
+            )
+        if action == "get_route":
+            return self._get_route(params)
+        if action == "nearby_search":
+            return self._nearby_search(params)
+        if action == "get_elevation":
+            return self._get_elevation(
+                params.get("lat", 0),
+                params.get("lon", 0),
+            )
         return f"Accion desconocida en maps: {action}"
 
     def _create_detailed(self, params):
@@ -831,6 +853,269 @@ class MapsSkill(Skill):
             ),
             "voice": f"Encontre {elegido.get('name') or 'un edificio'}, altura {altura:.0f} metros.",
         }
+
+    # ═══════════════════════════════════════════════════════════════════
+    # NUEVAS ACCIONES: geo utilidades
+    # ═══════════════════════════════════════════════════════════════════
+
+    def _get_coordinates(self, query):
+        """Direccion -> lat/lon (geocoding)."""
+        query = (query or "").strip()
+        if not query:
+            return {"thought": "", "display": "Dime la direccion.", "voice": "Falta la direccion."}
+
+        data, err = _nominatim_search(query)
+        if err:
+            return {"thought": "Error", "display": err, "voice": "Error buscando."}
+        if not data:
+            return {"thought": "", "display": "No encontre esa direccion.", "voice": "No encontre."}
+
+        lugar = data[0]
+        lat = lugar.get("lat", "?")
+        lon = lugar.get("lon", "?")
+        nombre = lugar.get("display_name", query)
+
+        return {
+            "thought": "Coordenadas: " + str(lat) + ", " + str(lon),
+            "display": (
+                "**Ubicacion: " + nombre + "**\n"
+                "  Latitud: " + str(lat) + "\n"
+                "  Longitud: " + str(lon)
+            ),
+            "voice": "Lat " + str(lat) + ", lon " + str(lon),
+        }
+
+    def _reverse_geocode(self, lat, lon):
+        """lat/lon -> direccion (reverse geocoding)."""
+        try:
+            lat = float(lat)
+            lon = float(lon)
+        except (ValueError, TypeError):
+            return {"thought": "", "display": "Coordenadas invalidas.", "voice": "Coordenadas invalidas."}
+
+        url = "https://nominatim.openstreetmap.org/reverse"
+        import time
+        ahora = time.time()
+        delta = ahora - _nominatim_last_call[0]
+        if delta < NOMINATIM_MIN_INTERVAL:
+            time.sleep(NOMINATIM_MIN_INTERVAL - delta)
+
+        try:
+            r = requests.get(
+                url,
+                params={"lat": lat, "lon": lon, "format": "json", "addressdetails": 1},
+                headers={"User-Agent": USER_AGENT},
+                timeout=TIMEOUT,
+            )
+            _nominatim_last_call[0] = time.time()
+            if r.status_code != 200:
+                return {"thought": "Error", "display": "Nominatim respondio " + str(r.status_code), "voice": "Error."}
+            data = r.json()
+            direccion = data.get("display_name", "(sin direccion)")
+            addr = data.get("address", {})
+            partes = []
+            for k in ["road", "house_number", "suburb", "city", "state", "country"]:
+                if k in addr:
+                    partes.append(k + ": " + str(addr[k]))
+            return {
+                "thought": "Direccion: " + direccion[:60],
+                "display": (
+                    "**Direccion:**\n" + direccion + "\n\n"
+                    "**Componentes:**\n  " + "\n  ".join(partes) if partes else "  (sin detalles)"
+                ),
+                "voice": direccion[:80],
+            }
+        except Exception as e:
+            return {"thought": "Error", "display": "Error: " + str(e), "voice": "Error."}
+
+    def _distance(self, lat1, lon1, lat2, lon2):
+        """Distancia haversine entre 2 puntos (km)."""
+        try:
+            lat1 = float(lat1); lon1 = float(lon1)
+            lat2 = float(lat2); lon2 = float(lon2)
+        except (ValueError, TypeError):
+            return {"thought": "", "display": "Coordenadas invalidas.", "voice": "Coordenadas invalidas."}
+
+        R = 6371.0
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+        a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+        c = 2 * math.asin(math.sqrt(a))
+        dist = R * c
+
+        return {
+            "thought": "Distancia: " + str(round(dist, 2)) + " km",
+            "display": (
+                "**Distancia (linea recta):**\n"
+                "  " + str(round(dist, 3)) + " km\n"
+                "  " + str(round(dist * 1000)) + " metros"
+            ),
+            "voice": str(round(dist, 1)) + " kilometros.",
+        }
+
+    def _get_route(self, params):
+        """Ruta entre 2 puntos usando OSRM (Open Source Routing Machine)."""
+        origen = params.get("from", "").strip()
+        destino = params.get("to", "").strip()
+        modo = params.get("mode", "driving").lower()  # driving | walking | cycling
+        if not origen or not destino:
+            return {"thought": "", "display": "Necesito 'from' y 'to'.", "voice": "Faltan origen y destino."}
+
+        # Geocodificar origen y destino
+        data1, err1 = _nominatim_search(origen)
+        data2, err2 = _nominatim_search(destino)
+        if err1 or not data1:
+            return {"thought": "", "display": "No encontre: " + origen, "voice": "No encontre origen."}
+        if err2 or not data2:
+            return {"thought": "", "display": "No encontre: " + destino, "voice": "No encontre destino."}
+
+        lon1, lat1 = float(data1[0]["lon"]), float(data1[0]["lat"])
+        lon2, lat2 = float(data2[0]["lon"]), float(data2[0]["lat"])
+
+        if modo not in ("driving", "walking", "cycling"):
+            modo = "driving"
+
+        url = "https://router.project-osrm.org/route/v1/" + modo + "/" + str(lon1) + "," + str(lat1) + ";" + str(lon2) + "," + str(lat2)
+        try:
+            r = requests.get(url, params={"overview": "false", "steps": "true"}, timeout=TIMEOUT)
+            if r.status_code != 200:
+                return {"thought": "Error", "display": "OSRM respondio " + str(r.status_code), "voice": "Error."}
+            data = r.json()
+            if not data.get("routes"):
+                return {"thought": "", "display": "No encontre ruta.", "voice": "Sin ruta."}
+            route = data["routes"][0]
+            dist_km = route["distance"] / 1000.0
+            dur_min = route["duration"] / 60.0
+
+            # Extraer pasos legibles
+            pasos = []
+            for leg in route.get("legs", []):
+                for step in leg.get("steps", [])[:15]:
+                    maniobra = step.get("maneuver", {}).get("type", "")
+                    nombre = step.get("name", "")
+                    dist_step = step.get("distance", 0)
+                    if nombre:
+                        pasos.append("  - " + maniobra + " en " + nombre + " (" + str(int(dist_step)) + "m)")
+                    else:
+                        pasos.append("  - " + maniobra + " (" + str(int(dist_step)) + "m)")
+
+            return {
+                "thought": "Ruta: " + str(round(dist_km, 1)) + " km, " + str(round(dur_min)) + " min",
+                "display": (
+                    "**Ruta (" + modo + "):**\n"
+                    "  De: " + data1[0]["display_name"][:60] + "\n"
+                    "  A:  " + data2[0]["display_name"][:60] + "\n"
+                    "  Distancia: " + str(round(dist_km, 2)) + " km\n"
+                    "  Duracion estimada: " + str(int(dur_min)) + " min\n\n"
+                    "**Instrucciones:**\n" + "\n".join(pasos[:10])
+                ),
+                "voice": str(round(dist_km, 1)) + " km, " + str(int(dur_min)) + " minutos.",
+            }
+        except Exception as e:
+            return {"thought": "Error", "display": "Error: " + str(e), "voice": "Error."}
+
+    def _nearby_search(self, params):
+        """Busca POIs cercanos a un punto."""
+        lugar = params.get("place", "").strip()
+        categoria = params.get("category", "restaurant").lower()
+        radio = int(params.get("radius", 500))
+
+        if not lugar:
+            return {"thought": "", "display": "Dime el lugar.", "voice": "Falta el lugar."}
+
+        # Geocodificar
+        data, err = _nominatim_search(lugar)
+        if err or not data:
+            return {"thought": "", "display": "No encontre: " + lugar, "voice": "No encontre el lugar."}
+
+        lat = float(data[0]["lat"])
+        lon = float(data[0]["lon"])
+
+        # Mapear categoria a tags de OSM
+        cat_map = {
+            "restaurant": 'amenity=restaurant',
+            "cafe": 'amenity=cafe',
+            "bar": 'amenity=bar',
+            "bank": 'amenity=bank',
+            "hospital": 'amenity=hospital',
+            "pharmacy": 'amenity=pharmacy',
+            "supermarket": 'shop=supermarket',
+            "hotel": 'tourism=hotel',
+            "gas": 'amenity=fuel',
+            "parking": 'amenity=parking',
+            "school": 'amenity=school',
+            "atm": 'amenity=atm',
+        }
+        tag = cat_map.get(categoria, 'amenity=restaurant')
+
+        query = (
+            "[out:json][timeout:30];\n"
+            "node[" + tag + "](around:" + str(radio) + "," + str(lat) + "," + str(lon) + ");\n"
+            "out body;"
+        )
+
+        for url in OVERPASS_SERVERS:
+            try:
+                r = requests.post(url, data={"data": query}, headers={"User-Agent": USER_AGENT}, timeout=30)
+                if r.status_code == 200:
+                    osm_data = r.json()
+                    break
+            except Exception:
+                continue
+        else:
+            return {"thought": "Error", "display": "Overpass no respondio.", "voice": "Error."}
+
+        elementos = osm_data.get("elements", [])
+        if not elementos:
+            return {"thought": "", "display": "No hay " + categoria + " en " + str(radio) + "m.", "voice": "Nada cercano."}
+
+        lineas = ["**" + categoria.title() + " cerca de " + lugar + " (" + str(len(elementos)) + "):**"]
+        for el in elementos[:10]:
+            tags = el.get("tags", {})
+            nombre = tags.get("name", "(sin nombre)")
+            direccion = tags.get("addr:street", "")
+            el_lat = el.get("lat", 0)
+            el_lon = el.get("lon", 0)
+            # Calcular distancia aprox
+            dlat = math.radians(el_lat - lat)
+            dlon = math.radians(el_lon - lon)
+            a = math.sin(dlat/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(el_lat)) * math.sin(dlon/2)**2
+            dist_m = 6371000 * 2 * math.asin(math.sqrt(a))
+            lineas.append("  - " + nombre + " (" + str(int(dist_m)) + "m)" + (" - " + direccion if direccion else ""))
+
+        return {
+            "thought": str(len(elementos)) + " resultados",
+            "display": "\n".join(lineas),
+            "voice": "Encontre " + str(len(elementos)) + " lugares.",
+        }
+
+    def _get_elevation(self, lat, lon):
+        """Altitud de un punto usando Open-Meteo."""
+        try:
+            lat = float(lat); lon = float(lon)
+        except (ValueError, TypeError):
+            return {"thought": "", "display": "Coordenadas invalidas.", "voice": "Coordenadas invalidas."}
+
+        url = "https://api.open-meteo.com/v1/elevation"
+        try:
+            r = requests.get(url, params={"latitude": lat, "longitude": lon}, timeout=TIMEOUT)
+            if r.status_code != 200:
+                return {"thought": "Error", "display": "Open-Meteo respondio " + str(r.status_code), "voice": "Error."}
+            data = r.json()
+            elevation = data.get("elevation", [None])[0]
+            if elevation is None:
+                return {"thought": "", "display": "Sin datos de elevacion.", "voice": "Sin datos."}
+            return {
+                "thought": "Elevacion: " + str(elevation) + "m",
+                "display": (
+                    "**Elevacion:**\n"
+                    "  " + str(elevation) + " metros sobre el nivel del mar\n"
+                    "  Coordenadas: " + str(lat) + ", " + str(lon)
+                ),
+                "voice": str(elevation) + " metros.",
+            }
+        except Exception as e:
+            return {"thought": "Error", "display": "Error: " + str(e), "voice": "Error."}
 
     def _create_model(self, query, output, formato, altura_override=None):
         query = (query or "").strip()
