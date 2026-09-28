@@ -391,6 +391,54 @@ class Router:
 
         # ═══════════════════════════════════════════════════════════════════
         # ═══════════════════════════════════════════════════════════════════
+        # RETOUCH: quitar fondo, upscaling, sombras, watermark
+        # ═══════════════════════════════════════════════════════════════════
+        # Quitar fondo
+        m = re.search(r"(?:quita|elimina|borra|remueve)\s+(?:el\s+)?fondo\s+(?:de\s+|a\s+)?(.+?)(?:\s|$)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "retouch", "action": "remove_bg",
+                     "params": {"path": m.group(1).strip()}}]
+        # Aumentar resolucion
+        m = re.search(r"(?:aumenta|mejora|sube|escala)\s+(?:la\s+)?(?:resolucion|calidad|tamano)\s+(?:de\s+)?(.+?)(?:\s+(\d)x)?$", t, re.IGNORECASE)
+        if m:
+            scale = int(m.group(2)) if m.group(2) else 4
+            return [{"skill": "retouch", "action": "upscale",
+                     "params": {"path": m.group(1).strip(), "scale": scale}}]
+        m = re.search(r"(?:haz|pon)\s+(?:la\s+)?imagen\s+(.+?)\s+(\d)x\s+mas\s+grande", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "retouch", "action": "upscale",
+                     "params": {"path": m.group(1).strip(), "scale": int(m.group(2))}}]
+        # Fondo blanco/color
+        m = re.search(r"(?:pon|a[nñ]ade|aplica)\s+(?:un\s+)?fondo\s+(blanco|negro|transparente)\s+(?:a|en)\s+(.+?)$", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "retouch", "action": "white_bg",
+                     "params": {"color": m.group(1).strip(), "path": m.group(2).strip()}}]
+        # Mejorar brillo/contraste
+        if any(p in t for p in ["mejora el brillo", "sube el brillo", "mejora el contraste",
+                                 "mas saturacion", "mas nitidez", "mejora la imagen"]):
+            m = re.search(r"(?:de|a|en)\s+(.+?)$", t)
+            path = m.group(1).strip() if m else ""
+            return [{"skill": "retouch", "action": "enhance",
+                     "params": {"path": path, "brightness": 1.1, "contrast": 1.1, "saturation": 1.1, "sharpness": 1.2}}]
+        # Sombra
+        m = re.search(r"(?:a[nñ]ade|pon|crea)\s+(?:una\s+)?sombra\s+(?:a|en|realista a)\s+(.+?)$", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "retouch", "action": "shadow",
+                     "params": {"path": m.group(1).strip()}}]
+        # Watermark
+        m = re.search(r"(?:pon|a[nñ]ade|marca)\s+(?:una\s+)?(?:marca\s+de\s+agua|watermark)\s+(?:con\s+)?[\"']?(.+?)[\"']?\s+(?:a|en)\s+(.+?)$", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "retouch", "action": "watermark",
+                     "params": {"text": m.group(1).strip(), "path": m.group(2).strip(), "position": "bottom-right"}}]
+        # Batch de carpeta
+        m = re.search(r"(?:retoca|procesa|mejora)\s+(?:la\s+)?carpeta\s+(.+?)(?:\s+(?:quitando|con)\s+(.+))?$", t, re.IGNORECASE)
+        if m:
+            folder = m.group(1).strip()
+            steps = ["remove_bg", "upscale"]
+            return [{"skill": "retouch", "action": "batch",
+                     "params": {"path": folder, "steps": steps, "upscale_scale": 4}}]
+
+        # ═══════════════════════════════════════════════════════════════════
         # MACRO: rename/duplicate/info/speed
         # ═══════════════════════════════════════════════════════════════════
         # Renombrar macro
