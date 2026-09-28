@@ -27,6 +27,9 @@ PLAYBACK_ABORT_KEY = keyboard.Key.esc
 # Blindaje: delay antes de reproducir (segundos)
 PLAYBACK_DELAY_SEC = 5
 
+# Delay antes de empezar a grabar (para que el usuario cambie a la ventana objetivo)
+RECORD_DELAY_SEC = 3
+
 # Blindaje: procesos en los que NO se reproduce por seguridad
 PROCESS_BLACKLIST = {
     # Navegadores (evita el incidente con DeepSeek)
@@ -197,6 +200,39 @@ class MacroSkill(Skill):
             self._record_name = slug
             self._last_move_t = 0.0
             self._record_window = active_window
+
+        # Delay para que el usuario cambie a la ventana objetivo
+        print(f"[MACRO] Empezando en {RECORD_DELAY_SEC} segundos. Cambia a la ventana objetivo. Pulsa ESC para abortar.")
+        abort_early = False
+
+        def on_press_early(key):
+            nonlocal abort_early
+            if key == keyboard.Key.esc:
+                abort_early = True
+                return False
+
+        early_listener = keyboard.Listener(on_press=on_press_early)
+        early_listener.start()
+
+        t0 = time.time()
+        while time.time() - t0 < RECORD_DELAY_SEC:
+            if abort_early:
+                break
+            time.sleep(0.05)
+
+        try:
+            early_listener.stop()
+        except Exception:
+            pass
+
+        if abort_early:
+            with self._record_lock:
+                self._recording = False
+            return {
+                "thought": "Abortado antes de grabar",
+                "display": "Cancelado por ESC antes de empezar a grabar.",
+                "voice": "Cancelado.",
+            }
 
         print(f"[MACRO] Grabando '{slug}'. Pulsa ESC para parar.")
 
@@ -372,6 +408,50 @@ class MacroSkill(Skill):
         saved_exe = saved_window.get("exe", "")
         saved_title = saved_window.get("title", "")
 
+        # Confirmacion normal
+        summary = (
+            f"Ejecutar macro '{name}' "
+            f"({len(events)} eventos, {duration:.1f}s)"
+        )
+        if not confirmation.require("macro", "play", summary):
+            return {
+                "thought": "Cancelado por el usuario",
+                "display": "Cancelado.",
+                "voice": "Cancelado.",
+            }
+
+        # Delay con opcion de abortar (para que el usuario cambie a la ventana objetivo)
+        print(f"[MACRO] Empezando en {PLAYBACK_DELAY_SEC} segundos.")
+        print(f"[MACRO] Cambia a la ventana objetivo AHORA. Pulsa ESC para abortar.")
+        abort_early = False
+
+        def on_press_early(key):
+            nonlocal abort_early
+            if key == keyboard.Key.esc:
+                abort_early = True
+                return False
+
+        early_listener = keyboard.Listener(on_press=on_press_early)
+        early_listener.start()
+
+        t0 = time.time()
+        while time.time() - t0 < PLAYBACK_DELAY_SEC:
+            if abort_early:
+                break
+            time.sleep(0.05)
+
+        try:
+            early_listener.stop()
+        except Exception:
+            pass
+
+        if abort_early:
+            return {
+                "thought": "Abortado antes de empezar",
+                "display": "Cancelado por ESC antes de empezar.",
+                "voice": "Cancelado.",
+            }
+
         # ═══ BLINDAJE 1: Lista negra de procesos ═══
         current = _get_active_window_info()
         current_exe = (current or {}).get("exe", "")
@@ -404,49 +484,6 @@ class MacroSkill(Skill):
                     "display": "Cancelado. Cambia a la ventana correcta e intenta otra vez.",
                     "voice": "Cancelado.",
                 }
-
-        # Confirmacion normal
-        summary = (
-            f"Ejecutar macro '{name}' "
-            f"({len(events)} eventos, {duration:.1f}s)"
-        )
-        if not confirmation.require("macro", "play", summary):
-            return {
-                "thought": "Cancelado por el usuario",
-                "display": "Cancelado.",
-                "voice": "Cancelado.",
-            }
-
-        # ═══ BLINDAJE 3: Delay con opcion de abortar ═══
-        print(f"[MACRO] Empezando en {PLAYBACK_DELAY_SEC} segundos. Pulsa ESC para abortar.")
-        abort_early = False
-
-        def on_press_early(key):
-            nonlocal abort_early
-            if key == keyboard.Key.esc:
-                abort_early = True
-                return False
-
-        early_listener = keyboard.Listener(on_press=on_press_early)
-        early_listener.start()
-
-        t0 = time.time()
-        while time.time() - t0 < PLAYBACK_DELAY_SEC:
-            if abort_early:
-                break
-            time.sleep(0.05)
-
-        try:
-            early_listener.stop()
-        except Exception:
-            pass
-
-        if abort_early:
-            return {
-                "thought": "Abortado antes de empezar",
-                "display": "Cancelado por ESC antes de empezar.",
-                "voice": "Cancelado.",
-            }
 
         print(f"[MACRO] Reproduciendo '{name}' ({len(events)} eventos)...")
         print("[MACRO] Pulsa ESC para abortar.")
