@@ -2831,6 +2831,55 @@ class Router:
                                  "vacia el workspace", "borrar el documento freecad"]):
             return [{"skill": "freecad", "action": "clear_workspace", "params": {}}]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # MAPS: geo utilidades
+        # ═══════════════════════════════════════════════════════════════════
+        import re as _re_maps
+
+        # Coordenadas de una direccion
+        _m = _re_maps.search(r"(?:coordenadas|lat(?:itud)?\s+y\s+lon(?:gitud)?|ubicacion geografica)\s+(?:de|del?)\s+(.+)", t, _re_maps.IGNORECASE)
+        if _m:
+            return [{"skill": "maps", "action": "get_coordinates", "params": {"query": _m.group(1).strip()}}]
+
+        # Reverse geocoding
+        _m = _re_maps.search(r"(?:que direccion es|donde esta)\s*\(?\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)?", t, _re_maps.IGNORECASE)
+        if _m:
+            return [{"skill": "maps", "action": "reverse_geocode", "params": {"lat": float(_m.group(1)), "lon": float(_m.group(2))}}]
+
+        # Distancia entre 2 direcciones
+        _m = _re_maps.search(r"(?:distancia|cuantos? km)\s+(?:de|desde|entre)\s+(.+?)\s+(?:a|hasta|y)\s+(.+)$", t, _re_maps.IGNORECASE)
+        if _m:
+            return [{"skill": "maps", "action": "get_route", "params": {"from": _m.group(1).strip(), "to": _m.group(2).strip()}}]
+
+        # Ruta
+        _m = _re_maps.search(r"(?:como (?:llego|ir)|ruta|itinerario|indicaciones)\s+(?:de|desde)\s+(.+?)\s+(?:a|hasta)\s+(.+)$", t, _re_maps.IGNORECASE)
+        if _m:
+            return [{"skill": "maps", "action": "get_route", "params": {"from": _m.group(1).strip(), "to": _m.group(2).strip()}}]
+
+        # Nearby (restaurantes, bancos, etc)
+        _m = _re_maps.search(r"(?:restaurantes?|cafes?|bares?|bancos?|hospitales?|farmacias?|supermercados?|hoteles?|gasolineras?)\s+(?:cerca|en|de)\s+(?:de\s+)?(.+)$", t, _re_maps.IGNORECASE)
+        if _m:
+            cat_match = _re_maps.search(r"(restaurantes?|cafes?|bares?|bancos?|hospitales?|farmacias?|supermercados?|hoteles?|gasolineras?)", t, _re_maps.IGNORECASE)
+            cat_raw = cat_match.group(1).lower() if cat_match else "restaurant"
+            # Singularizar
+            if cat_raw.endswith("es"):
+                cat = cat_raw[:-2]
+            elif cat_raw.endswith("s"):
+                cat = cat_raw[:-1]
+            else:
+                cat = cat_raw
+            # Mapear plurales
+            cat_map = {"restaurante": "restaurant", "cafe": "cafe", "bar": "bar",
+                       "banco": "bank", "hospital": "hospital", "farmacia": "pharmacy",
+                       "supermercado": "supermarket", "hotel": "hotel", "gasolinera": "gas"}
+            cat = cat_map.get(cat, "restaurant")
+            return [{"skill": "maps", "action": "nearby_search", "params": {"place": _m.group(1).strip(), "category": cat}}]
+
+        # Elevacion
+        _m = _re_maps.search(r"(?:elevacion|altitud|altura sobre el nivel del mar)\s+(?:de|en)\s+(.+)$", t, _re_maps.IGNORECASE)
+        if _m:
+            return [{"skill": "maps", "action": "get_coordinates", "params": {"query": _m.group(1).strip()}}]
+
         return None
 
     def _normalize(self, result):

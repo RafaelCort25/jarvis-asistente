@@ -25,6 +25,8 @@ _nominatim_last_call = [0.0]  # mutable para usar dentro de funcion
 OVERPASS_SERVERS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ]
 USER_AGENT = "Nitro-JARVIS/1.0 (personal assistant)"
 
@@ -1054,16 +1056,27 @@ class MapsSkill(Skill):
             "out body;"
         )
 
-        for url in OVERPASS_SERVERS:
+        osm_data = None
+        errores = []
+        for i, url in enumerate(OVERPASS_SERVERS):
             try:
-                r = requests.post(url, data={"data": query}, headers={"User-Agent": USER_AGENT}, timeout=30)
+                print("[MAPS] Probando servidor " + str(i+1) + "/" + str(len(OVERPASS_SERVERS)) + "...")
+                r = requests.post(url, data={"data": query}, headers={"User-Agent": USER_AGENT}, timeout=45)
                 if r.status_code == 200:
                     osm_data = r.json()
+                    print("[MAPS] OK en " + url)
                     break
-            except Exception:
+                else:
+                    errores.append(url.split("/")[2] + ": " + str(r.status_code))
+            except Exception as e:
+                errores.append(url.split("/")[2] + ": " + str(e)[:60])
                 continue
-        else:
-            return {"thought": "Error", "display": "Overpass no respondio.", "voice": "Error."}
+        if osm_data is None:
+            return {
+                "thought": "Error Overpass",
+                "display": "Todos los servidores Overpass fallaron.\n\n" + "\n".join("  - " + e for e in errores) + "\n\nPrueba en 1-2 minutos (Overpass se satura).",
+                "voice": "Servidores de mapas saturados, prueba en un minuto.",
+            }
 
         elementos = osm_data.get("elements", [])
         if not elementos:
