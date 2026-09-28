@@ -1415,7 +1415,144 @@ class Router:
         if _m:
             return [{"skill": "dev", "action": "create_venv", "params": {"path": _m.group(1).strip()}}]
 
-# MAPS: buscar edificios reales en OpenStreetMap
+        import re as _re_office_prio
+
+        # ═══ TRANSLATE ═══
+        _m = _re_office_prio.search(r"(?:traduce|traducir|traduccion|traducción)\s+(?:esto|este texto|el texto)?\s*(?:a|al|en)\s+(?:el\s+)?(ingles|inglés|english|frances|francés|french|aleman|alemán|german|italiano|italian|portugues|portugués|japones|japonés|japanese|chino|chinese|ruso|russian)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            idioma = _m.group(1).lower()
+            resto = t.split(":", 1)
+            texto = resto[1].strip() if len(resto) > 1 else ""
+            return [{"skill": "translate", "action": "text", "params": {"text": texto, "to": idioma}}]
+
+        # ═══ DEV: revisar/analizar archivo (ampliado) ═══
+        _m = _re_office_prio.search(r"(?:revisa|analiza|examina|estudia)\s+(?:el\s+|la\s+|este\s+|esta\s+|mi\s+|mis\s+)?(?:archivo\s+|codigo\s+|código\s+)?(\S+\.(?:py|js|ts|jsx|tsx|java|cpp|c|h|go|rs|rb|php|json|yaml|yml|html|css|sql))", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "dev", "action": "review_file", "params": {"path": _m.group(1).strip()}}]
+
+        # ═══ TERMINAL: ejecutar comandos ═══
+        _m = _re_office_prio.search(r"(?:ejecuta|corre|lanza|run|shell)\s+(.+)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "terminal", "action": "run", "params": {"command": _m.group(1).strip()}}]
+        if _re_office_prio.match(r"^git\s+", t, _re_office_prio.IGNORECASE):
+            return [{"skill": "git", "action": "auto", "params": {"command": t}}]
+
+        # ═══ CLIPBOARD ═══
+        _m = _re_office_prio.search(r"(?:que|qué)\s+hay\s+en\s+(?:el\s+)?portapapeles", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "clipboard", "action": "read", "params": {}}]
+        _m = _re_office_prio.search(r"(?:lee|muestra|ver)\s+(?:el\s+)?portapapeles", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "clipboard", "action": "read", "params": {}}]
+        _m = _re_office_prio.search(r"(?:copia|guarda)\s+(.+?)\s+(?:al?\s+)?portapapeles", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "clipboard", "action": "write", "params": {"text": _m.group(1).strip()}}]
+
+        # ═══ EDIT: modificar archivos existentes ═══
+        _m = _re_office_prio.search(r"(?:anade|añade|agrega|inserta)\s+(?:una?\s+)?(?:fila|linea|línea|columna)\s+(?:a|al|en)\s+(?:el\s+)?(?:este\s+|mi\s+)?(.+?)(?:\s+(.+))?$", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "edit", "action": "add_row", "params": {"target": _m.group(1).strip(), "content": (_m.group(2) or "").strip()}}]
+        _m = _re_office_prio.search(r"(?:modifica|cambia|reemplaza|edita)\s+(?:el\s+)?(?:contenido\s+de\s+)?(?:este\s+|mi\s+)?(.+)$", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "edit", "action": "modify", "params": {"target": _m.group(1).strip()}}]
+
+        # ═══ DOCS: RAG / indexar documentos ═══
+        _m = _re_office_prio.search(r"(?:indexa|aprende|procesa|ingesta)\s+(?:mi|mis|el|la)\s+(?:carpeta|documentos|apuntes|pdfs|notas)\s*(.+)?$", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "docs", "action": "index", "params": {"path": (_m.group(1) or "").strip()}}]
+        _m = _re_office_prio.search(r"(?:busca|pregunta)\s+en\s+(?:mis\s+)?(?:documentos|apuntes|pdfs|notas)\s+(.+)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "docs", "action": "query", "params": {"query": _m.group(1).strip()}}]
+
+        # ═══ CALENDAR: eventos ═══
+        _m = _re_office_prio.search(r"(?:apunta|anade|añade|agenda|crea|pon)\s+(?:una?\s+)?(?:reunion|reunión|evento|cita|recordatorio)\s+(.+)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "calendar", "action": "add", "params": {"when": _m.group(1).strip()}}]
+        _m = _re_office_prio.search(r"(?:que|qué)\s+(?:eventos|reuniones|citas)\s+tengo\s+(.+)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "calendar", "action": "list", "params": {"range": _m.group(1).strip()}}]
+
+        # ═══ SCHEDULER: recordatorios con tiempo ═══
+        _m = _re_office_prio.search(r"(?:recuerdame|recuérdame|avisame|avísame|recordarme)\s+(.+?)\s+(?:en|dentro\s+de)\s+(.+)$", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "scheduler", "action": "remind", "params": {"task": _m.group(1).strip(), "when": _m.group(2).strip()}}]
+        _m = _re_office_prio.search(r"(?:recuerdame|recuérdame|avisame|avísame)\s+(.+?)\s+(?:el|a\s+las?)\s+(.+)$", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "scheduler", "action": "remind", "params": {"task": _m.group(1).strip(), "when": _m.group(2).strip()}}]
+
+        # ═══ MACRO ═══
+        if _re_office_prio.search(r"(?:graba|grabar)\s+(?:una?\s+)?macro", t, _re_office_prio.IGNORECASE):
+            return [{"skill": "macro", "action": "record", "params": {}}]
+        _m = _re_office_prio.search(r"(?:reproduce|ejecuta)\s+(?:la\s+)?macro\s+(.+)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "macro", "action": "play", "params": {"name": _m.group(1).strip()}}]
+
+        # ═══ SPOTIFY (reforzar current) ═══
+        _m = _re_office_prio.search(r"(?:que|qué)\s+(?:esta|está)\s+sonando|que\s+(?:cancion|canción)\s+suena|pausa\s+(?:la\s+)?(?:musica|música|spotify)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            if "pausa" in t.lower():
+                return [{"skill": "spotify", "action": "pause", "params": {}}]
+            return [{"skill": "spotify", "action": "current", "params": {}}]
+
+        # ═══ CANVA ═══
+        _m = _re_office_prio.search(r"(?:lista|muestra)\s+(?:mis\s+)?(?:disenos|diseños|designs)\s+(?:de\s+)?canva", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "canva", "action": "list_designs", "params": {}}]
+
+        # ═══ WEATHER ═══
+        _m = _re_office_prio.search(r"(?:que|qué)\s+tiempo\s+hace\s+en\s+(.+)|clima\s+(?:de|en)\s+(.+)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            ciudad = (_m.group(1) or _m.group(2) or "").strip()
+            return [{"skill": "weather", "action": "current", "params": {"city": ciudad}}]
+
+        # ═══ ALARM ═══
+        _m = _re_office_prio.search(r"(?:pon|crea|configura)\s+(?:una?\s+)?alarma\s+(?:a\s+las?\s+)?(.+)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "alarm", "action": "set", "params": {"time": _m.group(1).strip()}}]
+
+        # ═══ AUDIO (transcribir) ═══
+        _m = _re_office_prio.search(r"(?:transcribe|transcribir|pasa\s+a\s+texto)\s+(?:este\s+|el\s+|la\s+)?(?:audio|archivo|voz|reunion|reunión)\s*(.+)?$", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "audio", "action": "transcribe", "params": {"path": (_m.group(1) or "").strip()}}]
+
+        # ═══ DEV (revisar/analizar archivo) ═══
+        _m = _re_office_prio.search(r"(?:revisa|analiza|examina|estudia)\s+(?:el\s+)?(?:archivo\s+|codigo\s+|código\s+)?(\S+\.(?:py|js|ts|jsx|tsx|java|cpp|c|go|rs|rb|php))", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "dev", "action": "review_file", "params": {"path": _m.group(1).strip()}}]
+
+        # ═══ GMAIL ═══
+        _m = _re_office_prio.search(r"(?:lee|muestra|ver)\s+(?:los\s+)?(?:ultimos|últimos|nuevos)\s+correos", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "gmail", "action": "list_recent", "params": {"limit": 5}}]
+
+        # ═══ BROWSER: abrir apps/sitios directamente ═══
+        _m = _re_office_prio.search(r"(?:abre|abrir|abre\s+la|abre\s+el)\s+(youtube|google|wikipedia|gmail|github|stackoverflow|chatgpt|spotify\s+web)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            sitio = _m.group(1).lower().replace(" ", "")
+            return [{"skill": "browser", "action": "open", "params": {"target": sitio}}]
+
+        # ═══════════════════════════════════════════════════════════════════
+        # OFFICE: interceptar antes de maps (crear Word/Excel/PowerPoint)
+        # ═══════════════════════════════════════════════════════════════════
+        _m = _re_office_prio.search(r"(?:crea|genera|haz|hazme)\s+(?:un|una)\s+(word|excel|powerpoint|ppt|docx|xlsx|pptx)(?:\s+(?:con|sobre|de)\s+(.+))?", t, _re_office_prio.IGNORECASE)
+        if _m:
+            tipo = _m.group(1).lower()
+            tema = (_m.group(2) or "").strip()
+            tipo_map = {"word": "word", "docx": "word", "excel": "excel", "xlsx": "excel", "powerpoint": "powerpoint", "ppt": "powerpoint", "pptx": "powerpoint"}
+            return [{"skill": "office", "action": "create", "params": {"tipo": tipo_map.get(tipo, "word"), "tema": tema}}]
+
+        # FIX 2: "genera una imagen" → image (no maps)
+        _m = _re_office_prio.search(r"(?:genera|crea|haz|hazme|dibuja)\s+(?:una?\s+)?(?:imagen|foto|ilustracion|dibujo)(?:\s+(?:de|sobre|con)\s+(.+))?", t, _re_office_prio.IGNORECASE)
+        if _m:
+            prompt = (_m.group(1) or "").strip()
+            return [{"skill": "image", "action": "generate", "params": {"prompt": prompt}}]
+
+        # FIX 3: "reproduce musica" → entertainment (no browser)
+        _m = _re_office_prio.search(r"(?:reproduce|pon|toca|escucha)\s+(?:la\s+)?(?:musica|música|radio|una cancion|una canción)(?:\s+(.+))?", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "entertainment", "action": "play_music", "params": {}}]
+
+        # MAPS: buscar edificios reales en OpenStreetMap
         # ═══════════════════════════════════════════════════════════════════
 
         # Info de un edificio
