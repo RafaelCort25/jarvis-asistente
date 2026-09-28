@@ -140,6 +140,24 @@ class MacroSkill(Skill):
             return self._list()
         if action == "delete":
             return self._delete(params.get("name", ""))
+        # ── Nuevas acciones ──
+        if action == "rename":
+            return self._rename(
+                params.get("name", ""),
+                params.get("new_name", ""),
+            )
+        if action == "duplicate":
+            return self._duplicate(
+                params.get("name", ""),
+                params.get("new_name", ""),
+            )
+        if action == "info":
+            return self._info(params.get("name", ""))
+        if action == "edit_speed":
+            return self._edit_speed(
+                params.get("name", ""),
+                params.get("factor", 1.0),
+            )
         return f"Accion desconocida en macro: {action}"
 
     # ─── START RECORDING ─────────────────────────────────────────────────
@@ -549,6 +567,179 @@ class MacroSkill(Skill):
         }
 
     # ─── DELETE ──────────────────────────────────────────────────────────
+
+    # ─── RENAME ──────────────────────────────────────────────────────────
+
+    def _rename(self, name, new_name):
+        """Renombra un macro existente."""
+        name = _slugify(name or "")
+        new_name = _slugify(new_name or "")
+
+        if not name or not new_name:
+            return {"thought": "", "display": "Necesito el nombre actual y el nuevo.", "voice": "Faltan nombres."}
+
+        old_path = MACROS_DIR / f"{name}.json"
+        new_path = MACROS_DIR / f"{new_name}.json"
+
+        if not old_path.exists():
+            return f"No encontre el macro '{name}'."
+        if new_path.exists():
+            return f"Ya existe un macro llamado '{new_name}'."
+
+        if not confirmation.require("macro", "rename", f"Renombrar '{name}' a '{new_name}'"):
+            return "Cancelado."
+
+        try:
+            data = json.loads(old_path.read_text(encoding="utf-8"))
+            data["name"] = new_name
+            new_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+            old_path.unlink()
+        except Exception as e:
+            return f"Error renombrando: {e}"
+
+        return {
+            "thought": f"Macro renombrado: {name} -> {new_name}",
+            "display": f"Macro renombrado:\n  {name} -> {new_name}",
+            "voice": f"Listo. Renombre el macro a {new_name}.",
+        }
+
+    # ─── DUPLICATE ───────────────────────────────────────────────────────
+
+    def _duplicate(self, name, new_name):
+        """Duplica un macro existente con otro nombre."""
+        name = _slugify(name or "")
+        new_name = _slugify(new_name or "")
+
+        if not name:
+            return {"thought": "", "display": "Necesito el nombre del macro.", "voice": "Falta nombre."}
+        if not new_name:
+            new_name = f"{name}_copia"
+
+        old_path = MACROS_DIR / f"{name}.json"
+        new_path = MACROS_DIR / f"{new_name}.json"
+
+        if not old_path.exists():
+            return f"No encontre el macro '{name}'."
+        if new_path.exists():
+            return f"Ya existe un macro llamado '{new_name}'."
+
+        try:
+            import shutil
+            data = json.loads(old_path.read_text(encoding="utf-8"))
+            data["name"] = new_name
+            data["created"] = datetime.now().isoformat()
+            new_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as e:
+            return f"Error duplicando: {e}"
+
+        return {
+            "thought": f"Macro duplicado: {name} -> {new_name}",
+            "display": f"Macro duplicado:\n  {name} -> {new_name}",
+            "voice": f"Listo. Duplicado como {new_name}.",
+        }
+
+    # ─── INFO ────────────────────────────────────────────────────────────
+
+    def _info(self, name):
+        """Muestra detalles de un macro: fecha, duracion, ventana, tipos de eventos."""
+        name = _slugify(name or "")
+        path = MACROS_DIR / f"{name}.json"
+
+        if not path.exists():
+            return f"No encontre el macro '{name}'."
+
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:
+            return f"Error leyendo macro: {e}"
+
+        events = data.get("events", [])
+        duration = data.get("duration", 0)
+        created = data.get("created", "?")
+        window = data.get("window") or {}
+
+        # Contar tipos de eventos
+        tipos = {}
+        for ev in events:
+            t = ev.get("type", "?")
+            tipos[t] = tipos.get(t, 0) + 1
+
+        # Detectar teclas mas usadas
+        teclas = {}
+        for ev in events:
+            if ev.get("type") == "key_press":
+                k = ev.get("key", "")
+                teclas[k] = teclas.get(k, 0) + 1
+        top_teclas = sorted(teclas.items(), key=lambda x: -x[1])[:5]
+
+        lineas = [
+            f"**Macro:** {name}",
+            f"**Creado:** {created[:19]}",
+            f"**Duracion:** {duration:.1f}s",
+            f"**Eventos:** {len(events)}",
+            f"**Ventana original:** {window.get('title', '?')} ({window.get('exe', '?')})",
+            "",
+            "**Tipos de eventos:**",
+        ]
+        for t, n in sorted(tipos.items(), key=lambda x: -x[1]):
+            lineas.append(f"  - {t}: {n}")
+
+        if top_teclas:
+            lineas.append("")
+            lineas.append("**Teclas mas usadas:**")
+            for k, n in top_teclas:
+                lineas.append(f"  - {k}: {n}")
+
+        return {
+            "thought": f"Info del macro '{name}'",
+            "display": "\n".join(lineas),
+            "voice": f"El macro {name} tiene {len(events)} eventos y dura {duration:.1f} segundos.",
+        }
+
+    # ─── EDIT SPEED ──────────────────────────────────────────────────────
+
+    def _edit_speed(self, name, factor):
+        """Cambia la velocidad de reproduccion de un macro.
+
+        factor < 1 = mas rapido (0.5 = mitad de tiempo)
+        factor > 1 = mas lento (2.0 = doble de tiempo)
+        """
+        name = _slugify(name or "")
+        path = MACROS_DIR / f"{name}.json"
+
+        if not path.exists():
+            return f"No encontre el macro '{name}'."
+
+        try:
+            factor = float(factor)
+        except (ValueError, TypeError):
+            return {"thought": "", "display": "El factor debe ser un numero (ej: 0.5, 2.0).", "voice": "Factor invalido."}
+
+        if not (0.1 <= factor <= 5.0):
+            return {"thought": "", "display": "El factor debe estar entre 0.1 y 5.0.", "voice": "Factor fuera de rango."}
+
+        if not confirmation.require("macro", "edit_speed", f"Cambiar velocidad de '{name}' por factor {factor}"):
+            return "Cancelado."
+
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            events = data.get("events", [])
+            for ev in events:
+                ev["t"] = round(ev["t"] * factor, 3)
+            # Reordenar por si acaso
+            events.sort(key=lambda e: e["t"])
+            data["duration"] = round(events[-1]["t"], 3) if events else 0
+            data["speed_factor"] = factor
+            path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as e:
+            return f"Error editando: {e}"
+
+        label = f"{factor}x" if factor >= 1 else f"{1/factor:.1f}x mas rapido"
+        return {
+            "thought": f"Velocidad de '{name}' cambiada a factor {factor}",
+            "display": f"Velocidad de '{name}' ajustada a {label}.\nNueva duracion: {data['duration']:.1f}s",
+            "voice": f"Listo. Nueva duracion: {data['duration']:.1f} segundos.",
+        }
 
     def _delete(self, name):
         name = _slugify(name or "")

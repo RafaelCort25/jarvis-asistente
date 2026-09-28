@@ -391,6 +391,38 @@ class Router:
 
         # ═══════════════════════════════════════════════════════════════════
         # ═══════════════════════════════════════════════════════════════════
+        # MACRO: rename/duplicate/info/speed
+        # ═══════════════════════════════════════════════════════════════════
+        # Renombrar macro
+        m = re.search(r"(?:renombra|cambia\s+el\s+nombre\s+de)\s+(?:el\s+)?macro\s+(\S+)\s+(?:a|por)\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "macro", "action": "rename",
+                     "params": {"name": m.group(1).strip(), "new_name": m.group(2).strip()}}]
+        # Duplicar macro
+        m = re.search(r"(?:duplica|copia)\s+(?:el\s+)?macro\s+(\S+)(?:\s+(?:a|como|con\s+el\s+nombre)\s+(\S+))?", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "macro", "action": "duplicate",
+                     "params": {"name": m.group(1).strip(), "new_name": (m.group(2) or "").strip()}}]
+        # Info de macro
+        m = re.search(r"(?:info|detalles|informacion)\s+(?:de|del)\s+(?:el\s+)?macro\s+(\S+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "macro", "action": "info", "params": {"name": m.group(1).strip()}}]
+        # Cambiar velocidad
+        m = re.search(r"(?:cambia|pon|ajusta)\s+(?:la\s+)?velocidad\s+(?:de|del)\s+(?:el\s+)?macro\s+(\S+)\s+(?:a|por)\s+([\d\.]+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "macro", "action": "edit_speed",
+                     "params": {"name": m.group(1).strip(), "factor": float(m.group(2))}}]
+        # Velocidad x2, mas rapido, mas lento
+        m = re.search(r"(?:haz|pon)\s+(?:el\s+)?macro\s+(\S+)\s+(\d+)\s*veces\s+mas\s+(rapido|lento)", t, re.IGNORECASE)
+        if m:
+            name = m.group(1).strip()
+            factor = float(m.group(2))
+            if "rapido" in m.group(3).lower():
+                factor = 1.0 / factor
+            return [{"skill": "macro", "action": "edit_speed",
+                     "params": {"name": name, "factor": factor}}]
+
+        # ═══════════════════════════════════════════════════════════════════
         # EDUCATION: diagramas avanzados (PNG/SVG), render, list
         # ═══════════════════════════════════════════════════════════════════
         # Diagrama con verbo + tipo especifico (mindmap, timeline, pie, etc.)
