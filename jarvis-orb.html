@@ -1126,6 +1126,49 @@
   }
   .onb-skills-link:hover { border-color: var(--gold); border-style: solid; background: rgba(201,166,104,0.08); }
   .onb-skills-link svg { width: 14px; height: 14px; }
+
+  /* ═══ WAKE WORD BUTTON ═══ */
+  .wake-btn {
+    position: relative;
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .wake-btn:hover { border-color: var(--gold); color: var(--text); }
+  .wake-btn.active {
+    border-color: var(--gold);
+    color: var(--gold-bright);
+    background: rgba(201,166,104,0.12);
+    box-shadow: 0 0 20px rgba(201,166,104,0.2);
+  }
+  .wake-btn.active::before {
+    content: '';
+    position: absolute;
+    left: 6px; top: 50%;
+    width: 6px; height: 6px;
+    background: #e8c992;
+    border-radius: 50%;
+    transform: translateY(-50%);
+    animation: wake-pulse 1.5s ease-in-out infinite;
+  }
+  .wake-btn.active { padding-left: 20px; }
+  @keyframes wake-pulse {
+    0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); }
+    50%      { opacity: 0.4; transform: translateY(-50%) scale(1.4); }
+  }
+
+ /* Wake word: oculto temporalmente (feature en desarrollo) */
+ .wake-btn.wake-hidden { display: none !important; }
 </style>
 </head>
 <body>
@@ -2625,6 +2668,18 @@ sysBtn.addEventListener('click', abrirStatus);
   setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 100);
 })();
 
+// Boton Wake Word en la topbar
+(function() {
+  const wb = document.createElement('button');
+  wb.id = 'wakeBtn';
+  wb.className = 'wake-btn';
+  wb.title = 'Escucha continua: desactivada';
+  wb.innerHTML = '<i data-lucide="mic" style="width:12px;height:12px;"></i><span>Oye Senna</span>';
+    wb.classList.add('wake-hidden');  // oculto hasta que se arregle el wake word
+  sysBtn.parentElement.insertBefore(wb, sysBtn.nextSibling.nextSibling);
+  setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 100);
+})();
+
 // Boton recargar modelos
 const _btnReload = document.getElementById('btnReloadModels');
 if (_btnReload) _btnReload.addEventListener('click', cargarModelos);
@@ -3298,6 +3353,108 @@ function abrirSkillDetalle(skillId) {
 
   window.addEventListener('mousemove', updateMouse, { passive: true });
   console.log('[PARALLAX v2] Listo. Elementos:', LAYERS.length);
+})();
+
+// ═══════════════════════════════════════════════════════════
+
+// WAKE WORD "Oye Senna" v3 - Polling
+(function senna_wake_v3() {
+    let wakeEnabled = false;
+    let pollTimer = null;
+    let wakeTriggered = false;
+
+    async function toggleWake() {
+        wakeEnabled = !wakeEnabled;
+        updateButton();
+        if (wakeEnabled) {
+            try {
+                const res = await fetch('/wake/enable', { method: 'POST' });
+                const data = await res.json();
+                if (!data.ok) {
+                    console.error('[WAKE] Error activando:', data.error);
+                    wakeEnabled = false;
+                    updateButton();
+                    return;
+                }
+                startPolling();
+                console.log('[WAKE] Escucha continua ACTIVADA (polling)');
+                if (typeof playTone === 'function') {
+                    playTone(880, 0.08);
+                    playTone(1320, 0.12, 'sine', 0.05, 0.07);
+                }
+            } catch(e) {
+                console.error('[WAKE] Error:', e);
+                wakeEnabled = false;
+                updateButton();
+            }
+        } else {
+            try { await fetch('/wake/disable', { method: 'POST' }); } catch(e) {}
+            stopPolling();
+            console.log('[WAKE] Escucha continua DESACTIVADA');
+            if (typeof playTone === 'function') {
+                playTone(660, 0.08);
+                playTone(440, 0.12, 'sine', 0.05, 0.07);
+            }
+        }
+    }
+
+    function startPolling() {
+        stopPolling();
+        pollTimer = setInterval(async () => {
+            if (!wakeEnabled) return;
+            try {
+                const res = await fetch('/wake/poll');
+                const data = await res.json();
+                if (data.detected && !wakeTriggered) {
+                    console.log('[WAKE] *** DETECTADO ***', data.text);
+                    fetch('/wake/consume', { method: 'POST' }).catch(() => {});
+                    handleWake();
+                }
+            } catch(e) {}
+        }, 400);
+    }
+
+    function stopPolling() {
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    function handleWake() {
+        if (wakeTriggered) return;
+        wakeTriggered = true;
+        setTimeout(() => { wakeTriggered = false; }, 3000);
+        if (typeof soundListening === 'function') soundListening();
+        if (typeof enterConversation === 'function') enterConversation();
+        if (typeof setState === 'function') setState('listening');
+        setTimeout(() => {
+            if (typeof startRecording === 'function') startRecording();
+        }, 200);
+    }
+
+    function updateButton() {
+        const btn = document.getElementById('wakeBtn');
+        if (!btn) return;
+        if (wakeEnabled) {
+            btn.classList.add('active');
+            btn.title = 'Escucha continua: ACTIVADA';
+        } else {
+            btn.classList.remove('active');
+            btn.title = 'Escucha continua: desactivada';
+        }
+    }
+
+    let tries = 0;
+    function bindWhenReady() {
+        const btn = document.getElementById('wakeBtn');
+        if (btn) {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            newBtn.addEventListener('click', toggleWake);
+            console.log('[WAKE v3] Boton listo (polling)');
+        } else if (tries++ < 30) {
+            setTimeout(bindWhenReady, 200);
+        }
+    }
+    bindWhenReady();
 })();
 </script>
 </body>

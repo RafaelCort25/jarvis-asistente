@@ -993,3 +993,74 @@ def models_set(payload: ModeloPayload):
     if _save_models_config(config):
         return {"ok": True, "activo": config}
     return {"ok": False, "error": "No se pudo guardar"}
+
+
+# ============================================================
+# ============================================================
+# WAKE WORD - Escucha continua con Whisper local (POLLING)
+# ============================================================
+import time as _time
+import threading as _threading
+
+_wake_listener = None
+_wake_stt = None
+_wake_detection = {"detected": False, "text": "", "timestamp": 0.0}
+_wake_lock = _threading.Lock()
+
+def _get_wake_listener():
+    global _wake_listener, _wake_stt
+    if _wake_listener is None:
+        from voice.stt import STT
+        from voice.wake_word_listener import WakeWordListener
+        print("[WAKE] Inicializando STT + listener...")
+        _wake_stt = STT()
+        _wake_listener = WakeWordListener(_wake_stt, device=1)
+    return _wake_listener
+
+def _wake_broadcast(text):
+    global _wake_detection
+    with _wake_lock:
+        _wake_detection["detected"] = True
+        _wake_detection["text"] = text
+        _wake_detection["timestamp"] = _time.time()
+    print(f"[WAKE] Broadcast: {text}")
+
+@app.post("/wake/enable")
+def wake_enable():
+    try:
+        listener = _get_wake_listener()
+        if not getattr(listener, "_has_callback", False):
+            listener.subscribe(_wake_broadcast)
+            listener._has_callback = True
+        listener.start()
+        return {"ok": True, "running": listener.is_running()}
+    except Exception as e:
+        import traceback
+        return {"ok": False, "error": str(e), "trace": traceback.format_exc()}
+
+@app.post("/wake/disable")
+def wake_disable():
+    try:
+        if _wake_listener is not None:
+            _wake_listener.stop()
+        return {"ok": True, "running": False}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.get("/wake/status")
+def wake_status():
+    if _wake_listener is None:
+        return {"ok": True, "running": False, "init": False}
+    return {"ok": True, "running": _wake_listener.is_running(), "init": True}
+
+@app.get("/wake/poll")
+def wake_poll():
+    with _wake_lock:
+        return dict(_wake_detection)
+
+@app.post("/wake/consume")
+def wake_consume():
+    with _wake_lock:
+        _wake_detection["detected"] = False
+        _wake_detection["text"] = ""
+    return {"ok": True}
