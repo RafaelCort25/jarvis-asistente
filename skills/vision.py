@@ -303,7 +303,16 @@ class VisionSkill(Skill):
     def _list_models(self):
         try:
             r = ollama.list()
-            modelos = [m.get("name", "?") for m in r.get("models", [])]
+            # ollama.list() devuelve un objeto con .models (lista de objetos) o dict
+            raw_models = getattr(r, "models", None) or r.get("models", [])
+            modelos = []
+            for m in raw_models:
+                if hasattr(m, "model"):
+                    modelos.append(m.model)
+                elif isinstance(m, dict):
+                    modelos.append(m.get("name") or m.get("model") or str(m))
+                else:
+                    modelos.append(str(m))
             # Palabras clave de modelos de vision conocidos
             kws = ["vl", "llava", "moondream", "vision", "phi", "bunny", "minicpm", "cogvlm", "florence"]
             vision_candidates = [m for m in modelos if any(k in m.lower() for k in kws)]
