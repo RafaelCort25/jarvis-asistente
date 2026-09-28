@@ -3090,6 +3090,41 @@ class Router:
         if _m:
             return [{"skill": "spotify", "action": "volume", "params": {"percent": int(_m.group(1))}}]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # CANVA: disenos y assets
+        # ═══════════════════════════════════════════════════════════════════
+        import re as _re_cv
+
+        # Listar disenos
+        if any(p in t for p in ["lista mis disenos de canva", "que disenos tengo en canva",
+                                 "mis disenos en canva", "listar canva"]):
+            return [{"skill": "canva", "action": "list_designs", "params": {}}]
+
+        # Listar assets
+        if any(p in t for p in ["lista mis assets de canva", "que assets tengo",
+                                 "mis imagenes en canva", "listar assets canva"]):
+            return [{"skill": "canva", "action": "list_assets", "params": {}}]
+
+        # Info de un diseno
+        _m = _re_cv.search(r"(?:info|detalles|que hay en)\s+(?:del?\s+)?diseno\s+(\S+)", t, _re_cv.IGNORECASE)
+        if _m:
+            return [{"skill": "canva", "action": "get_design", "params": {"id": _m.group(1).strip()}}]
+
+        # Crear diseno
+        _m = _re_cv.search(r"(?:crea|crear|nuevo)\s+(?:un\s+)?(?:diseno|design)\s+(?:en\s+canva\s+)?(?:de\s+|con\s+)?(.+)", t, _re_cv.IGNORECASE)
+        if _m and "canva" in t.lower():
+            return [{"skill": "canva", "action": "create_design", "params": {"description": _m.group(1).strip()}}]
+
+        # Exportar diseno
+        _m = _re_cv.search(r"(?:exporta|descarga|descargar)\s+(?:el\s+)?diseno\s+(\S+)", t, _re_cv.IGNORECASE)
+        if _m:
+            return [{"skill": "canva", "action": "export_design", "params": {"id": _m.group(1).strip()}}]
+
+        # Quien soy en Canva
+        if any(p in t for p in ["whoami canva", "estado canva", "test canva", "probar canva"]):
+            return [{"skill": "canva", "action": "whoami", "params": {}}]
+
+
         return None
 
     def _normalize(self, result):
