@@ -43,6 +43,7 @@ from skills.edit import EditSkill
 from skills.education import EducationSkill
 from skills.macro import MacroSkill
 from skills.audio import AudioSkill
+from skills.calendar import CalendarSkill
 from skills.n8n import N8nSkill
 from skills.gmail import GmailSkill
 from skills.canva import CanvaSkill
@@ -102,6 +103,7 @@ class Router:
             "education": EducationSkill(),
             "macro": MacroSkill(),
             "audio": AudioSkill(),
+            "calendar": CalendarSkill(),
             "n8n": N8nSkill(),
             "gmail": GmailSkill(),
             "canva": CanvaSkill(),
@@ -392,6 +394,67 @@ class Router:
             return "__N8N_BUILDER__"
 
         # ═══════════════════════════════════════════════════════════════════
+        # ═══════════════════════════════════════════════════════════════════
+        # CALENDAR: eventos y citas
+        # ═══════════════════════════════════════════════════════════════════
+        # Crear evento (varias formas)
+        # "agrega/crea/pon evento X mañana a las 15:00"
+        m = re.search(
+            r"(?:agrega|a[nñ]ade|crea|pon|apunta|programa)\s+(?:un\s+)?(?:evento|cita|reunion|reunión|recordatorio)\s+"
+            r"[\"']?(.+?)[\"']?\s+(?:para\s+|el\s+|mañana|hoy|pasado\s+mañana)\s*(.+)?$",
+            t, re.IGNORECASE
+        )
+        if m and any(k in t.lower() for k in ["evento", "cita", "reunion", "reunión", "recordatorio"]):
+            titulo = m.group(1).strip()
+            resto = (m.group(2) or "").strip()
+            # Intentar extraer fecha/hora del texto completo
+            fecha = ""
+            hora = ""
+            # Buscar patron de fecha
+            if "mañana" in t.lower() or "manana" in t.lower():
+                fecha = "mañana"
+            elif "hoy" in t.lower():
+                fecha = "hoy"
+            elif "pasado" in t.lower():
+                fecha = "pasado mañana"
+            else:
+                m_f = re.search(r"(\d{1,2}[/\-]\d{1,2}(?:[/\-]\d{2,4})?)", t)
+                if m_f:
+                    fecha = m_f.group(1)
+            # Buscar hora
+            m_h = re.search(r"(?:a\s+las?\s+)?(\d{1,2}[:.]\d{2}|\d{1,2}\s*(?:am|pm|h))", t, re.IGNORECASE)
+            if m_h:
+                hora = m_h.group(1)
+            return [{"skill": "calendar", "action": "add",
+                     "params": {"title": titulo, "date": fecha or "hoy", "time": hora}}]
+        # Recordatorio rapido
+        m = re.search(r"(?:recuerdame|recordarme|recuerda)\s+(.+?)\s+(mañana|hoy|pasado\s+mañana|\d{1,2}[/\-]\d{1,2})", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "calendar", "action": "add",
+                     "params": {"title": m.group(1).strip(), "date": m.group(2).strip()}}]
+        # Listar eventos
+        if any(p in t for p in ["eventos de hoy", "que eventos tengo hoy", "que tengo hoy", "agenda de hoy", "mi agenda de hoy"]):
+            return [{"skill": "calendar", "action": "today", "params": {}}]
+        if any(p in t for p in ["eventos de mañana", "eventos de manana", "que eventos tengo mañana", "que tengo mañana", "agenda de mañana"]):
+            return [{"skill": "calendar", "action": "tomorrow", "params": {}}]
+        if any(p in t for p in ["eventos de la semana", "que eventos tengo esta semana", "agenda de la semana", "mi semana", "eventos de los proximos dias"]):
+            return [{"skill": "calendar", "action": "week", "params": {}}]
+        if any(p in t for p in ["que eventos tengo", "mi agenda", "mi calendario", "lista de eventos", "todos los eventos"]):
+            return [{"skill": "calendar", "action": "list", "params": {"range": "week"}}]
+        # Borrar evento por ID
+        m = re.search(r"(?:borra|elimina|quita|cancela)\s+(?:el\s+)?(?:evento|cita)\s+([a-f0-9]{6,10})", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "calendar", "action": "delete", "params": {"id": m.group(1)}}]
+        # Exportar calendario
+        if any(p in t for p in ["exporta el calendario", "exporta mi calendario", "descarga el calendario",
+                                 "exportar calendario", "genera el ics", "exporta a ics"]):
+            return [{"skill": "calendar", "action": "export", "params": {}}]
+        # Buscar hueco libre
+        m = re.search(r"(?:cuando|que hora)\s+(?:tengo|estoy)\s+libre\s+(hoy|mañana|manana|pasado\s+mañana|\d{1,2}[/\-]\d{1,2})", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "calendar", "action": "find_free",
+                     "params": {"date": m.group(1).strip(), "duration": "30 minutos"}}]
+
         # ═══════════════════════════════════════════════════════════════════
         # AUDIO: transcribir, subtitulos SRT, batch
         # ═══════════════════════════════════════════════════════════════════
