@@ -2764,6 +2764,69 @@ class Router:
             if sp:
                 return [{"skill": "blender", "action": "render_views", "params": {"step_path": sp}}]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # FREECAD: arquitectura y modelado 3D
+        # ═══════════════════════════════════════════════════════════════════
+        import re as _re_fc
+
+        # Nuevo documento
+        if any(p in t for p in ["nuevo documento freecad", "nuevo proyecto freecad",
+                                 "crea un documento freecad", "inicia freecad"]):
+            return [{"skill": "freecad", "action": "new_document", "params": {}}]
+
+        # Listar objetos
+        if any(p in t for p in ["lista objetos freecad", "que hay en freecad",
+                                 "objetos del workspace", "listar objetos del proyecto"]):
+            return [{"skill": "freecad", "action": "list_objects", "params": {}}]
+
+        # Anadir muro 3D (con coordenadas)
+        _m = _re_fc.search(r"muro.*?(?:de|desde)\s*\(?(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\)?\s*(?:a|hasta|->)\s*\(?(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\)?", t, _re_fc.IGNORECASE)
+        if _m and "freecad" in t.lower():
+            return [{"skill": "freecad", "action": "add_wall_3d", "params": {
+                "x1": float(_m.group(1)), "y1": float(_m.group(2)),
+                "x2": float(_m.group(3)), "y2": float(_m.group(4)),
+                "height": 3.0, "thickness": 0.15}}]
+
+        # Anadir columna
+        _m = _re_fc.search(r"(?:columna|pilar)\s+(?:en|a)\s*\(?(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\)?", t, _re_fc.IGNORECASE)
+        if _m and "freecad" in t.lower():
+            return [{"skill": "freecad", "action": "add_column", "params": {
+                "x": float(_m.group(1)), "y": float(_m.group(2)), "height": 3.0}}]
+
+        # Anadir losa
+        if any(p in t for p in ["anade una losa", "crea una losa", "anade un suelo", "crea un techo"]):
+            return [{"skill": "freecad", "action": "add_slab", "params": {}}]
+
+        # Export STEP
+        if any(p in t for p in ["exporta a step", "exporta el proyecto a step", "guardar como step"]):
+            return [{"skill": "freecad", "action": "export_step", "params": {}}]
+
+        # Export OBJ
+        if any(p in t for p in ["exporta a obj", "exporta el proyecto a obj"]):
+            return [{"skill": "freecad", "action": "export_obj", "params": {}}]
+
+        # Export STL
+        if any(p in t for p in ["exporta a stl", "exporta el proyecto a stl"]):
+            return [{"skill": "freecad", "action": "export_stl", "params": {}}]
+
+        # Export DXF
+        if any(p in t for p in ["exporta a dxf", "exporta el proyecto a dxf"]):
+            return [{"skill": "freecad", "action": "export_dxf", "params": {}}]
+
+        # Export PDF techdraw
+        if any(p in t for p in ["exporta a pdf tecnico", "exporta plano a pdf", "pdf techdraw"]):
+            return [{"skill": "freecad", "action": "export_pdf_techdraw", "params": {}}]
+
+        # Import STEP
+        _m = _re_fc.search(r"importa\s+(?:el\s+)?(?:archivo\s+)?(?:step\s+)?(\S+\.step)", t, _re_fc.IGNORECASE)
+        if _m:
+            return [{"skill": "freecad", "action": "import_step", "params": {"path": _m.group(1)}}]
+
+        # Limpiar workspace
+        if any(p in t for p in ["borra el workspace de freecad", "limpia freecad",
+                                 "vacia el workspace", "borrar el documento freecad"]):
+            return [{"skill": "freecad", "action": "clear_workspace", "params": {}}]
+
         return None
 
     def _normalize(self, result):
