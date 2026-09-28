@@ -1169,6 +1169,104 @@
 
  /* Wake word: oculto temporalmente (feature en desarrollo) */
  .wake-btn.wake-hidden { display: none !important; }
+
+/* CREDENCIALES V2 */
+.creds-progress-box {
+  padding: 16px 20px; margin-bottom: 24px; border-radius: 10px;
+  border: 1px solid rgba(201,166,104,0.2); background: rgba(201,166,104,0.05);
+}
+.creds-progress-info {
+  display: flex; justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+  color: var(--text); margin-bottom: 10px;
+}
+.creds-progress-info strong { color: var(--gold-bright); }
+.creds-progress-bar {
+  height: 6px; background: rgba(201,166,104,0.1); border-radius: 3px; overflow: hidden;
+}
+.creds-progress-fill {
+  height: 100%; background: linear-gradient(90deg, #c9a668, #e8c992);
+  border-radius: 3px; transition: width 0.5s ease;
+}
+.creds-categoria { margin-bottom: 28px; }
+.creds-categoria-title {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+  color: var(--gold); letter-spacing: 0.2em; text-transform: uppercase;
+  margin-bottom: 12px; padding-bottom: 8px;
+  border-bottom: 1px solid rgba(201,166,104,0.15);
+}
+.cred-item {
+  margin-bottom: 10px; border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: rgba(20,17,13,0.4); overflow: hidden;
+  transition: border-color 0.2s;
+}
+.cred-item.configurado { border-color: rgba(127,176,105,0.3); }
+.cred-item.expanded { border-color: rgba(201,166,104,0.4); }
+.cred-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 18px; cursor: pointer; user-select: none;
+}
+.cred-header:hover { background: rgba(201,166,104,0.05); }
+.cred-header-left { display: flex; align-items: center; gap: 12px; }
+.cred-icon { color: var(--gold); display: inline-flex; }
+.cred-icon svg { width: 18px; height: 18px; }
+.cred-name { font-family: 'Fraunces', serif; font-size: 1.05rem; color: var(--text); }
+.cred-status {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+  padding: 4px 10px; border-radius: 12px; letter-spacing: 0.05em;
+}
+.cred-status.ok {
+  color: #90c090; background: rgba(127,176,105,0.1);
+  border: 1px solid rgba(127,176,105,0.3);
+}
+.cred-status.pending {
+  color: var(--text-dim); background: rgba(201,166,104,0.05);
+  border: 1px solid rgba(201,166,104,0.15);
+}
+.cred-content { max-height: 0; overflow: hidden; transition: max-height 0.4s ease; padding: 0 18px; }
+.cred-item.expanded .cred-content { max-height: 1200px; padding: 6px 18px 18px; }
+.cred-desc { font-size: 0.82rem; color: var(--text-dim); line-height: 1.6; margin-bottom: 16px; }
+.cred-pasos {
+  padding: 14px 16px; margin-bottom: 16px; border-radius: 8px;
+  background: rgba(201,166,104,0.04); border-left: 3px solid rgba(201,166,104,0.4);
+}
+.cred-pasos-title {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+  color: var(--gold-bright); letter-spacing: 0.1em; margin-bottom: 10px;
+}
+.cred-pasos-list { margin-left: 1.2em; font-size: 0.82rem; color: var(--text); line-height: 1.75; }
+.cred-pasos-list li { margin-bottom: 4px; }
+.cred-docs-link {
+  display: inline-block; margin-top: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+  color: var(--gold-bright); text-decoration: none;
+  border-bottom: 1px dashed rgba(201,166,104,0.4); padding-bottom: 1px;
+}
+.cred-docs-link:hover { color: #fff; }
+.cred-fields { margin-bottom: 14px; }
+.cred-field { margin-bottom: 12px; }
+.cred-field label {
+  display: block; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+  color: var(--text-dim); letter-spacing: 0.05em; margin-bottom: 6px;
+}
+.cred-field input {
+  width: 100%; padding: 10px 12px; border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  background: rgba(10,9,8,0.6); color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+  outline: none;
+}
+.cred-field input:focus { border-color: var(--gold); }
+.cred-actions { display: flex; gap: 10px; margin-top: 12px; }
+.cred-result {
+  margin-top: 12px; padding: 10px 14px; border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; display: none;
+}
+.cred-result.loading, .cred-result.ok, .cred-result.err { display: block; }
+.cred-result.loading { color: var(--gold-bright); background: rgba(201,166,104,0.05); border: 1px solid rgba(201,166,104,0.2); }
+.cred-result.ok { color: #90c090; background: rgba(127,176,105,0.08); border: 1px solid rgba(127,176,105,0.25); }
+.cred-result.err { color: #d0a0a0; background: rgba(224,80,80,0.08); border: 1px solid rgba(224,80,80,0.25); }
 </style>
 </head>
 <body>
@@ -2631,7 +2729,12 @@ async function abrirCreds() {
   try {
     const res = await fetch('/credentials/list');
     const data = await res.json();
-    renderCreds(data.integraciones || []);
+    // Usar V2 si esta activo, sino el viejo
+    if (window.USE_CREDS_V2 && typeof window.renderCredsV2 === 'function') {
+      window.renderCredsV2(data);
+    } else {
+      renderCreds(data.integraciones || data);
+    }
   } catch (e) {
     document.getElementById('credsBody').innerHTML = `<p style="color:#d0a0a0; text-align:center; padding:20px;">Error: ${e.message}</p>`;
   }
@@ -3457,5 +3560,183 @@ function abrirSkillDetalle(skillId) {
     bindWhenReady();
 })();
 </script>
+
+<!-- ═══ CREDENCIALES V2 (script aislado, activable por flag) ═══ -->
+<script>
+window.USE_CREDS_V2 = true;  // Activado por defecto
+window.renderCredsV2 = function(data) {
+  var integraciones = Array.isArray(data) ? data : (data.integraciones || []);
+  var total = (data && data.total) || integraciones.length;
+  var configuradas = integraciones.filter(function(i) { return i.configurado; }).length;
+  var progreso = total ? Math.round(configuradas / total * 100) : 0;
+
+  var porCategoria = {};
+  integraciones.forEach(function(integ) {
+    var cat = integ.categoria || 'otros';
+    if (!porCategoria[cat]) porCategoria[cat] = [];
+    porCategoria[cat].push(integ);
+  });
+
+  var nombresCat = {
+    'automatizacion': 'Automatizacion',
+    'productividad': 'Productividad',
+    'diseno': 'Diseno',
+    'mapas': 'Mapas',
+    'otros': 'Otros'
+  };
+
+  var html = '';
+  html += '<div class="creds-progress-box">';
+  html += '<div class="creds-progress-info">';
+  html += '<span><strong>' + configuradas + '</strong> de <strong>' + total + '</strong> configuradas</span>';
+  html += '<span style="color: #e8c992;">' + progreso + '%</span>';
+  html += '</div>';
+  html += '<div class="creds-progress-bar"><div class="creds-progress-fill" style="width: ' + progreso + '%"></div></div>';
+  html += '</div>';
+
+  Object.keys(porCategoria).forEach(function(cat) {
+    var items = porCategoria[cat];
+    html += '<div class="creds-categoria">';
+    html += '<div class="creds-categoria-title">' + (nombresCat[cat] || cat) + '</div>';
+
+    items.forEach(function(integ) {
+      var statusClass = integ.configurado ? 'ok' : 'pending';
+      var statusText = integ.configurado ? 'OK Configurado' : 'Pendiente';
+      html += '<div class="cred-item ' + (integ.configurado ? 'configurado' : '') + '" data-id="' + integ.id + '">';
+      html += '<div class="cred-header">';
+      html += '<div class="cred-header-left">';
+      html += '<span class="cred-icon"><i data-lucide="' + (integ.icono || 'settings') + '"></i></span>';
+      html += '<span class="cred-name">' + integ.nombre + '</span>';
+      html += '</div>';
+      html += '<span class="cred-status ' + statusClass + '">' + statusText + '</span>';
+      html += '</div>';
+      html += '<div class="cred-content">';
+      html += '<div class="cred-desc">' + integ.descripcion + '</div>';
+
+      if (integ.pasos && integ.pasos.length) {
+        html += '<div class="cred-pasos">';
+        html += '<div class="cred-pasos-title">Como obtenerla:</div>';
+        html += '<ol class="cred-pasos-list">';
+        integ.pasos.forEach(function(paso) { html += '<li>' + paso + '</li>'; });
+        html += '</ol>';
+        if (integ.url_docs) {
+          html += '<a class="cred-docs-link" href="' + integ.url_docs + '" target="_blank">Abrir ' + integ.nombre + '</a>';
+        }
+        html += '</div>';
+      }
+
+      html += '<div class="cred-fields">';
+      integ.campos.forEach(function(campo) {
+        var valActual = (integ.valores_actuales || {})[campo.key] || '';
+        html += '<div class="cred-field">';
+        html += '<label>' + campo.label + '</label>';
+        html += '<input type="' + campo.tipo + '" data-key="' + campo.key + '" placeholder="' + campo.placeholder + '" value="' + valActual + '">';
+        html += '</div>';
+      });
+      html += '</div>';
+
+      html += '<div class="cred-actions">';
+      html += '<button class="modal-btn primary" data-save="' + integ.id + '">Guardar</button>';
+      if (integ.test) {
+        html += '<button class="modal-btn" data-test="' + integ.id + '">Probar conexion</button>';
+      }
+      html += '</div>';
+      html += '<div class="cred-result" data-result="' + integ.id + '"></div>';
+      html += '</div>';
+      html += '</div>';
+    });
+
+    html += '</div>';
+  });
+
+  document.getElementById('credsBody').innerHTML = html;
+
+  if (window.lucide) lucide.createIcons();
+
+  document.querySelectorAll('.cred-item .cred-header').forEach(function(h) {
+    h.addEventListener('click', function() {
+      h.parentElement.classList.toggle('expanded');
+    });
+  });
+
+  document.querySelectorAll('#credsBody [data-save]').forEach(function(btn) {
+    btn.addEventListener('click', async function(e) {
+      e.stopPropagation();
+      var id = btn.dataset.save;
+      var item = btn.closest('.cred-item');
+      var inputs = item.querySelectorAll('input[data-key]');
+      var valores = {};
+      inputs.forEach(function(inp) {
+        if (inp.value && inp.value.indexOf('...') === -1) valores[inp.dataset.key] = inp.value;
+      });
+      var resultEl = item.querySelector('.cred-result');
+      resultEl.className = 'cred-result loading';
+      resultEl.textContent = 'Guardando...';
+      try {
+        var res = await fetch('/credentials/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ integracion: id, valores: valores })
+        });
+        var d = await res.json();
+        if (d.ok) {
+          resultEl.className = 'cred-result ok';
+          resultEl.textContent = 'OK Guardado';
+          var header = item.querySelector('.cred-status');
+          if (header) { header.className = 'cred-status ok'; header.textContent = 'OK Configurado'; }
+          item.classList.add('configurado');
+        } else {
+          resultEl.className = 'cred-result err';
+          resultEl.textContent = (d.error || 'Error');
+        }
+      } catch (err) {
+        resultEl.className = 'cred-result err';
+        resultEl.textContent = 'Error: ' + err.message;
+      }
+    });
+  });
+
+  document.querySelectorAll('#credsBody [data-test]').forEach(function(btn) {
+    btn.addEventListener('click', async function(e) {
+      e.stopPropagation();
+      var id = btn.dataset.test;
+      var item = btn.closest('.cred-item');
+      var inputs = item.querySelectorAll('input[data-key]');
+      var valores = {};
+      inputs.forEach(function(inp) {
+        if (inp.value && inp.value.indexOf('...') === -1) valores[inp.dataset.key] = inp.value;
+      });
+      var resultEl = item.querySelector('.cred-result');
+      resultEl.className = 'cred-result loading';
+      resultEl.textContent = 'Probando...';
+      btn.disabled = true;
+      try {
+        var res = await fetch('/credentials/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ integracion: id, valores: valores })
+        });
+        var d = await res.json();
+        if (d.ok) {
+          resultEl.className = 'cred-result ok';
+          resultEl.textContent = 'OK ' + (d.mensaje || 'Conexion correcta');
+        } else {
+          resultEl.className = 'cred-result err';
+          resultEl.textContent = 'X ' + (d.error || 'Error');
+        }
+      } catch (err) {
+        resultEl.className = 'cred-result err';
+        resultEl.textContent = 'Error: ' + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  console.log('[CREDS V2] Renderizado con ' + integraciones.length + ' integraciones');
+};
+console.log('[CREDS V2] Listo. Activar con: USE_CREDS_V2 = true; abrirCreds()');
+</script>
+
 </body>
 </html>
