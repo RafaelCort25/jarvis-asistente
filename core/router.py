@@ -1390,6 +1390,14 @@ class Router:
         if _m:
             return [{"skill": "dwg", "action": "analyze", "params": {"path": _m.group(1).strip()}}]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # DEV: create_venv (ANTES del bloque MAPS)
+        # ═══════════════════════════════════════════════════════════════════
+        import re as _re_dev_prio
+        _m = _re_dev_prio.search(r"(?:crea|crear)\s+(?:un\s+)?(?:venv|entorno virtual)\s+(?:en\s+)?(\S+)", t, _re_dev_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "dev", "action": "create_venv", "params": {"path": _m.group(1).strip()}}]
+
 # MAPS: buscar edificios reales en OpenStreetMap
         # ═══════════════════════════════════════════════════════════════════
 
@@ -3012,7 +3020,7 @@ class Router:
         if any(p in t for p in ["corre los tests", "ejecuta los tests", "run tests", "pytest",
                                  "corre pytest", "pruebas unitarias"]):
             return [{"skill": "dev", "action": "run_tests", "params": {}}]
-        _m = _re_dev.search(r"corre\s+(?:los\s+)?tests\s+(?:de\s+|en\s+)(.+)", t, _re_dev.IGNORECASE)
+        _m = _re_dev.search(r"corre\s+(?:los\s+)?tests\s+(?:de\s+|en\s+)(\S+)", t, _re_dev.IGNORECASE)
         if _m:
             return [{"skill": "dev", "action": "run_tests", "params": {"path": _m.group(1).strip()}}]
 
@@ -3026,10 +3034,6 @@ class Router:
         if _m:
             return [{"skill": "dev", "action": "search_code", "params": {"query": _m.group(1).strip(), "path": (_m.group(2) or "").strip()}}]
 
-        # Crear venv
-        _m = _re_dev.search(r"(?:crea|crear)\s+(?:un\s+)?(?:venv|entorno virtual)\s+(?:en\s+)?(\S+)", t, _re_dev.IGNORECASE)
-        if _m:
-            return [{"skill": "dev", "action": "create_venv", "params": {"path": _m.group(1).strip()}}]
 
 
         return None
