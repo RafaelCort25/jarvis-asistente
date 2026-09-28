@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SANDBOX_DIR = ROOT / "sandbox"
 PSEINT_DIR = SANDBOX_DIR / "pseint"
 DIAGRAM_DIR = SANDBOX_DIR / "diagrams"
+IMAGES_DIR = SANDBOX_DIR / "images"
 
 
 class EducationSkill(Skill):
@@ -34,7 +35,15 @@ class EducationSkill(Skill):
             return self._diagram(
                 params.get("description", ""),
                 params.get("kind", "flowchart"),
+                params.get("format", "png"),
             )
+        if action == "render":
+            return self._render(
+                params.get("name", ""),
+                params.get("format", "png"),
+            )
+        if action == "list_diagrams":
+            return self._list_diagrams()
         return f"Accion desconocida en education: {action}"
 
     # ─── HELPERS ─────────────────────────────────────────────────────────
@@ -163,28 +172,97 @@ Reglas:
 
     # ─── DIAGRAM ─────────────────────────────────────────────────────────
 
-    def _diagram(self, description, kind):
+    # Mapeo de tipos de diagramas a sintaxis Mermaid
+    DIAGRAM_KINDS = {
+        "flujo": "flowchart TD",
+        "flowchart": "flowchart TD",
+        "secuencia": "sequenceDiagram",
+        "sequence": "sequenceDiagram",
+        "clases": "classDiagram",
+        "class": "classDiagram",
+        "estado": "stateDiagram-v2",
+        "state": "stateDiagram-v2",
+        "gantt": "gantt",
+        "er": "erDiagram",
+        # Nuevos tipos
+        "mente": "mindmap",
+        "mindmap": "mindmap",
+        "linea": "timeline",
+        "timeline": "timeline",
+        "tarta": "pie",
+        "pie": "pie",
+        "viaje": "journey",
+        "journey": "journey",
+        "cuadrante": "quadrantChart",
+        "quadrant": "quadrantChart",
+        "git": "gitGraph",
+        "gitgraph": "gitGraph",
+    }
+
+    def _find_mmdc(self):
+        """Devuelve la ruta a mmdc o None si no esta instalado."""
+        import shutil
+        return shutil.which("mmdc")
+
+    def _render_mermaid(self, mmd_path, formats=("png", "svg")):
+        """Renderiza un archivo .mmd a PNG y/o SVG.
+
+        Devuelve dict con {formato: Path} de los que se generaron.
+        """
+        mmdc = self._find_mmdc()
+        if not mmdc:
+            return {}
+
+        import subprocess
+        rendered = {}
+
+        for fmt in formats:
+            try:
+                # Para PNG, usar fondo blanco (mas portable). Para SVG, transparente.
+                bg = "white" if fmt == "png" else "transparent"
+                out_file = mmd_path.with_suffix(f".{fmt}")
+
+                print(f"[EDU] Renderizando {fmt.upper()} con mermaid-cli...")
+                result = subprocess.run(
+                    [mmdc, "-i", str(mmd_path), "-o", str(out_file), "-b", bg, "-s", "2"],
+                    capture_output=True, text=True, timeout=90, shell=True,
+                )
+
+                if result.returncode == 0 and out_file.exists():
+                    rendered[fmt] = out_file
+                    print(f"[EDU] {fmt.upper()} generado: {out_file}")
+
+                    # Copiar a sandbox/images/ para uso externo (office, etc.)
+                    try:
+                        IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+                        img_copy = IMAGES_DIR / out_file.name
+                        import shutil as _sh
+                        _sh.copy2(out_file, img_copy)
+                    except Exception as _e:
+                        print(f"[EDU] No pude copiar a images/: {_e}")
+                else:
+                    print(f"[EDU] Fallo {fmt}: {result.stderr[:200]}")
+            except Exception as e:
+                print(f"[EDU] Error renderizando {fmt}: {e}")
+
+        return rendered
+
+    def _diagram(self, description, kind, format="png"):
         description = (description or "").strip()
         if not description:
             return "Dime que diagrama quieres."
 
         kind = (kind or "flowchart").lower()
-        kind_map = {
-            "flujo": "flowchart TD",
-            "flowchart": "flowchart TD",
-            "secuencia": "sequenceDiagram",
-            "sequence": "sequenceDiagram",
-            "clases": "classDiagram",
-            "class": "classDiagram",
-            "estado": "stateDiagram-v2",
-            "state": "stateDiagram-v2",
-            "gantt": "gantt",
-            "er": "erDiagram",
-        }
-        if kind not in kind_map:
+        if kind not in self.DIAGRAM_KINDS:
             kind = "flowchart"
 
-        diagram_type = kind_map[kind]
+        diagram_type = self.DIAGRAM_KINDS[kind]
+
+        # Formatos a renderizar
+        formats_req = (format or "png").lower().split(",")
+        formats_req = [f.strip() for f in formats_req if f.strip() in ("png", "svg")]
+        if not formats_req:
+            formats_req = ["png"]
 
         print(f"[EDU] Generando diagrama Mermaid ({kind}) con {self.model}...")
         prompt = f"""Genera un diagrama Mermaid para lo siguiente:
@@ -194,67 +272,121 @@ Reglas:
 Tipo de diagrama requerido: {diagram_type}
 
 Reglas:
-- Usa la sintaxis de Mermaid correcta.
+- Usa la sintaxis de Mermaid correcta y valida.
 - Devuelve UNICAMENTE el codigo Mermaid.
 - La PRIMERA linea debe ser exactamente: {diagram_type}
 - NO uses bloques de codigo markdown.
 - Nodos con texto claro y conciso.
-- Maximo 15 nodos."""
+- Maximo 15 nodos.
+- NO uses caracteres especiales problemAticos (parentesis, corchetes anidados)."""
 
         mermaid = self._clean_code_block(
-            self._ask_llm(prompt, system="Eres experto en Mermaid. Generas diagramas claros.", temperature=0.3)
+            self._ask_llm(prompt, system="Eres experto en Mermaid. Generas diagramas claros y validos.", temperature=0.3)
         )
         if not mermaid or mermaid.startswith("[ERROR LLM]"):
             return f"Error generando diagrama: {mermaid}"
 
         # Asegurar que empieza con el tipo correcto
         lines = mermaid.split("\n")
-        if not lines[0].strip().startswith(diagram_type.split()[0]):
+        first_word = diagram_type.split()[0]
+        if not lines[0].strip().startswith(first_word):
             mermaid = f"{diagram_type}\n{mermaid}"
 
-        # Guardar
+        # Guardar .mmd
         DIAGRAM_DIR.mkdir(parents=True, exist_ok=True)
         slug = self._slug(description)
         ts = int(datetime.now().timestamp())
-        out = DIAGRAM_DIR / f"{slug}_{ts}.mmd"
-        out.write_text(mermaid, encoding="utf-8")
+        mmd_path = DIAGRAM_DIR / f"{slug}_{ts}.mmd"
+        mmd_path.write_text(mermaid, encoding="utf-8")
 
-        # Intentar renderizar PNG si mermaid-cli esta disponible
-        png_path = None
-        try:
-            import shutil
-            import subprocess
-            mmdc = shutil.which("mmdc")
-            if mmdc:
-                png_out = out.with_suffix(".png")
-                print(f"[EDU] Renderizando PNG con mermaid-cli...")
-                result = subprocess.run(
-                    [mmdc, "-i", str(out), "-o", str(png_out), "-b", "transparent"],
-                    capture_output=True, text=True, timeout=60,
-                )
-                if result.returncode == 0 and png_out.exists():
-                    png_path = png_out
-                    print(f"[EDU] PNG generado: {png_out}")
-        except Exception as e:
-            print(f"[EDU] No pude renderizar PNG: {e}")
+        # Renderizar (PNG + SVG)
+        rendered = self._render_mermaid(mmd_path, formats=tuple(formats_req))
 
         # Construir respuesta
         display_parts = [
             f"Diagrama Mermaid ({kind}):",
             "",
-            f"```mermaid",
+            "```mermaid",
             mermaid,
             "```",
             "",
-            f"Guardado: {out.name}",
+            f"Codigo: {mmd_path.name}",
         ]
-        if png_path:
-            display_parts.append(f"PNG: {png_path.name}")
+
+        if rendered:
+            for fmt, path in rendered.items():
+                display_parts.append(f"{fmt.upper()}: {path.name}")
         else:
-            display_parts.append("(Para PNG: instala mermaid-cli con `npm install -g @mermaid-js/mermaid-cli`)")
+            display_parts.append("(Sin render. Verifica que mmdc este instalado)")
 
         return {
-            "thought": f"Diagrama Mermaid generado ({kind})",
+            "thought": f"Diagrama {kind} generado ({len(rendered)} formatos)",
             "display": "\n".join(display_parts),
-            "voice": f"Listo. Aqui esta el diagrama {kind}.",
+            "voice": f"Listo. Diagrama {kind} generado.",
+        }
+
+    def _render(self, name, format="png"):
+        """Renderiza un .mmd existente a PNG/SVG sin regenerar el codigo."""
+        if not name:
+            return "Dime el nombre del archivo .mmd a renderizar."
+
+        name = name.strip()
+        # Buscar el archivo
+        mmd_path = None
+        if name.endswith(".mmd"):
+            mmd_path = DIAGRAM_DIR / name
+        else:
+            # Buscar por nombre parcial
+            matches = list(DIAGRAM_DIR.glob(f"*{name}*.mmd"))
+            if matches:
+                mmd_path = matches[-1]
+
+        if not mmd_path or not mmd_path.exists():
+            return f"No encontre el archivo: {name}"
+
+        formats_req = (format or "png").lower().split(",")
+        formats_req = [f.strip() for f in formats_req if f.strip() in ("png", "svg")]
+        if not formats_req:
+            formats_req = ["png"]
+
+        rendered = self._render_mermaid(mmd_path, formats=tuple(formats_req))
+
+        if not rendered:
+            return f"No se pudo renderizar. Verifica que mmdc este instalado."
+
+        lineas = [f"Renderizado: {mmd_path.name}"]
+        for fmt, path in rendered.items():
+            lineas.append(f"  {fmt.upper()}: {path.name}")
+
+        return {
+            "thought": f"Renderizado {mmd_path.name}",
+            "display": "\n".join(lineas),
+            "voice": f"Listo. Renderizado {mmd_path.name}.",
+        }
+
+    def _list_diagrams(self):
+        """Lista los diagramas .mmd generados."""
+        if not DIAGRAM_DIR.exists():
+            return "No hay diagramas generados."
+
+        mmds = sorted(DIAGRAM_DIR.glob("*.mmd"), key=lambda p: p.stat().st_mtime, reverse=True)[:15]
+        if not mmds:
+            return "No hay diagramas generados."
+
+        lineas = [f"Ultimos {len(mmds)} diagramas:"]
+        for mmd in mmds:
+            png = mmd.with_suffix(".png")
+            svg = mmd.with_suffix(".svg")
+            formatos = []
+            if png.exists():
+                formatos.append("PNG")
+            if svg.exists():
+                formatos.append("SVG")
+            fmt_str = f" [{', '.join(formatos)}]" if formatos else " [sin render]"
+            lineas.append(f"  - {mmd.name}{fmt_str}")
+
+        return {
+            "thought": f"{len(mmds)} diagramas",
+            "display": "\n".join(lineas),
+            "voice": f"Tienes {len(mmds)} diagramas.",
         }

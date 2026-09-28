@@ -391,6 +391,41 @@ class Router:
 
         # ═══════════════════════════════════════════════════════════════════
         # ═══════════════════════════════════════════════════════════════════
+        # EDUCATION: diagramas avanzados (PNG/SVG), render, list
+        # ═══════════════════════════════════════════════════════════════════
+        # Diagrama con formato especifico
+        m = re.search(r"(?:diagrama|grafico|flowchart)\s+(?:de\s+|sobre\s+|para\s+)?(.+?)(?:\s+en\s+(png|svg|png y svg|svg y png))?$", t, re.IGNORECASE)
+        if m and any(k in t.lower() for k in ["diagrama", "flowchart", "flujo", "secuencia", "mindmap", "linea de tiempo", "timeline"]):
+            desc = m.group(1).strip()
+            fmt = (m.group(2) or "png").lower().replace(" y ", ",")
+            # Detectar tipo
+            kind = "flowchart"
+            tl = t.lower()
+            if "secuencia" in tl or "sequence" in tl:
+                kind = "secuencia"
+            elif "clase" in tl or "class" in tl:
+                kind = "clases"
+            elif "estado" in tl:
+                kind = "estado"
+            elif "mente" in tl or "mindmap" in tl:
+                kind = "mindmap"
+            elif "linea" in tl or "timeline" in tl:
+                kind = "timeline"
+            elif "tarta" in tl or "pie" in tl:
+                kind = "pie"
+            return [{"skill": "education", "action": "diagram",
+                     "params": {"description": desc, "kind": kind, "format": fmt}}]
+        # Render de .mmd existente
+        m = re.search(r"(?:renderiza|convierte|exporta)\s+(?:el\s+)?(?:diagrama|mmd)\s+(.+?)(?:\s+a\s+(png|svg))?", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "education", "action": "render",
+                     "params": {"name": m.group(1).strip(), "format": (m.group(2) or "png").lower()}}]
+        # Listar diagramas
+        if any(p in t for p in ["lista diagramas", "que diagramas tengo", "diagramas generados",
+                                 "lista los diagramas", "muestra los diagramas"]):
+            return [{"skill": "education", "action": "list_diagrams", "params": {}}]
+
+        # ═══════════════════════════════════════════════════════════════════
         # IMAGE: generate avanzado (negative), variaciones, historial
         # ═══════════════════════════════════════════════════════════════════
         # Generar con negative prompt
