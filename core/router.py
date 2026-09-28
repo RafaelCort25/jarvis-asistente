@@ -393,7 +393,42 @@ class Router:
         # ═══════════════════════════════════════════════════════════════════
         # EDUCATION: diagramas avanzados (PNG/SVG), render, list
         # ═══════════════════════════════════════════════════════════════════
-        # Diagrama con formato especifico
+        # Diagrama con verbo + tipo especifico (mindmap, timeline, pie, etc.)
+        # Formato: "crea un mindmap sobre X" / "hazme un timeline de X"
+        m = re.search(
+            r"(?:crea|haz|hazme|genera|dibuja|construye)\s+(?:un\s+|una\s+)?"
+            r"(mindmap|mapa\s+mental|linea\s+de\s+tiempo|timeline|tarta|pie|"
+            r"cuadrante|quadrant|git|gitgraph|secuencia|sequence|"
+            r"clases|class|estado|state)\s+"
+            r"(?:de\s+|sobre\s+|para\s+|del\s+|de\s+la\s+|de\s+los\s+|de\s+las\s+)?(.+)$",
+            t, re.IGNORECASE
+        )
+        if m:
+            tipo_raw = m.group(1).lower().strip()
+            desc = m.group(2).strip()
+            # Mapear tipo
+            tipo_map = {
+                "mindmap": "mindmap", "mapa mental": "mindmap",
+                "linea de tiempo": "timeline", "timeline": "timeline",
+                "tarta": "pie", "pie": "pie",
+                "cuadrante": "quadrant", "quadrant": "quadrant",
+                "git": "gitgraph", "gitgraph": "gitgraph",
+                "secuencia": "secuencia", "sequence": "secuencia",
+                "clases": "clases", "class": "clases",
+                "estado": "estado", "state": "estado",
+            }
+            kind = tipo_map.get(tipo_raw, "flowchart")
+            return [{"skill": "education", "action": "diagram",
+                     "params": {"description": desc, "kind": kind, "format": "png"}}]
+
+        # Render de .mmd existente (VA PRIMERO, es mas especifico)
+        # Variantes: "renderiza X.mmd a svg" / "renderiza X.mmd" / "renderiza el diagrama X.mmd"
+        m = re.search(r"(?:renderiza|exporta)\s+(?:el\s+)?(?:diagrama\s+|archivo\s+)?([\w\-\.]+\.mmd)(?:\s+(?:a|en)\s+(png y svg|svg y png|png|svg))?", t, re.IGNORECASE)
+        if m:
+            fmt = (m.group(2) or "png").lower().replace(" y ", ",")
+            return [{"skill": "education", "action": "render",
+                     "params": {"name": m.group(1).strip(), "format": fmt}}]
+        # Diagrama con formato especifico (despues del render)
         m = re.search(r"(?:diagrama|grafico|flowchart)\s+(?:de\s+|sobre\s+|para\s+)?(.+?)(?:\s+en\s+(png|svg|png y svg|svg y png))?$", t, re.IGNORECASE)
         if m and any(k in t.lower() for k in ["diagrama", "flowchart", "flujo", "secuencia", "mindmap", "linea de tiempo", "timeline"]):
             desc = m.group(1).strip()
@@ -415,11 +450,6 @@ class Router:
                 kind = "pie"
             return [{"skill": "education", "action": "diagram",
                      "params": {"description": desc, "kind": kind, "format": fmt}}]
-        # Render de .mmd existente
-        m = re.search(r"(?:renderiza|convierte|exporta)\s+(?:el\s+)?(?:diagrama|mmd)\s+(.+?)(?:\s+a\s+(png|svg))?", t, re.IGNORECASE)
-        if m:
-            return [{"skill": "education", "action": "render",
-                     "params": {"name": m.group(1).strip(), "format": (m.group(2) or "png").lower()}}]
         # Listar diagramas
         if any(p in t for p in ["lista diagramas", "que diagramas tengo", "diagramas generados",
                                  "lista los diagramas", "muestra los diagramas"]):
@@ -974,9 +1004,17 @@ class Router:
             text, re.IGNORECASE,
         )
         if m:
-            q = m.group(1).strip(" .,!?¡¿")
-            if q:
-                return [{"skill": "maps", "action": "create_model", "params": {"query": q, "output": "", "formato": "step", "altura": None}}]
+            # EXCLUIR si es un diagrama/grafico (va a education)
+            tl = t.lower()
+            if any(k in tl for k in ["mindmap", "diagrama", "flowchart", "flujo",
+                                      "secuencia", "timeline", "linea de tiempo",
+                                      "tarta", "pie", "chart", "grafico", "clase",
+                                      "estado"]):
+                pass  # dejar que education lo maneje
+            else:
+                q = m.group(1).strip(" .,!?¡¿")
+                if q:
+                    return [{"skill": "maps", "action": "create_model", "params": {"query": q, "output": "", "formato": "step", "altura": None}}]
 
         # Buscar un edificio
         m = re.search(
