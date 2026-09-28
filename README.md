@@ -14,7 +14,7 @@ tareas, se integra con servicios externos y ejecuta pipelines CAD/BIM.
 - **Vision artificial** - Analizar pantalla e imagenes (OCR, descripcion, comparacion)
 - **Modelado 3D** - Blender + FreeCAD para arquitectura y diseno interior
 - **Generacion de imagenes** - Flux Schnell (Cloudflare) + Agnes AI
-- **Voz + Wake word** - "Oye Senna" (proximamente)
+- **Voz + Wake word** - "Oye Senna" (backend Whisper local listo, integracion GUI en desarrollo)
 - **GUI moderna** - Panel de sistema, credenciales, historial y modelos
 - **100% local** - Ollama + ChromaDB, sin enviar datos a la nube
 
@@ -105,6 +105,28 @@ Otras integraciones (Gmail, Canva, n8n) usan archivos especificos:
 - .env.canva.tmp - Canva (OAuth client_id + secret)
 - .env.n8n.tmp - n8n (url + API key)
 
+## API interna (FastAPI)
+
+El servidor `api_server.py` expone los siguientes endpoints principales:
+
+| Endpoint | Metodo | Descripcion |
+|---|---|---|
+| `/health` | GET | Estado del servidor |
+| `/chat` | POST | Enviar comando al asistente (multiagente) |
+| `/skills/list` | GET | Catalogo de las 38 skills con metadata completa |
+| `/skills/combos` | GET | Combos destacados (flujos multi-skill) |
+| `/onboarding/status` | GET | Estado del sistema (Python, Ollama, modelos, skills) |
+| `/onboarding/mark_done` | POST | Marca el onboarding como completado |
+| `/conversations/list` | GET | Lista de conversaciones guardadas |
+| `/models/list` | GET | Modelos Ollama disponibles |
+| `/models/set` | POST | Cambiar modelo activo |
+| `/wake/enable` | POST | Activar deteccion de wake word "Oye Senna" |
+| `/wake/disable` | POST | Desactivar wake word |
+| `/wake/status` | GET | Estado del listener |
+| `/wake/poll` | GET | Polling de deteccion (consume evento) |
+
+La UI de escritorio (`jarvis-orb.html`) consume estos endpoints via fetch.
+
 ## Estructura del proyecto
 
     C:\JARVIS\
@@ -127,6 +149,12 @@ Otras integraciones (Gmail, Canva, n8n) usan archivos especificos:
     # Regenerar SKILLS.md tras anadir/modificar una skill
     python scripts\generate_skills_md.py
 
+    # Verificar que las 37 skills responden a sus comandos (routing)
+    python scripts\verify_routing.py
+
+    # Smoke test completo (listados + acciones)
+    python scripts\smoke_test.py
+
     # Arrancar servidor API
     python -m uvicorn api_server:app --port 8000 --reload
 
@@ -139,4 +167,4 @@ Otras integraciones (Gmail, Canva, n8n) usan archivos especificos:
 
 ---
 
-**Ultima actualizacion:** 2026-09-28
+**Ultima actualizacion:** 2026-09-28 (rev. verificacion completa de skills)
