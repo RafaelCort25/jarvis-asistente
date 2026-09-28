@@ -508,53 +508,107 @@ def onboarding_reset():
 INTEGRACIONES = {
     "n8n": {
         "nombre": "n8n",
-        "descripcion": "Automatizacion de workflows (localhost:5678)",
+        "descripcion": "Automatiza flujos entre apps (webhooks, cron, integraciones)",
+        "categoria": "automatizacion",
         "archivo": ".env.n8n.tmp",
         "url_docs": "http://localhost:5678/",
+        "icono": "workflow",
+        "pasos": [
+            "Abre n8n en tu navegador (http://localhost:5678)",
+            "Ve a Settings -> API (esquina inferior izquierda)",
+            "Click en 'Create an API Key'",
+            "Copia la API Key y pegala abajo",
+            "En 'URL base' pon la URL donde corre n8n (por defecto localhost:5678)",
+        ],
         "campos": [
             {"key": "N8N_API_KEY", "label": "API Key", "placeholder": "n8n_api_...", "tipo": "password"},
-            {"key": "N8N_BASE_URL", "label": "URL base", "placeholder": "http://localhost:5678", "tipo": "text"},
+            {"key": "N8N_URL", "label": "URL base", "placeholder": "http://localhost:5678", "tipo": "text"},
         ],
+        "test": "n8n",
     },
     "gmail": {
         "nombre": "Gmail",
-        "descripcion": "Correo electronico (requiere 2FA + app password)",
+        "descripcion": "Lee, envia y busca correos. Requiere 2FA activado.",
+        "categoria": "productividad",
         "archivo": ".env.gmail.tmp",
         "url_docs": "https://myaccount.google.com/apppasswords",
+        "icono": "mail",
+        "pasos": [
+            "Ve a myaccount.google.com y activa la Verificacion en 2 pasos si no la tienes",
+            "Entra en myaccount.google.com/apppasswords",
+            "En 'Nombre de la app' escribe: Senna",
+            "Click en 'Crear' -> Google te dara una contrasena de 16 caracteres",
+            "Copia esa contrasena SIN espacios y pegala abajo",
+            "En 'Correo de Gmail' pon tu direccion completa (tu@gmail.com)",
+        ],
         "campos": [
             {"key": "GMAIL_USER", "label": "Correo de Gmail", "placeholder": "tu@gmail.com", "tipo": "email"},
-            {"key": "GMAIL_APP_PASSWORD", "label": "App password (16 caracteres)", "placeholder": "abcd efgh ijkl mnop", "tipo": "password"},
+            {"key": "GMAIL_APP_PASSWORD", "label": "App password (16 caracteres, sin espacios)", "placeholder": "abcdefghijklmnop", "tipo": "password"},
         ],
+        "test": None,
     },
     "canva": {
         "nombre": "Canva",
-        "descripcion": "Diseno grafico (OAuth + Connect API)",
+        "descripcion": "Lista y exporta tus disenos desde Senna",
+        "categoria": "diseno",
         "archivo": ".env.canva.tmp",
         "url_docs": "https://www.canva.com/developers/",
+        "icono": "palette",
+        "pasos": [
+            "Ve a canva.com/developers y crea una cuenta de desarrollador",
+            "Click en 'Create an integration' y dale un nombre (ej: Senna)",
+            "En el panel de la app, ve a 'Credentials'",
+            "Copia el 'Client ID' y el 'Client Secret'",
+            "En Redirect URI pon: http://127.0.0.1:8080/callback",
+            "Guarda los cambios y pega aqui tus credenciales",
+        ],
         "campos": [
             {"key": "CANVA_CLIENT_ID", "label": "Client ID", "placeholder": "OC-...", "tipo": "text"},
             {"key": "CANVA_CLIENT_SECRET", "label": "Client Secret", "placeholder": "cnvca...", "tipo": "password"},
             {"key": "CANVA_REDIRECT_URI", "label": "Redirect URI", "placeholder": "http://127.0.0.1:8080/callback", "tipo": "text"},
         ],
+        "test": None,
     },
     "maps": {
         "nombre": "Google Maps",
-        "descripcion": "Geocoding + Places (opcional, alternativa: OpenStreetMap)",
+        "descripcion": "Geocoding y Places para la skill maps (opcional)",
+        "categoria": "mapas",
         "archivo": ".env.maps.tmp",
         "url_docs": "https://console.cloud.google.com/",
+        "icono": "map",
+        "pasos": [
+            "Ve a console.cloud.google.com y crea un proyecto nuevo",
+            "En el menu lateral, ve a 'APIs y servicios' -> 'Biblioteca'",
+            "Busca 'Geocoding API' y 'Places API' y activa ambas",
+            "Ve a 'Credenciales' -> 'Crear credenciales' -> 'Clave de API'",
+            "Copia la clave generada (empieza con AIza...)",
+            "(Opcional) Restringe la clave a las APIs de Geocoding y Places",
+        ],
         "campos": [
             {"key": "GOOGLE_MAPS_API_KEY", "label": "API Key", "placeholder": "AIza...", "tipo": "password"},
         ],
+        "test": "maps",
     },
     "telegram": {
         "nombre": "Telegram",
-        "descripcion": "Bot de Telegram para notificaciones",
+        "descripcion": "Envia mensajes y archivos a tu Telegram desde Senna",
+        "categoria": "automatizacion",
         "archivo": ".env.telegram.tmp",
         "url_docs": "https://core.telegram.org/bots#how-do-i-create-a-bot",
+        "icono": "send",
+        "pasos": [
+            "Abre Telegram y busca @BotFather",
+            "Envia /newbot y sigue las instrucciones (nombre + username)",
+            "BotFather te dara un TOKEN (ej: 123456789:ABC...)",
+            "Copia el token y pegalo abajo",
+            "Para el Chat ID: busca @userinfobot, inicia chat y te dara tu ID",
+            "Pega tu Chat ID (son solo numeros, ej: 123456789)",
+        ],
         "campos": [
             {"key": "TELEGRAM_BOT_TOKEN", "label": "Bot Token", "placeholder": "123456789:ABC...", "tipo": "password"},
             {"key": "TELEGRAM_CHAT_ID", "label": "Chat ID", "placeholder": "123456789", "tipo": "text"},
         ],
+        "test": "telegram",
     },
 }
 
@@ -587,12 +641,25 @@ def credentials_list():
             "id": key,
             "nombre": info["nombre"],
             "descripcion": info["descripcion"],
+            "categoria": info.get("categoria", "otros"),
+            "icono": info.get("icono", "settings"),
             "url_docs": info.get("url_docs", ""),
+            "pasos": info.get("pasos", []),
             "configurado": configurado,
             "campos": info["campos"],
+            "test": info.get("test"),
             "valores_actuales": valores_mascara,
         })
-    return {"integraciones": resultado}
+
+    total = len(resultado)
+    configuradas = sum(1 for r in resultado if r["configurado"])
+
+    return {
+        "integraciones": resultado,
+        "total": total,
+        "configuradas": configuradas,
+        "progreso": round(configuradas / total * 100) if total else 0,
+    }
 
 
 class CredencialesPayload(BaseModel):
@@ -637,6 +704,91 @@ def credentials_save(payload: CredencialesPayload):
 # ═══════════════════════════════════════════════════════════════════════════
 # SKILLS — Listar y estado
 # ═══════════════════════════════════════════════════════════════════════════
+
+
+@app.post("/credentials/test")
+def credentials_test(payload: dict):
+    """Prueba que las credenciales de una integracion funcionan.
+    Hace una llamada real a la API correspondiente.
+    """
+    integracion = payload.get("integracion")
+    if integracion not in INTEGRACIONES:
+        return {"ok": False, "error": "Integracion desconocida"}
+
+    info = INTEGRACIONES[integracion]
+
+    # Leer valores del .env.tmp o del payload
+    valores = payload.get("valores") or {}
+    archivo = ROOT / info["archivo"]
+    if archivo.exists():
+        try:
+            for linea in archivo.read_text(encoding="utf-8").splitlines():
+                if "=" in linea and not linea.startswith("#"):
+                    k, v = linea.split("=", 1)
+                    if k.strip() not in valores:
+                        valores[k.strip()] = v.strip()
+        except Exception:
+            pass
+
+    tipo_test = info.get("test")
+    if not tipo_test:
+        # No hay test automatico: solo validar formato basico
+        faltantes = [c["label"] for c in info["campos"] if not valores.get(c["key"], "").strip()]
+        if faltantes:
+            return {"ok": False, "error": "Faltan campos: " + ", ".join(faltantes)}
+        return {"ok": True, "mensaje": "Formato valido (no se puede verificar sin una accion real)"}
+
+    # ─── Test real por integracion ───
+    try:
+        import requests as _r
+
+        if tipo_test == "telegram":
+            token = valores.get("TELEGRAM_BOT_TOKEN", "").strip()
+            if not token:
+                return {"ok": False, "error": "Falta el Bot Token"}
+            r = _r.get(f"https://api.telegram.org/bot{token}/getMe", timeout=8)
+            if r.status_code == 200 and r.json().get("ok"):
+                bot = r.json()["result"]
+                return {"ok": True, "mensaje": f"Bot conectado: @{bot.get('username', '?')}"}
+            return {"ok": False, "error": "Token invalido o bot no existe"}
+
+        if tipo_test == "maps":
+            key = valores.get("GOOGLE_MAPS_API_KEY", "").strip()
+            if not key:
+                return {"ok": False, "error": "Falta la API Key"}
+            r = _r.get(
+                "https://maps.googleapis.com/maps/api/geocode/json",
+                params={"address": "Lima", "key": key},
+                timeout=8,
+            )
+            data = r.json()
+            status = data.get("status")
+            if status == "OK":
+                return {"ok": True, "mensaje": "Geocoding responde correctamente"}
+            if status == "REQUEST_DENIED":
+                return {"ok": False, "error": "API Key denegada: " + data.get("error_message", "")[:120]}
+            return {"ok": False, "error": f"Respuesta inesperada: {status}"}
+
+        if tipo_test == "n8n":
+            base = valores.get("N8N_URL", "").strip().rstrip("/")
+            key = valores.get("N8N_API_KEY", "").strip()
+            if not base:
+                return {"ok": False, "error": "Falta la URL base"}
+            try:
+                r = _r.get(f"{base}/api/v1/workflows", headers={"X-N8N-API-KEY": key}, timeout=8)
+                if r.status_code == 200:
+                    return {"ok": True, "mensaje": "n8n responde correctamente"}
+                if r.status_code == 401:
+                    return {"ok": False, "error": "API Key invalida"}
+                return {"ok": False, "error": f"HTTP {r.status_code}"}
+            except _r.exceptions.ConnectionError:
+                return {"ok": False, "error": f"No se puede conectar a {base}"}
+
+        return {"ok": True, "mensaje": "Test no implementado, pero el formato es valido"}
+
+    except Exception as e:
+        return {"ok": False, "error": f"Error probando: {str(e)[:150]}"}
+
 
 @app.get("/skills/list")
 def skills_list():

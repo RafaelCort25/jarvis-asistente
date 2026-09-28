@@ -80,3 +80,7 @@ jarvis-orb.html.*-bak
 *.bak-wake
 *.wakebak
 
+
+*.pre-creds*.bak
+*.pre-*.bak
+
