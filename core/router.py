@@ -2692,6 +2692,75 @@ class Router:
         if any(p in t for p in ["lista videos", "que videos tengo", "videos recientes", "muestra los videos"]):
             return [{"skill": "video", "action": "list", "params": {}}]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # BLENDER: vistas y renders avanzados
+        # ═══════════════════════════════════════════════════════════════════
+        from core.paths import SANDBOX_BLENDER
+        import re as _re
+        import os as _os
+
+        def _ultimo_step():
+            if not SANDBOX_BLENDER.exists():
+                return None
+            steps = sorted(SANDBOX_BLENDER.glob("*.step"), key=lambda x: x.stat().st_mtime, reverse=True)
+            return str(steps[0]) if steps else None
+
+        # Interior
+        if any(p in t for p in ["render interior", "vista interior", "renderiza el interior",
+                                 "haz un render del interior", "renderiza el interior del modelo"]):
+            sp = _ultimo_step()
+            if sp:
+                return [{"skill": "blender", "action": "render_interior", "params": {"step_path": sp}}]
+
+        # Multiples angulos
+        _m = _re.search(r"(?:renderiza|haz|genera)\s+(\d+)\s+angulos?", t, _re.IGNORECASE)
+        if _m:
+            sp = _ultimo_step()
+            if sp:
+                return [{"skill": "blender", "action": "render_multiple_angles",
+                         "params": {"step_path": sp, "num_angles": int(_m.group(1))}}]
+
+        if any(p in t for p in ["multiples angulos", "varios angulos", "orbitar el modelo",
+                                 "renderiza alrededor", "render desde varios angulos"]):
+            sp = _ultimo_step()
+            if sp:
+                return [{"skill": "blender", "action": "render_multiple_angles",
+                         "params": {"step_path": sp, "num_angles": 8}}]
+
+        # Panoramica 360
+        if any(p in t for p in ["render 360", "panoramica", "panorama 360", "render panoramico",
+                                 "vista 360", "equirectangular"]):
+            sp = _ultimo_step()
+            if sp:
+                return [{"skill": "blender", "action": "render_360", "params": {"step_path": sp}}]
+
+        # Animacion
+        if any(p in t for p in ["animacion del modelo", "renderiza una animacion", "video del modelo",
+                                 "animacion 360", "video rotando", "video girando"]):
+            sp = _ultimo_step()
+            if sp:
+                return [{"skill": "blender", "action": "render_animation", "params": {"step_path": sp}}]
+
+        # Export GLTF
+        if any(p in t for p in ["exporta a glb", "exporta a gltf", "exportar glb",
+                                 "modelo para web", "glb para web", "exporta el modelo a glb"]):
+            sp = _ultimo_step()
+            if sp:
+                return [{"skill": "blender", "action": "export_gltf", "params": {"step_path": sp}}]
+
+        # Vistas limpias
+        if any(p in t for p in ["vistas limpias", "vistas sin sombras", "vistas tecnicas"]):
+            sp = _ultimo_step()
+            if sp:
+                return [{"skill": "blender", "action": "render_views_clean", "params": {"step_path": sp}}]
+
+        # Vistas estandar (override)
+        if any(p in t for p in ["genera las vistas", "renderiza las vistas", "genera planta fachada y corte",
+                                 "vistas del plano", "genera las 3 vistas"]):
+            sp = _ultimo_step()
+            if sp:
+                return [{"skill": "blender", "action": "render_views", "params": {"step_path": sp}}]
+
         return None
 
     def _normalize(self, result):
