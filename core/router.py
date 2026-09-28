@@ -1348,7 +1348,7 @@ class Router:
         if m:
             # EXCLUIR si es un diagrama/grafico (va a education)
             tl = t.lower()
-            if any(k in tl for k in ["mindmap", "diagrama", "flowchart", "flujo",
+            if any(k in tl for k in ["mindmap", "diagrama", "flowchart", "flujo", "notion", "pagina", "nota", "video", "gif", "audio", "pelicula", "mp4", "mp3",
                                       "secuencia", "timeline", "linea de tiempo",
                                       "tarta", "pie", "chart", "grafico", "clase",
                                       "estado"]):
@@ -2600,7 +2600,7 @@ class Router:
             paths = [p.strip().strip('"').strip("'") for p in re.split(r"\s+y\s+|\s*,\s*", paths_str) if p.strip()]
             return [{"skill": "video", "action": "merge", "params": {"paths": paths}}]
 
-        m = re.search(r"(?:extrae|saca|separa)\s+(?:el\s+)?audio\s+(?:de|del?)\s+(?:el\s+)?video\s+(\S+)(?:\s+en\s+(mp3|wav|m4a|aac|flac|ogg))?", t, re.IGNORECASE)
+        m = re.search(r"(?:extrae|saca|separa)\s+(?:el\s+)?audio\s+(?:de|del)\s+(?:el\s+)?(?:video\s+)?([^\s]+?\.(\w{2,4}))(?:\s+(?:en|como|a)\s+(mp3|wav|m4a|aac|flac|ogg))?\s*$", t, re.IGNORECASE)
         if m:
             return [{"skill": "video", "action": "extract_audio", "params": {"path": m.group(1).strip(), "format": (m.group(2) or "mp3").lower()}}]
 
