@@ -77,6 +77,26 @@ class DevSkill(Skill):
                 params.get("path", ""),
                 params.get("output", ""),
             )
+        # ── Nuevas acciones (calidad y analisis) ──
+        if action == "format_code":
+            return self._format_code(params.get("path", ""))
+        if action == "lint_code":
+            return self._lint_code(params.get("path", ""))
+        if action == "run_tests":
+            return self._run_tests(
+                params.get("path", ""),
+                params.get("args", ""),
+            )
+        if action == "count_lines":
+            return self._count_lines(params.get("path", ""))
+        if action == "search_code":
+            return self._search_code(
+                params.get("query", ""),
+                params.get("path", ""),
+                params.get("ext", ""),
+            )
+        if action == "create_venv":
+            return self._create_venv(params.get("path", ""))
         return f"Accion desconocida: {action}"
 
     # ─── HELPERS ─────────────────────────────────────────────────────────
@@ -802,6 +822,296 @@ Reglas:
         }
 
     # ─── COMBO: REVISAR → WORD ───────────────────────────────────────────
+
+    # ===================================================================
+    # NUEVAS ACCIONES: calidad y analisis
+    # ===================================================================
+
+    def _format_code(self, path_str):
+        path = self._resolve_path(path_str)
+        if not path or not path.is_file():
+            return {"thought": "", "display": "No encontre: " + str(path_str), "voice": "No encontrado."}
+        if path.suffix.lower() != ".py":
+            return {"thought": "", "display": "Solo Python por ahora (recibi " + path.suffix + ")", "voice": "Solo Python."}
+
+        if not confirmation.require("dev", "format_code", "Formatear " + path.name):
+            return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
+
+        # Probar ruff format, luego black
+        herramientas = [["ruff", "format", str(path)], ["black", str(path)]]
+        usada = None
+        for cmd in herramientas:
+            try:
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=30,
+                    encoding="utf-8", errors="replace",
+                )
+                if result.returncode == 0:
+                    usada = cmd[0]
+                    break
+            except FileNotFoundError:
+                continue
+            except Exception as e:
+                return {"thought": "Error", "display": "Error: " + str(e), "voice": "Error."}
+
+        if not usada:
+            return {
+                "thought": "",
+                "display": "No tengo ruff ni black instalados.\nInstala uno: pip install ruff",
+                "voice": "Falta formateador.",
+            }
+
+        return {
+            "thought": "Formateado con " + usada,
+            "display": "Formateado: " + path.name + " (con " + usada + ")",
+            "voice": "Formatee " + path.name + ".",
+        }
+
+    def _lint_code(self, path_str):
+        path = self._resolve_path(path_str)
+        if not path or not path.is_file():
+            return {"thought": "", "display": "No encontre: " + str(path_str), "voice": "No encontrado."}
+
+        if not confirmation.require("dev", "lint_code", "Lint " + path.name):
+            return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
+
+        # Probar ruff check, luego flake8
+        herramientas = [["ruff", "check", str(path)], ["flake8", str(path)]]
+        usada = None
+        output = ""
+        for cmd in herramientas:
+            try:
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=30,
+                    encoding="utf-8", errors="replace",
+                )
+                usada = cmd[0]
+                output = (result.stdout or "") + (result.stderr or "")
+                break
+            except FileNotFoundError:
+                continue
+            except Exception as e:
+                return {"thought": "Error", "display": "Error: " + str(e), "voice": "Error."}
+
+        if not usada:
+            return {
+                "thought": "",
+                "display": "No tengo ruff ni flake8 instalados.\nInstala uno: pip install ruff",
+                "voice": "Falta linter.",
+            }
+
+        lineas = [l for l in output.splitlines() if l.strip()][:30]
+        if not lineas:
+            return {
+                "thought": "Sin problemas",
+                "display": "Sin problemas de lint en " + path.name,
+                "voice": "Sin problemas.",
+            }
+
+        return {
+            "thought": str(len(lineas)) + " issues con " + usada,
+            "display": "Lint de " + path.name + " (" + usada + "):\n\n" + "\n".join(lineas),
+            "voice": "Encontre " + str(len(lineas)) + " problemas.",
+        }
+
+    def _run_tests(self, path_str, args_str):
+        # Si no hay path, usar la raiz del proyecto
+        path = self._resolve_path(path_str) if path_str else ROOT
+        if not path:
+            return {"thought": "", "display": "No encontre: " + str(path_str), "voice": "No encontrado."}
+
+        if path.is_file():
+            cwd = path.parent
+            args = [str(path)]
+        else:
+            cwd = path
+            args = []
+
+        if args_str:
+            args.extend(args_str.split())
+
+        if not confirmation.require("dev", "run_tests", "Ejecutar pytest" + (" en " + path.name if path != ROOT else "")):
+            return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
+
+        # Probar pytest, luego python -m pytest
+        try:
+            result = subprocess.run(
+                ["python", "-m", "pytest", "-v"] + args,
+                cwd=str(cwd),
+                capture_output=True, text=True, timeout=300,
+                encoding="utf-8", errors="replace",
+            )
+        except FileNotFoundError:
+            return {"thought": "", "display": "pytest no instalado. pip install pytest", "voice": "Falta pytest."}
+        except subprocess.TimeoutExpired:
+            return {"thought": "", "display": "Timeout (300s)", "voice": "Timeout."}
+        except Exception as e:
+            return {"thought": "Error", "display": "Error: " + str(e), "voice": "Error."}
+
+        output = (result.stdout or "") + (result.stderr or "")
+        lineas = output.splitlines()
+
+        # Extraer resumen
+        resumen = "?"
+        for l in lineas[-15:]:
+            if "passed" in l or "failed" in l or "error" in l.lower():
+                resumen = l.strip()
+                break
+
+        # Mostrar ultimas lineas
+        ultimas = lineas[-30:] if len(lineas) > 30 else lineas
+
+        return {
+            "thought": "Tests: " + resumen[:60],
+            "display": "**pytest** (exit code " + str(result.returncode) + "):\n\n" + "\n".join(ultimas),
+            "voice": resumen[:100] if resumen else "Tests ejecutados.",
+        }
+
+    def _count_lines(self, path_str):
+        path = self._resolve_path(path_str) if path_str else ROOT
+        if not path or not path.exists():
+            return {"thought": "", "display": "No encontre: " + str(path_str), "voice": "No encontrado."}
+
+        total_lines = 0
+        total_files = 0
+        por_ext = {}
+
+        if path.is_file():
+            archivos = [path]
+        else:
+            archivos = []
+            for root, dirs, files in os.walk(path):
+                dirs[:] = [d for d in dirs if d not in IGNORE_DIRS and not d.startswith(".")]
+                for f in files:
+                    ext = Path(f).suffix.lower()
+                    if ext in CODE_EXTS:
+                        archivos.append(Path(root) / f)
+
+        for f in archivos:
+            try:
+                lines = f.read_text(encoding="utf-8", errors="ignore").count("\n") + 1
+                total_lines += lines
+                total_files += 1
+                ext = f.suffix.lower()
+                if ext not in por_ext:
+                    por_ext[ext] = {"files": 0, "lines": 0}
+                por_ext[ext]["files"] += 1
+                por_ext[ext]["lines"] += lines
+            except Exception:
+                continue
+
+        lineas_out = ["**Estadisticas de " + path.name + "**", ""]
+        lineas_out.append("  Total archivos: " + str(total_files))
+        lineas_out.append("  Total lineas: " + str(total_lines))
+        lineas_out.append("")
+        lineas_out.append("  **Por extension:**")
+        for ext, info in sorted(por_ext.items(), key=lambda x: -x[1]["lines"])[:15]:
+            lineas_out.append("    " + ext + ": " + str(info["files"]) + " archivos, " + str(info["lines"]) + " lineas")
+
+        return {
+            "thought": str(total_files) + " archivos, " + str(total_lines) + " lineas",
+            "display": "\n".join(lineas_out),
+            "voice": str(total_lines) + " lineas de codigo.",
+        }
+
+    def _search_code(self, query, path_str, ext_str):
+        if not query:
+            return {"thought": "", "display": "Dime que buscar.", "voice": "Falta busqueda."}
+
+        path = self._resolve_path(path_str) if path_str else ROOT
+        if not path or not path.exists():
+            return {"thought": "", "display": "No encontre: " + str(path_str), "voice": "No encontrado."}
+
+        # Extensiones a buscar
+        if ext_str:
+            exts = {"." + e.strip().lstrip(".") for e in ext_str.split(",") if e.strip()}
+        else:
+            exts = CODE_EXTS
+
+        resultados = []
+        q_lower = query.lower()
+
+        for root, dirs, files in os.walk(path):
+            dirs[:] = [d for d in dirs if d not in IGNORE_DIRS and not d.startswith(".")]
+            for f in files:
+                ext = Path(f).suffix.lower()
+                if ext not in exts:
+                    continue
+                full = Path(root) / f
+                try:
+                    if full.stat().st_size > 2_000_000:
+                        continue
+                    content = full.read_text(encoding="utf-8", errors="ignore")
+                except Exception:
+                    continue
+
+                for i, line in enumerate(content.splitlines(), 1):
+                    if q_lower in line.lower():
+                        resultados.append({
+                            "file": str(full.relative_to(path)) if path.is_dir() else full.name,
+                            "line": i,
+                            "text": line.strip()[:150],
+                        })
+                        if len(resultados) >= 100:
+                            break
+                if len(resultados) >= 100:
+                    break
+            if len(resultados) >= 100:
+                break
+
+        if not resultados:
+            return {
+                "thought": "",
+                "display": "No encontre '" + query + "'.",
+                "voice": "Sin resultados.",
+            }
+
+        lineas = ["**Resultados de '" + query + "'** (" + str(len(resultados)) + "):"]
+        lineas.append("")
+        for r in resultados[:25]:
+            lineas.append("  " + r["file"] + ":" + str(r["line"]))
+            lineas.append("    " + r["text"])
+        if len(resultados) > 25:
+            lineas.append("  ... y " + str(len(resultados) - 25) + " mas")
+
+        return {
+            "thought": str(len(resultados)) + " coincidencias",
+            "display": "\n".join(lineas),
+            "voice": "Encontre " + str(len(resultados)) + " coincidencias.",
+        }
+
+    def _create_venv(self, path_str):
+        if not path_str:
+            return {"thought": "", "display": "Necesito una ruta.", "voice": "Falta la ruta."}
+        path = self._resolve_path(path_str, must_exist=False)
+        if not path:
+            return {"thought": "", "display": "Ruta invalida.", "voice": "Ruta invalida."}
+
+        if not self._es_dentro_del_proyecto(path):
+            return {"thought": "", "display": "Ruta fuera del proyecto.", "voice": "Ruta invalida."}
+
+        if path.exists():
+            return {"thought": "", "display": "Ya existe: " + str(path), "voice": "Ya existe."}
+
+        if not confirmation.require("dev", "create_venv", "Crear venv en " + str(path)):
+            return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
+
+        try:
+            result = subprocess.run(
+                ["python", "-m", "venv", str(path)],
+                capture_output=True, text=True, timeout=120,
+                encoding="utf-8", errors="replace",
+            )
+            if result.returncode != 0:
+                return {"thought": "Error", "display": "Error: " + (result.stderr or "")[:300], "voice": "Error."}
+        except Exception as e:
+            return {"thought": "Error", "display": "Error: " + str(e), "voice": "Error."}
+
+        return {
+            "thought": "venv creado en " + str(path),
+            "display": "Venv creado:\n  " + str(path) + "\n\nPara activar:\n  " + str(path) + "\\Scripts\\Activate.ps1",
+            "voice": "Venv creado.",
+        }
 
     def _review_to_word(self, path_str, output_str):
         """

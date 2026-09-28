@@ -2993,6 +2993,45 @@ class Router:
             return [{"skill": "dwg", "action": "search_text", "params": {"query": _m.group(1).strip(), "path": _m.group(2).strip()}}]
 
 
+        # ═══════════════════════════════════════════════════════════════════
+        # DEV: calidad y analisis
+        # ═══════════════════════════════════════════════════════════════════
+        import re as _re_dev
+
+        # Formatear codigo
+        _m = _re_dev.search(r"(?:formatea|formatear|format)\s+(?:el\s+)?(?:archivo\s+)?(\S+\.py)", t, _re_dev.IGNORECASE)
+        if _m:
+            return [{"skill": "dev", "action": "format_code", "params": {"path": _m.group(1).strip()}}]
+
+        # Lint
+        _m = _re_dev.search(r"(?:lint|analiza estilo|revisa estilo)\s+(?:el\s+)?(?:archivo\s+)?(\S+\.py)", t, _re_dev.IGNORECASE)
+        if _m:
+            return [{"skill": "dev", "action": "lint_code", "params": {"path": _m.group(1).strip()}}]
+
+        # Correr tests
+        if any(p in t for p in ["corre los tests", "ejecuta los tests", "run tests", "pytest",
+                                 "corre pytest", "pruebas unitarias"]):
+            return [{"skill": "dev", "action": "run_tests", "params": {}}]
+        _m = _re_dev.search(r"corre\s+(?:los\s+)?tests\s+(?:de\s+|en\s+)(.+)", t, _re_dev.IGNORECASE)
+        if _m:
+            return [{"skill": "dev", "action": "run_tests", "params": {"path": _m.group(1).strip()}}]
+
+        # Contar lineas
+        _m = _re_dev.search(r"(?:cuantas\s+lineas|lineas de codigo|loc)\s+(?:tiene|de|del?)\s+(?:el\s+|la\s+)?(?:proyecto|archivo|carpeta)?\s*(\S+)?", t, _re_dev.IGNORECASE)
+        if _m:
+            return [{"skill": "dev", "action": "count_lines", "params": {"path": (_m.group(1) or "").strip()}}]
+
+        # Buscar en el codigo
+        _m = _re_dev.search(r"busca\s+[\x22]([^\x22]+)[\x22]\s+en\s+(?:el\s+)?(?:codigo|proyecto|carpeta)\s*(\S+)?", t, _re_dev.IGNORECASE)
+        if _m:
+            return [{"skill": "dev", "action": "search_code", "params": {"query": _m.group(1).strip(), "path": (_m.group(2) or "").strip()}}]
+
+        # Crear venv
+        _m = _re_dev.search(r"(?:crea|crear)\s+(?:un\s+)?(?:venv|entorno virtual)\s+(?:en\s+)?(\S+)", t, _re_dev.IGNORECASE)
+        if _m:
+            return [{"skill": "dev", "action": "create_venv", "params": {"path": _m.group(1).strip()}}]
+
+
         return None
 
     def _normalize(self, result):
