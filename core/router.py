@@ -421,7 +421,8 @@ class Router:
         if m:
             return [{"skill": "pdf", "action": "remove_password", "params": {"path": m.group(1).strip(), "password": (m.group(2) or "").strip()}}]
         # Editar metadata
-        m = re.search(r"(?:pon|edita|cambia|anade)\s+(?:el\s+|la\s+)?(?:titulo|autor|asunto|subject)\s+(?:del?\s+)?pdf\s+([^\s]+\.pdf)", t, re.IGNORECASE)
+        # Formatos: "pon el titulo X al pdf Y" / "edita el autor X en el pdf Y"
+        m = re.search(r"(?:pon|edita|cambia|anade)\s+(?:el\s+|la\s+)?(?:titulo|autor|asunto|subject)\s+.+?\s+(?:al?|en\s+el)\s+pdf\s+([^\s]+\.pdf)", t, re.IGNORECASE)
         if m:
             path = m.group(1).strip()
             params = {"path": path}
