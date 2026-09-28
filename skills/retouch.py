@@ -1,4 +1,4 @@
-﻿"""Skill de retouch profesional: quitar fondo, upscaling, sombras, watermark.
+"""Skill de retouch profesional: quitar fondo, upscaling, sombras, watermark.
 
 Pipeline comun:
   1. remove_bg    -> quitar fondo con rembg (BRIA RMBG 2.0)
@@ -51,6 +51,20 @@ UPSCAYL_MODELS = {
 # Extensiones soportadas
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff", ".tif"}
 
+# Modelos rembg (calidad vs velocidad)
+# u2net = 176 MB, ~0.8s/imagen  <- RAPIDO y buena calidad (default)
+# bria-rmbg = 977 MB, ~30s/imagen  <- Premium pero lentisimo
+# isnet-general-use = 176 MB, ~1s/imagen  <- Muy buena calidad
+REMBG_MODEL_DEFAULT = "u2net"
+
+REMBG_MODELS = {
+    "rapido": "u2net",           # 0.8s
+    "calidad": "isnet-general-use",  # 1s, mejor calidad
+    "premium": "bria-rmbg",      # 30s, mejor calidad premium
+    "personas": "u2net_human_seg",
+    "anime": "isnet-anime",
+}
+
 # Fondo
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -85,6 +99,7 @@ class RetouchSkill(Skill):
             return self._remove_bg(
                 params.get("path", ""),
                 params.get("output", ""),
+                params.get("model", REMBG_MODEL_DEFAULT),
             )
         if action == "upscale":
             return self._upscale(
@@ -180,7 +195,7 @@ class RetouchSkill(Skill):
 
     # ─── REMOVE BG ────────────────────────────────────────────────────────
 
-    def _remove_bg(self, path_str, output_str):
+    def _remove_bg(self, path_str, output_str, model=REMBG_MODEL_DEFAULT):
         path = self._resolve_input(path_str)
         if not path:
             return {"thought": "", "display": "No encontre la imagen.", "voice": "No encontre la imagen."}
@@ -192,11 +207,22 @@ class RetouchSkill(Skill):
         if not out:
             return "Ruta de salida invalida."
 
-        print(f"[RETOUCH] Quitando fondo de {path.name}...")
+        # Resolver nombre del modelo (acepta alias tipo "calidad" o el nombre directo)
+        model_name = REMBG_MODELS.get(model.lower(), model)
+
+        print(f"[RETOUCH] Quitando fondo de {path.name} (modelo: {model_name})...")
         try:
-            from rembg import remove
+            from rembg import remove, new_session
+            # Cache de sesiones para no recargar el modelo
+            if not hasattr(self, "_rembg_sessions"):
+                self._rembg_sessions = {}
+            if model_name not in self._rembg_sessions:
+                print(f"[RETOUCH] Cargando modelo {model_name}...")
+                self._rembg_sessions[model_name] = new_session(model_name)
+            sess = self._rembg_sessions[model_name]
+
             input_bytes = path.read_bytes()
-            output_bytes = remove(input_bytes)
+            output_bytes = remove(input_bytes, session=sess)
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_bytes(output_bytes)
         except Exception as e:
@@ -205,8 +231,8 @@ class RetouchSkill(Skill):
         size_kb = out.stat().st_size // 1024
         print(f"[RETOUCH] Guardado: {out} ({size_kb} KB)")
         return {
-            "thought": f"Fondo quitado ({size_kb} KB)",
-            "display": f"Fondo quitado: {out.name}\n({size_kb} KB)",
+            "thought": f"Fondo quitado ({size_kb} KB, modelo {model_name})",
+            "display": f"Fondo quitado: {out.name}\n({size_kb} KB, modelo {model_name})",
             "voice": "Listo. Fondo eliminado.",
         }
 
