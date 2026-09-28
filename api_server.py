@@ -640,16 +640,88 @@ def credentials_save(payload: CredencialesPayload):
 
 @app.get("/skills/list")
 def skills_list():
-    """Lista todas las skills registradas en el router."""
+    """Lista todas las skills registradas en el router, enriquecidas con metadata.
+
+    Merge:
+      - Nombre de la skill (del Router): "system", "dev", "vision", ...
+      - Metadata completa (de config/skills_meta.json): icon, category, tagline, description,
+        examples, combos, risk
+    """
+    import json
     try:
         from core.router import Router
-        # Cache simple en memoria para no reinstanciar
+        # Cache simple en memoria para no reinstanciar el router
         if not hasattr(skills_list, "_cache"):
             r = Router()
             skills_list._cache = sorted(r.skills.keys())
-        return {"skills": skills_list._cache, "total": len(skills_list._cache)}
+
+        # Cargar metadata
+        meta_path = ROOT / "config" / "skills_meta.json"
+        meta_skills = {}
+        categories = {}
+        if meta_path.exists():
+            meta_data = json.loads(meta_path.read_text(encoding="utf-8"))
+            for s in meta_data.get("skills", []):
+                meta_skills[s.get("id")] = s
+            categories = meta_data.get("categories", {})
+
+        # Merge: por cada skill registrada, buscar su metadata
+        resultado = []
+        for nombre in skills_list._cache:
+            meta = meta_skills.get(nombre, {})
+            resultado.append({
+                "id": nombre,
+                "name": meta.get("name", nombre.capitalize()),
+                "icon": meta.get("icon", "Circle"),
+                "category": meta.get("category", "otros"),
+                "tagline": meta.get("tagline", ""),
+                "description": meta.get("description", ""),
+                "examples": meta.get("examples", []),
+                "combos": meta.get("combos", []),
+                "risk": meta.get("risk", "low"),
+                "registrada": True,
+            })
+
+        # Añadir skills del metadata que NO estén registradas (por si acaso)
+        for sid, meta in meta_skills.items():
+            if sid not in skills_list._cache:
+                resultado.append({
+                    "id": sid,
+                    "name": meta.get("name", sid),
+                    "icon": meta.get("icon", "Circle"),
+                    "category": meta.get("category", "otros"),
+                    "tagline": meta.get("tagline", ""),
+                    "description": meta.get("description", ""),
+                    "examples": meta.get("examples", []),
+                    "combos": meta.get("combos", []),
+                    "risk": meta.get("risk", "low"),
+                    "registrada": False,
+                })
+
+        return {
+            "skills": resultado,
+            "categories": categories,
+            "total": len(resultado),
+            "total_registradas": len(skills_list._cache),
+        }
     except Exception as e:
-        return {"skills": [], "total": 0, "error": str(e)}
+        import traceback
+        return {"skills": [], "total": 0, "error": str(e), "trace": traceback.format_exc()}
+
+
+@app.get("/skills/combos")
+def skills_combos():
+    """Devuelve los combos destacados (flujos de trabajo que combinan skills)."""
+    import json
+    try:
+        meta_path = ROOT / "config" / "skills_meta.json"
+        if not meta_path.exists():
+            return {"combos": [], "total": 0, "error": "skills_meta.json no encontrado"}
+        meta_data = json.loads(meta_path.read_text(encoding="utf-8"))
+        combos = meta_data.get("featured_combos", [])
+        return {"combos": combos, "total": len(combos)}
+    except Exception as e:
+        return {"combos": [], "total": 0, "error": str(e)}
 
     
 

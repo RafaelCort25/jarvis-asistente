@@ -1,0 +1,853 @@
+{
+  "skills": [
+    {
+      "id": "system",
+      "name": "Sistema",
+      "icon": "Monitor",
+      "category": "fundamentales",
+      "tagline": "Control total de tu PC",
+      "description": "Controla el sistema operativo: información del hardware, procesos, servicios, apagado, reinicio, bloqueo, capturas de pantalla y más.",
+      "examples": [
+        "¿Qué hora es?",
+        "Cuánta RAM libre tengo",
+        "Apaga el PC en 5 minutos",
+        "Haz una captura de pantalla",
+        "Lista los procesos que más CPU usan"
+      ],
+      "combos": [
+        "desktop",
+        "terminal",
+        "files"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "desktop",
+      "name": "Escritorio",
+      "icon": "AppWindow",
+      "category": "fundamentales",
+      "tagline": "Apps y volumen",
+      "description": "Abre y cierra aplicaciones, controla el volumen, gestiona ventanas, cambia el fondo de pantalla y automatiza tareas del escritorio.",
+      "examples": [
+        "Abre Spotify",
+        "Sube el volumen al 80",
+        "Cierra todas las ventanas de Chrome",
+        "Pon modo oscuro"
+      ],
+      "combos": [
+        "system",
+        "spotify",
+        "browser"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "browser",
+      "name": "Navegador",
+      "icon": "Globe",
+      "category": "fundamentales",
+      "tagline": "Búsquedas y navegación",
+      "description": "Abre URLs, busca en Google, YouTube o Wikipedia, descarga archivos y automatiza tareas de navegación web.",
+      "examples": [
+        "Busca en Google recetas de pasta",
+        "Abre YouTube y busca lofi hip hop",
+        "Descarga esta imagen",
+        "Ve a Wikipedia y busca la Revolución Francesa"
+      ],
+      "combos": [
+        "desktop",
+        "vision",
+        "files"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "files",
+      "name": "Archivos",
+      "icon": "FolderOpen",
+      "category": "fundamentales",
+      "tagline": "Búsqueda y gestión",
+      "description": "Busca, organiza, mueve, copia, renombra y elimina archivos y carpetas. También comprime y descomprime archivos ZIP.",
+      "examples": [
+        "Busca todos los PDFs en Documentos",
+        "Mueve las fotos de Descargas a Imágenes",
+        "Comprime esta carpeta en un ZIP",
+        "Cuánto pesa la carpeta de proyectos"
+      ],
+      "combos": [
+        "system",
+        "office",
+        "pdf"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "clipboard",
+      "name": "Portapapeles",
+      "icon": "Clipboard",
+      "category": "fundamentales",
+      "tagline": "Copiar y pegar",
+      "description": "Lee y escribe en el portapapeles. Útil para pasar información entre aplicaciones o guardar texto temporalmente.",
+      "examples": [
+        "Qué hay en el portapapeles",
+        "Copia esto al portapapeles: Hola mundo",
+        "Limpia el portapapeles"
+      ],
+      "combos": [
+        "system",
+        "edit"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "terminal",
+      "name": "Terminal",
+      "icon": "Terminal",
+      "category": "fundamentales",
+      "tagline": "Comandos seguros",
+      "description": "Ejecuta comandos de PowerShell de forma segura. Los comandos destructivos requieren confirmación explícita.",
+      "examples": [
+        "Ejecuta ipconfig",
+        "Muestra el árbol de directorios",
+        "Ejecuta git status",
+        "Lista los servicios de Windows"
+      ],
+      "combos": [
+        "system",
+        "dev",
+        "git"
+      ],
+      "risk": "high"
+    },
+    {
+      "id": "translate",
+      "name": "Traducción",
+      "icon": "Languages",
+      "category": "fundamentales",
+      "tagline": "9 idiomas",
+      "description": "Traduce texto entre español, inglés, francés, alemán, italiano, portugués, japonés, chino y ruso.",
+      "examples": [
+        "Traduce esto al inglés: Buenos días",
+        "Cómo se dice gracias en japonés",
+        "Traduce este texto al francés"
+      ],
+      "combos": [
+        "vision",
+        "edit"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "office",
+      "name": "Office",
+      "icon": "FileSpreadsheet",
+      "category": "productividad",
+      "tagline": "Word · Excel · PowerPoint",
+      "description": "Crea y edita documentos de Word, hojas de Excel y presentaciones de PowerPoint. Soporta plantillas, formato e imágenes.",
+      "examples": [
+        "Crea un Word con un informe sobre IA",
+        "Hazme un Excel con estos datos",
+        "Genera una presentación sobre arquitectura",
+        "Añade una imagen a este Word"
+      ],
+      "combos": [
+        "pdf",
+        "edit",
+        "image"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "edit",
+      "name": "Editar",
+      "icon": "FileEdit",
+      "category": "productividad",
+      "tagline": "Modificar archivos",
+      "description": "Modifica archivos existentes (Word, Excel, TXT, JSON, YAML, CSV) con instrucciones en lenguaje natural.",
+      "examples": [
+        "Añade una fila a este Excel",
+        "Cambia el título de este Word",
+        "Reemplaza todas las comas por puntos",
+        "Añade esto al final del TXT"
+      ],
+      "combos": [
+        "office",
+        "pdf",
+        "files"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "pdf",
+      "name": "PDF",
+      "icon": "FileText",
+      "category": "productividad",
+      "tagline": "Conversión y edición",
+      "description": "Convierte documentos a PDF, extrae texto, añade marcas de agua, comprime y firma PDFs.",
+      "examples": [
+        "Convierte este Word a PDF",
+        "Extrae el texto de este PDF",
+        "Añade una marca de agua a este PDF",
+        "Comprime este PDF"
+      ],
+      "combos": [
+        "office",
+        "docs",
+        "pdf-editor"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "docs",
+      "name": "Docs RAG",
+      "icon": "BookOpen",
+      "category": "productividad",
+      "tagline": "Pregunta a tus PDFs",
+      "description": "Indexa tus documentos (PDFs, Word, TXT, Markdown) y responde preguntas sobre ellos usando RAG local con citas de las fuentes.",
+      "examples": [
+        "Indexa mi carpeta de apuntes",
+        "Qué dice el PDF sobre energías renovables",
+        "Resume este documento",
+        "Busca en mis documentos: machine learning"
+      ],
+      "combos": [
+        "pdf",
+        "office",
+        "edit"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "gmail",
+      "name": "Gmail",
+      "icon": "Mail",
+      "category": "productividad",
+      "tagline": "Correo inteligente",
+      "description": "Lee, envía y busca correos en Gmail. Adjunta archivos, filtra por remitente, asunto o fecha.",
+      "examples": [
+        "Lee los últimos correos",
+        "Envía un correo a juan@ejemplo.com sobre la reunión",
+        "Busca correos de Amazon",
+        "Cuántos correos sin leer tengo"
+      ],
+      "combos": [
+        "calendar",
+        "notion",
+        "office"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "calendar",
+      "name": "Calendario",
+      "icon": "Calendar",
+      "category": "productividad",
+      "tagline": "Eventos + .ics",
+      "description": "Añade, lista y gestiona eventos. Exporta a formato .ics para importar en Google Calendar, Outlook, etc.",
+      "examples": [
+        "Apunta reunión el lunes a las 10",
+        "Qué eventos tengo esta semana",
+        "Exporta mi calendario",
+        "Elimina el evento de mañana"
+      ],
+      "combos": [
+        "gmail",
+        "notion",
+        "scheduler"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "notion",
+      "name": "Notion",
+      "icon": "NotebookPen",
+      "category": "productividad",
+      "tagline": "Páginas y notas",
+      "description": "Crea páginas, guarda notas rápidas, añade contenido y busca en tu workspace de Notion.",
+      "examples": [
+        "Apunta en Notion que tengo reunión el lunes",
+        "Crea una página en Notion sobre recetas",
+        "Busca en Notion el proyecto Senna",
+        "Lista mis páginas de Notion"
+      ],
+      "combos": [
+        "gmail",
+        "calendar",
+        "docs"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "n8n",
+      "name": "n8n",
+      "icon": "Workflow",
+      "category": "productividad",
+      "tagline": "Automatizaciones",
+      "description": "Lista, activa y gestiona workflows de n8n. Busca templates e importa automatizaciones directamente.",
+      "examples": [
+        "Lista mis workflows de n8n",
+        "Activa el workflow de Telegram",
+        "Busca templates sobre web scraping",
+        "Ejecuciones recientes de n8n"
+      ],
+      "combos": [
+        "telegram",
+        "gmail",
+        "notion"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "scheduler",
+      "name": "Tareas",
+      "icon": "Clock",
+      "category": "productividad",
+      "tagline": "Programadas",
+      "description": "Programa tareas para que se ejecuten en el futuro: recordatorios, scripts, mensajes, etc.",
+      "examples": [
+        "Recuérdame llamar a mamá en 1 hora",
+        "Ejecuta este script cada día a las 8",
+        "Avisa a las 15:00 de la reunión"
+      ],
+      "combos": [
+        "calendar",
+        "alarm",
+        "telegram"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "productivity",
+      "name": "Productividad",
+      "icon": "ListTodo",
+      "category": "productividad",
+      "tagline": "Tareas y notas",
+      "description": "Gestiona tareas pendientes, notas rápidas y listas. Integrado con Notion y el calendario.",
+      "examples": [
+        "Apunta una tarea: llamar al banco",
+        "Qué tareas tengo pendientes",
+        "Marca la tarea como completada",
+        "Lista mis notas rápidas"
+      ],
+      "combos": [
+        "notion",
+        "calendar",
+        "scheduler"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "dev",
+      "name": "Dev",
+      "icon": "Code",
+      "category": "dev",
+      "tagline": "Código y refactor",
+      "description": "Revisa, explica, refactoriza y genera código. Ejecuta tests, formatea con ruff, linter, cuenta líneas y más.",
+      "examples": [
+        "Revisa este archivo de Python",
+        "Explícame este código",
+        "Genera un script que sume dos números",
+        "Formatea el archivo skills/dev.py",
+        "Corre los tests"
+      ],
+      "combos": [
+        "git",
+        "vision",
+        "terminal"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "git",
+      "name": "Git",
+      "icon": "GitBranch",
+      "category": "dev",
+      "tagline": "Control de versiones",
+      "description": "Gestiona repositorios Git: status, commit, push, pull, branches, stash, blame, diff y más.",
+      "examples": [
+        "Haz commit de los cambios actuales",
+        "Muestra el log del repo",
+        "Crea una branch nueva",
+        "Haz push al remoto"
+      ],
+      "combos": [
+        "dev",
+        "terminal"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "vision",
+      "name": "Vision",
+      "icon": "Eye",
+      "category": "dev",
+      "tagline": "OCR y análisis",
+      "description": "Analiza la pantalla o imágenes: OCR (extrae texto), describe UI, detecta objetos, lee errores y compara imágenes.",
+      "examples": [
+        "Describe la pantalla",
+        "Lee el error de la pantalla",
+        "Hazme OCR de esta imagen",
+        "Qué botones hay en esta UI"
+      ],
+      "combos": [
+        "dev",
+        "image",
+        "docs"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "image",
+      "name": "Imagen",
+      "icon": "Image",
+      "category": "multimedia",
+      "tagline": "Generación IA",
+      "description": "Genera imágenes con IA (Flux Schnell, Agnes AI). Soporta negative prompts, variaciones e historial.",
+      "examples": [
+        "Genera una imagen de un gato astronauta",
+        "Haz 4 variaciones de esta imagen",
+        "Genera un paisaje al atardecer",
+        "Qué imágenes he generado hoy"
+      ],
+      "combos": [
+        "retouch",
+        "office",
+        "pdf"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "audio",
+      "name": "Audio",
+      "icon": "Mic",
+      "category": "multimedia",
+      "tagline": "Transcripción",
+      "description": "Transcribe audio a texto usando Whisper local. Soporta múltiples idiomas, exporta a SRT, Word o TXT.",
+      "examples": [
+        "Transcribe este audio",
+        "Convierte esta reunión a texto",
+        "Genera subtítulos SRT de este video",
+        "Pásame el audio a Word"
+      ],
+      "combos": [
+        "video",
+        "notion",
+        "docs"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "video",
+      "name": "Video",
+      "icon": "Video",
+      "category": "multimedia",
+      "tagline": "Editar y exportar",
+      "description": "Edita video con ffmpeg: recorta, une, extrae audio, comprime, convierte, añade subtítulos, música, genera GIFs y más.",
+      "examples": [
+        "Recorta el video del 0:10 al 0:30",
+        "Une estos dos videos",
+        "Extrae el audio de este video",
+        "Haz un GIF de estos 5 segundos"
+      ],
+      "combos": [
+        "audio",
+        "image",
+        "retouch"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "retouch",
+      "name": "Retoque",
+      "icon": "Wand2",
+      "category": "multimedia",
+      "tagline": "Upscaling 4x",
+      "description": "Retoque profesional: quita fondos, upscaling 4x, añade sombras, marca de agua, procesa en batch.",
+      "examples": [
+        "Quita el fondo de esta foto",
+        "Haz upscaling 4x de esta imagen",
+        "Añade una sombra realista",
+        "Pon marca de agua en estas fotos"
+      ],
+      "combos": [
+        "image",
+        "video"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "education",
+      "name": "Educación",
+      "icon": "GraduationCap",
+      "category": "multimedia",
+      "tagline": "PSeInt · diagramas",
+      "description": "Genera diagramas educativos: mindmaps, timelines, flowcharts, pseudocódigo PSeInt. Exporta a PNG/SVG.",
+      "examples": [
+        "Hazme un mindmap sobre las energías renovables",
+        "Crea un timeline de la Revolución Francesa",
+        "Genera un diagrama de flujo de este algoritmo",
+        "Hazme un PSeInt que sume dos números"
+      ],
+      "combos": [
+        "docs",
+        "office",
+        "image"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "dwg",
+      "name": "CAD/BIM",
+      "icon": "DraftingCompass",
+      "category": "cad",
+      "tagline": "DWG → IFC",
+      "description": "Analiza planos DWG/DXF, extrae muros, habitaciones, capas, genera cuadros de superficies en Excel y exporta a IFC para Revit/ArchiCAD.",
+      "examples": [
+        "Analiza el plano casa.dwg",
+        "Cuadro de superficies del plano X.dxf",
+        "Extrae los muros 3D de este plano",
+        "Exporta a IFC",
+        "Lista las capas del plano"
+      ],
+      "combos": [
+        "blender",
+        "freecad",
+        "maps"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "freecad",
+      "name": "FreeCAD",
+      "icon": "Box",
+      "category": "cad",
+      "tagline": "Modelado técnico",
+      "description": "Modela en FreeCAD: muros 3D, habitaciones, puertas, ventanas, losas, columnas, cotas. Exporta a STEP, OBJ, STL.",
+      "examples": [
+        "Nuevo documento FreeCAD",
+        "Añade un muro 3D de (0,0) a (5,0)",
+        "Crea una habitación con estos vértices",
+        "Exporta a STEP"
+      ],
+      "combos": [
+        "dwg",
+        "blender"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "blender",
+      "name": "Blender",
+      "icon": "Boxes",
+      "category": "cad",
+      "tagline": "Render 3D",
+      "description": "Renderiza modelos 3D en Blender: vistas ortográficas (planta, fachada, corte), renders interiores, panoramas 360, animaciones, exporta a GLB.",
+      "examples": [
+        "Genera las 3 vistas del STEP",
+        "Renderiza el interior del modelo",
+        "Haz 8 renders orbitando el modelo",
+        "Exporta a GLB para web",
+        "Animación 360 del modelo"
+      ],
+      "combos": [
+        "dwg",
+        "freecad",
+        "maps"
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "maps",
+      "name": "Maps",
+      "icon": "Map",
+      "category": "cad",
+      "tagline": "Edificios reales",
+      "description": "Busca edificios reales en OpenStreetMap, modela 3D, obtén coordenadas, rutas, POIs cercanos y elevación.",
+      "examples": [
+        "Modela la Sagrada Familia",
+        "Coordenadas de Plaza Mayor, Lima",
+        "Ruta de Miraflores a Barranco",
+        "Restaurantes cerca de San Isidro"
+      ],
+      "combos": [
+        "blender",
+        "dwg"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "spotify",
+      "name": "Spotify",
+      "icon": "Music",
+      "category": "integraciones",
+      "tagline": "Control de música",
+      "description": "Controla Spotify: play, pause, next, previous, volumen, qué está sonando y reproduce canciones específicas.",
+      "examples": [
+        "Qué está sonando",
+        "Pausa la música",
+        "Siguiente canción",
+        "Reproduce en Spotify Bohemian Rhapsody",
+        "Volumen de Spotify al 60"
+      ],
+      "combos": [
+        "desktop",
+        "entertainment"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "canva",
+      "name": "Canva",
+      "icon": "Palette",
+      "category": "integraciones",
+      "tagline": "Diseño gráfico",
+      "description": "Lista, crea y exporta diseños de Canva. Gestiona assets e integra con tus proyectos.",
+      "examples": [
+        "Lista mis diseños de Canva",
+        "Whoami Canva",
+        "Lista mis assets de Canva"
+      ],
+      "combos": [
+        "image",
+        "office"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "telegram",
+      "name": "Telegram",
+      "icon": "Send",
+      "category": "integraciones",
+      "tagline": "Notificaciones",
+      "description": "Envía mensajes, archivos (PDF, Word, Excel, imágenes) y notificaciones a Telegram. Recibe comandos remotos.",
+      "examples": [
+        "Mándame un mensaje a Telegram",
+        "Envía este PDF por Telegram",
+        "Notifícame cuando termine el proceso"
+      ],
+      "combos": [
+        "n8n",
+        "scheduler",
+        "alarm"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "entertainment",
+      "name": "Entretenimiento",
+      "icon": "Gamepad2",
+      "category": "entretenimiento",
+      "tagline": "Multimedia",
+      "description": "Reproduce multimedia local: música, películas, radio online. Controla la reproducción.",
+      "examples": [
+        "Reproduce música",
+        "Pon la radio",
+        "Reproduce esta película"
+      ],
+      "combos": [
+        "spotify",
+        "desktop"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "frases",
+      "name": "Frases",
+      "icon": "Quote",
+      "category": "entretenimiento",
+      "tagline": "Citas curadas",
+      "description": "Devuelve frases célebres, motivadoras o de personajes históricos.",
+      "examples": [
+        "Dime una frase célebre",
+        "Una frase motivadora",
+        "Frase de Einstein"
+      ],
+      "combos": [
+        "chiste"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "chiste",
+      "name": "Chistes",
+      "icon": "Smile",
+      "category": "entretenimiento",
+      "tagline": "Humor local",
+      "description": "Cuenta chistes locales (sin conexión) para entretener.",
+      "examples": [
+        "Cuéntame un chiste",
+        "Otro chiste",
+        "Chiste de informáticos"
+      ],
+      "combos": [
+        "frases"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "weather",
+      "name": "Clima",
+      "icon": "CloudSun",
+      "category": "entretenimiento",
+      "tagline": "OpenWeather",
+      "description": "Consulta el clima actual y el pronóstico de cualquier ciudad usando OpenWeather.",
+      "examples": [
+        "Qué tiempo hace en Lima",
+        "Pronóstico de Madrid para mañana",
+        "Va a llover hoy"
+      ],
+      "combos": [
+        "maps",
+        "calendar"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "alarm",
+      "name": "Alarmas",
+      "icon": "AlarmClock",
+      "category": "entretenimiento",
+      "tagline": "Recordatorios",
+      "description": "Crea alarmas y recordatorios con sonido o notificación.",
+      "examples": [
+        "Pon una alarma a las 7",
+        "Recuérdame beber agua en 30 min",
+        "Alarma para la reunión"
+      ],
+      "combos": [
+        "scheduler",
+        "calendar",
+        "telegram"
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "macro",
+      "name": "Macro",
+      "icon": "Gamepad",
+      "category": "entretenimiento",
+      "tagline": "Grabar secuencias",
+      "description": "Graba y reproduce macros: secuencias de teclas, clicks y movimientos del ratón.",
+      "examples": [
+        "Graba una macro",
+        "Reproduce la macro guardada",
+        "Lista mis macros",
+        "Renombra esta macro"
+      ],
+      "combos": [
+        "system",
+        "terminal"
+      ],
+      "risk": "medium"
+    }
+  ],
+  "categories": {
+    "fundamentales": {
+      "label": "Fundamentales",
+      "color": "#c9a668"
+    },
+    "productividad": {
+      "label": "Productividad",
+      "color": "#9ab8c9"
+    },
+    "dev": {
+      "label": "Dev y Tecnología",
+      "color": "#b8c99a"
+    },
+    "multimedia": {
+      "label": "Multimedia",
+      "color": "#c99a9a"
+    },
+    "cad": {
+      "label": "CAD y 3D",
+      "color": "#c9b89a"
+    },
+    "integraciones": {
+      "label": "Integraciones",
+      "color": "#c9a6c9"
+    },
+    "entretenimiento": {
+      "label": "Entretenimiento",
+      "color": "#a6c9c9"
+    }
+  },
+  "featured_combos": [
+    {
+      "id": "cad-pipeline",
+      "title": "Pipeline CAD completo",
+      "subtitle": "Del plano al render 3D",
+      "description": "Analiza un plano DWG, extrae los muros 3D, modela en FreeCAD y renderiza vistas profesionales en Blender. Todo sin salir de Senna.",
+      "skills": [
+        "dwg",
+        "freecad",
+        "blender"
+      ],
+      "example": "Analiza el plano casa.dwg, extrae los muros y renderiza 4 vistas del modelo",
+      "accent": "#c9b89a"
+    },
+    {
+      "id": "reunion-inteligente",
+      "title": "Reunión inteligente",
+      "subtitle": "Graba, transcribe y organiza",
+      "description": "Graba una reunión, transcríbela con Whisper y guarda las notas automáticamente en Notion. Además crea el evento en el calendario con los puntos clave.",
+      "skills": [
+        "audio",
+        "notion",
+        "calendar"
+      ],
+      "example": "Transcribe la reunión de hoy y guarda las notas en Notion",
+      "accent": "#9ab8c9"
+    },
+    {
+      "id": "dev-workflow",
+      "title": "Workflow de desarrollo",
+      "subtitle": "Analiza, arregla y commitea",
+      "description": "Analiza el código con Vision, pídele a Dev que lo refactorice, revisa los cambios y haz commit con Git. Un flujo completo de desarrollo asistido.",
+      "skills": [
+        "vision",
+        "dev",
+        "git"
+      ],
+      "example": "Analiza este código en pantalla, refactorízalo y haz commit",
+      "accent": "#b8c99a"
+    },
+    {
+      "id": "documento-profesional",
+      "title": "Documento profesional",
+      "subtitle": "Redacta, ilustra y exporta",
+      "description": "Redacta un informe, genera o busca imágenes con IA, añádelas al documento y expórtalo a PDF con marca de agua.",
+      "skills": [
+        "office",
+        "image",
+        "pdf"
+      ],
+      "example": "Crea un informe sobre IA, añade imágenes y expórtalo a PDF",
+      "accent": "#c99a9a"
+    },
+    {
+      "id": "edificio-real",
+      "title": "Edificio real a 3D",
+      "subtitle": "Busca, modela y renderiza",
+      "description": "Busca un edificio real en OpenStreetMap, modélalo en 3D y renderiza vistas arquitectónicas de alta calidad.",
+      "skills": [
+        "maps",
+        "blender"
+      ],
+      "example": "Modela la Sagrada Familia y hazme 8 renders orbitando",
+      "accent": "#c9a6c9"
+    },
+    {
+      "id": "contenido-multimedia",
+      "title": "Contenido multimedia",
+      "subtitle": "Imagen, video y audio",
+      "description": "Genera una imagen con IA, úsala como fondo en un video, añade música de fondo y exporta el resultado final.",
+      "skills": [
+        "image",
+        "video",
+        "retouch"
+      ],
+      "example": "Genera una imagen, úsala en un video y añade música",
+      "accent": "#a6c9c9"
+    }
+  ]
+}

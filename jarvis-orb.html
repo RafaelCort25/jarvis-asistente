@@ -4,10 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Senna</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Ccircle cx=%2232%22 cy=%2232%22 r=%2228%22 fill=%22%230a0908%22 stroke=%22%23c9a668%22 stroke-width=%223%22/%3E%3Ctext x=%2232%22 y=%2243%22 font-size=%2232%22 font-family=%22serif%22 font-weight=%22bold%22 text-anchor=%22middle%22 fill=%22%23c9a668%22%3ES%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   :root{
     --void:#0a0908;
@@ -933,6 +935,47 @@
     letter-spacing: 0.2em;
     margin-top: 16px;
   }
+
+  /* ═══ SKILLS MODAL ═══ */
+  .modal-wide { width: min(1100px, 95vw); max-width: 1100px; }
+  .skills-search { position: relative; margin: 20px 0 16px; }
+  .skills-search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-dim); }
+  .skills-search input {
+    width: 100%; padding: 12px 14px 12px 40px; border-radius: 8px;
+    border: 1px solid var(--panel-border); background: rgba(20,17,13,0.5);
+    color: var(--text); font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem; outline: none;
+  }
+  .skills-search input:focus { border-color: var(--gold); }
+  .skills-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+  .skill-filter {
+    padding: 6px 12px; border-radius: 20px; border: 1px solid var(--panel-border);
+    background: transparent; color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .skill-filter:hover { border-color: var(--gold); color: var(--text); }
+  .skill-filter.active { background: rgba(201,166,104,0.15); border-color: var(--gold); color: var(--gold-bright); }
+  .skills-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .skill-card {
+    padding: 14px; border-radius: 10px; border: 1px solid var(--panel-border);
+    background: rgba(20,17,13,0.4); cursor: pointer; transition: all 0.2s;
+    text-align: left; font-family: inherit; color: inherit;
+  }
+  .skill-card:hover { border-color: var(--gold); background: rgba(201,166,104,0.06); transform: translateY(-2px); }
+  .skill-card-icon {
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; margin-bottom: 10px;
+  }
+  .skill-card-icon svg { width: 18px; height: 18px; }
+  .skill-card-name { font-family: 'Fraunces', serif; font-size: 1rem; color: var(--text); margin-bottom: 4px; }
+  .skill-card-tagline { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-dim); }
+  .combos-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+  .combo-item { padding: 14px; border-radius: 10px; border: 1px solid var(--panel-border); background: rgba(20,17,13,0.4); }
+  .combo-item h4 { font-family: 'Fraunces', serif; font-size: 1.05rem; color: var(--text); margin-bottom: 4px; font-weight: 500; }
+  .combo-item .sub { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 10px; }
+  .combo-item p { font-size: 0.82rem; color: var(--text-dim); line-height: 1.5; margin-bottom: 10px; }
+  .combo-item .example { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--gold-bright); font-style: italic; border-left: 2px solid var(--gold); padding-left: 10px; }
 </style>
 </head>
 <body>
@@ -1088,6 +1131,35 @@
 
 
 <!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: SKILLS                                             -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalSkills">
+  <div class="modal modal-wide modal-relative">
+    <button class="close-x" data-close="modalSkills">✕</button>
+    <h2>Skills</h2>
+    <p class="subtitle">Haz clic en cualquier skill para ver su detalle, ejemplos y combos.</p>
+    <div class="skills-search">
+      <i data-lucide="search"></i>
+      <input type="text" id="skillsSearch" placeholder="Buscar skill...">
+    </div>
+    <div class="skills-filters" id="skillsFilters"></div>
+    <div class="skills-grid" id="skillsGrid"></div>
+    <h3 style="margin-top:28px; margin-bottom:14px; font-size:1.1rem; font-family:'Fraunces',serif; font-weight:500;">Combos destacados</h3>
+    <div class="combos-list" id="combosList"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: SKILL DETALLE                                      -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalSkillDetail" style="z-index:210;">
+  <div class="modal modal-relative" style="max-width:600px;">
+    <button class="close-x" data-close="modalSkillDetail">✕</button>
+    <div id="skillDetailBody"></div>
+  </div>
+</div>
+
 <!-- SIDEBAR: HISTORIAL DE CONVERSACIONES                      -->
 <!-- ═══════════════════════════════════════════════════════════ -->
 <div id="histBackdrop"></div>
@@ -2326,6 +2398,17 @@ async function comprobarOnboarding() {
 // ─── Event handlers ───
 sysBtn.addEventListener('click', abrirStatus);
 
+// Boton Skills en la topbar (clonado de sysBtn para reutilizar estilos)
+(function() {
+  const sb = sysBtn.cloneNode(true);
+  sb.id = 'skillsBtn';
+  sb.title = 'Skills';
+  sb.innerHTML = '<i data-lucide="layout-grid" style="width:20px;height:20px;"></i>';
+  sysBtn.parentElement.insertBefore(sb, sysBtn.nextSibling);
+  sb.addEventListener('click', abrirSkills);
+  setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 100);
+})();
+
 // Boton recargar modelos
 const _btnReload = document.getElementById('btnReloadModels');
 if (_btnReload) _btnReload.addEventListener('click', cargarModelos);
@@ -2750,6 +2833,188 @@ console.log('[JARVIS] Interfaz cargada correctamente');
   }
   setTimeout(attachHover, 1500);
   setInterval(attachHover, 3000);
+})();
+
+
+// ═══════════════════════════════════════════════════════════
+// SKILLS: catalogo visual con filtros, busqueda y detalle
+// ═══════════════════════════════════════════════════════════
+let _skillsCache = null;
+let _skillsFilters = { q: '', category: 'all' };
+
+async function abrirSkills() {
+  abrirModal('modalSkills');
+  if (_skillsCache) { renderSkills(); return; }
+  const grid = document.getElementById('skillsGrid');
+  grid.innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:20px;grid-column:1/-1;">Cargando skills...</p>';
+  try {
+    const [skillsRes, combosRes] = await Promise.all([
+      fetch('/skills/list').then(r => r.json()),
+      fetch('/skills/combos').then(r => r.json()),
+    ]);
+    _skillsCache = {
+      skills: skillsRes.skills || [],
+      categories: skillsRes.categories || {},
+      combos: combosRes.combos || [],
+    };
+    renderSkillsFilters();
+    renderSkills();
+    renderCombos();
+  } catch(e) {
+    grid.innerHTML = '<p style="color:#c95454;text-align:center;padding:20px;grid-column:1/-1;">Error: ' + e.message + '</p>';
+  }
+}
+
+function renderSkillsFilters() {
+  const cats = _skillsCache.categories;
+  const el = document.getElementById('skillsFilters');
+  const total = _skillsCache.skills.length;
+  let html = '<button class="skill-filter active" data-cat="all">Todas (' + total + ')</button>';
+  for (const key of Object.keys(cats)) {
+    const info = cats[key];
+    const count = _skillsCache.skills.filter(s => s.category === key).length;
+    if (count === 0) continue;
+    html += '<button class="skill-filter" data-cat="' + key + '">' + info.label + ' (' + count + ')</button>';
+  }
+  el.innerHTML = html;
+  el.querySelectorAll('.skill-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+      el.querySelectorAll('.skill-filter').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _skillsFilters.category = btn.dataset.cat;
+      renderSkills();
+    });
+  });
+}
+
+function renderSkills() {
+  const grid = document.getElementById('skillsGrid');
+  const cats = _skillsCache.categories;
+  let list = _skillsCache.skills;
+  if (_skillsFilters.category !== 'all') list = list.filter(s => s.category === _skillsFilters.category);
+  if (_skillsFilters.q) {
+    const q = _skillsFilters.q.toLowerCase();
+    list = list.filter(s =>
+      (s.name||'').toLowerCase().includes(q) ||
+      (s.tagline||'').toLowerCase().includes(q) ||
+      (s.description||'').toLowerCase().includes(q)
+    );
+  }
+  if (list.length === 0) {
+    grid.innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:20px;grid-column:1/-1;">Sin resultados</p>';
+    return;
+  }
+  grid.innerHTML = list.map(s => {
+    const cc = (cats[s.category] && cats[s.category].color) || '#c9a668';
+    return '<button class="skill-card" data-skill-id="' + s.id + '">' +
+      '<div class="skill-card-icon" style="color:' + cc + ';border:1px solid ' + cc + '33;background:' + cc + '0d;">' +
+        '<i data-lucide="' + (s.icon || 'circle') + '"></i>' +
+      '</div>' +
+      '<div class="skill-card-name">' + s.name + '</div>' +
+      '<div class="skill-card-tagline">' + (s.tagline || '') + '</div>' +
+    '</button>';
+  }).join('');
+  grid.querySelectorAll('.skill-card').forEach(card => {
+    card.addEventListener('click', () => abrirSkillDetalle(card.dataset.skillId));
+  });
+  if (window.lucide) lucide.createIcons();
+}
+
+function renderCombos() {
+  const el = document.getElementById('combosList');
+  if (!_skillsCache.combos.length) { el.innerHTML = '<p style="color:var(--text-dim);">Sin combos</p>'; return; }
+  el.innerHTML = _skillsCache.combos.map(c =>
+    '<div class="combo-item">' +
+      '<h4>' + c.title + '</h4>' +
+      '<div class="sub">' + (c.subtitle || '') + '</div>' +
+      '<p>' + (c.description || '') + '</p>' +
+      '<div class="example">"' + (c.example || '') + '"</div>' +
+    '</div>'
+  ).join('');
+}
+
+function abrirSkillDetalle(skillId) {
+  const s = _skillsCache.skills.find(x => x.id === skillId);
+  if (!s) return;
+  const cats = _skillsCache.categories;
+  const cc = (cats[s.category] && cats[s.category].color) || '#c9a668';
+  const rmap = {
+    low: { label: 'Riesgo bajo', color: '#7fb069', desc: 'No requiere confirmacion.' },
+    medium: { label: 'Riesgo medio', color: '#e0a458', desc: 'Pide confirmacion al usuario.' },
+    high: { label: 'Riesgo alto', color: '#c95454', desc: 'Requiere confirmacion con advertencia.' },
+  };
+  const rk = rmap[s.risk] || rmap.low;
+  const comboSkills = (s.combos || []).map(id => _skillsCache.skills.find(x => x.id === id)).filter(Boolean);
+
+  let h = '<div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:20px;">' +
+    '<div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:' + cc + ';border:1px solid ' + cc + '40;background:' + cc + '10;flex-shrink:0;">' +
+      '<i data-lucide="' + (s.icon || 'circle') + '" style="width:24px;height:24px;"></i>' +
+    '</div>' +
+    '<div>' +
+      '<div style="font-family:\'JetBrains Mono\',monospace;font-size:0.65rem;letter-spacing:0.25em;text-transform:uppercase;color:' + cc + ';margin-bottom:6px;">' + ((cats[s.category] && cats[s.category].label) || s.category) + '</div>' +
+      '<h2 style="margin:0 0 4px;">' + s.name + '</h2>' +
+      '<div style="color:var(--text-dim);font-size:0.9rem;">' + (s.tagline || '') + '</div>' +
+    '</div>' +
+  '</div>';
+
+  h += '<div style="margin-bottom:20px;">' +
+    '<div style="font-family:monospace;font-size:0.7rem;color:var(--gold);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:8px;">Descripcion</div>' +
+    '<p style="color:var(--text);line-height:1.6;margin:0;">' + (s.description || '') + '</p>' +
+  '</div>';
+
+  if (s.examples && s.examples.length) {
+    h += '<div style="margin-bottom:20px;">' +
+      '<div style="font-family:monospace;font-size:0.7rem;color:var(--gold);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:8px;">Ejemplos</div>';
+    s.examples.forEach((ex, i) => {
+      h += '<div style="display:flex;gap:10px;padding:10px;border-radius:8px;background:rgba(20,17,13,0.5);border:1px solid var(--panel-border);margin-bottom:6px;">' +
+        '<span style="font-family:monospace;font-size:0.7rem;color:var(--gold);opacity:0.6;">' + String(i+1).padStart(2,'0') + '</span>' +
+        '<span style="font-family:monospace;font-size:0.8rem;color:var(--text);">' + ex + '</span>' +
+      '</div>';
+    });
+    h += '</div>';
+  }
+
+  if (comboSkills.length) {
+    h += '<div style="margin-bottom:20px;">' +
+      '<div style="font-family:monospace;font-size:0.7rem;color:var(--gold);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:8px;">Combina bien con</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+    comboSkills.forEach(c => {
+      const c2 = (cats[c.category] && cats[c.category].color) || '#c9a668';
+      h += '<span style="padding:6px 10px;border-radius:8px;border:1px solid ' + c2 + '33;background:' + c2 + '0a;font-family:monospace;font-size:0.72rem;color:var(--text);">' + c.name + '</span>';
+    });
+    h += '</div></div>';
+  }
+
+  h += '<div>' +
+    '<div style="font-family:monospace;font-size:0.7rem;color:var(--gold);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:8px;">Riesgo</div>' +
+    '<div style="display:flex;gap:12px;padding:12px;border-radius:8px;border:1px solid ' + rk.color + '33;background:' + rk.color + '0a;">' +
+      '<div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid ' + rk.color + '40;color:' + rk.color + ';flex-shrink:0;">' +
+        '<i data-lucide="shield" style="width:16px;height:16px;"></i>' +
+      '</div>' +
+      '<div>' +
+        '<div style="font-family:monospace;font-size:0.8rem;color:' + rk.color + ';margin-bottom:2px;">' + rk.label + '</div>' +
+        '<div style="font-size:0.78rem;color:var(--text-dim);">' + rk.desc + '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  document.getElementById('skillDetailBody').innerHTML = h;
+  abrirModal('modalSkillDetail');
+  if (window.lucide) lucide.createIcons();
+}
+
+(function() {
+  const si = document.getElementById('skillsSearch');
+  if (si) {
+    let t;
+    si.addEventListener('input', (e) => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        _skillsFilters.q = e.target.value;
+        renderSkills();
+      }, 150);
+    });
+  }
 })();
 
 </script>
