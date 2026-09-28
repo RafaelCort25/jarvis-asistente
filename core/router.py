@@ -2602,7 +2602,7 @@ class Router:
 
         m = re.search(r"(?:extrae|saca|separa)\s+(?:el\s+)?audio\s+(?:de|del)\s+(?:el\s+)?(?:video\s+)?([^\s]+?\.(\w{2,4}))(?:\s+(?:en|como|a)\s+(mp3|wav|m4a|aac|flac|ogg))?\s*$", t, re.IGNORECASE)
         if m:
-            return [{"skill": "video", "action": "extract_audio", "params": {"path": m.group(1).strip(), "format": (m.group(2) or "mp3").lower()}}]
+            return [{"skill": "video", "action": "extract_audio", "params": {"path": m.group(1).strip(), "format": (m.group(3) or "mp3").lower()}}]
 
         m = re.search(r"(?:extrae|saca|separa)\s+(?:los\s+)?frames?\s+(?:de|del?)\s+(?:el\s+)?video\s+(\S+)", t, re.IGNORECASE)
         if m:
