@@ -395,6 +395,69 @@ class Router:
 
         # ═══════════════════════════════════════════════════════════════════
         # ═══════════════════════════════════════════════════════════════════
+        # PDF: edicion avanzada (extract, insert, reorder, pass, meta, images)
+        # ═══════════════════════════════════════════════════════════════════
+        # Extraer paginas
+        m = re.search(r"(?:extrae|saca|quita|copia)\s+(?:las?\s+)?paginas?\s+([\d,\s]+)\s+(?:de|del?)\s+(?:el\s+)?pdf\s+([^\s]+\.pdf)", t, re.IGNORECASE)
+        if m:
+            nums = [int(x) for x in re.findall(r"\d+", m.group(1))]
+            return [{"skill": "pdf", "action": "extract_pages", "params": {"path": m.group(2).strip(), "pages": nums}}]
+        # Insertar PDF
+        m = re.search(r"(?:inserta|mete|anade)\s+(?:el\s+)?pdf\s+([^\s]+\.pdf)\s+(?:en|dentro\s+de|despues\s+de\s+pagina)\s+(\d+\s+)?(?:el\s+)?pdf\s+([^\s]+\.pdf)", t, re.IGNORECASE)
+        if m:
+            at = int(m.group(2)) if m.group(2) else 1
+            return [{"skill": "pdf", "action": "insert_pages", "params": {"insert_path": m.group(1).strip(), "at": at, "path": m.group(3).strip()}}]
+        # Reordenar
+        m = re.search(r"(?:reordena|ordena)\s+(?:el\s+)?pdf\s+([^\s]+\.pdf)\s+(?:con\s+el\s+orden|en\s+orden)\s+([\d,\s]+)", t, re.IGNORECASE)
+        if m:
+            nums = [int(x) for x in re.findall(r"\d+", m.group(2))]
+            return [{"skill": "pdf", "action": "reorder", "params": {"path": m.group(1).strip(), "order": nums}}]
+        # Anadir contrasena
+        m = re.search(r"(?:protege|pon\s+contrasena|cifra)\s+(?:el\s+)?pdf\s+([^\s]+\.pdf)\s+(?:con\s+)?[\"']?(.+?)[\"']?$", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "pdf", "action": "set_password", "params": {"path": m.group(1).strip(), "password": m.group(2).strip()}}]
+        # Quitar contrasena
+        m = re.search(r"(?:quita|elimina|desbloquea)\s+(?:la\s+)?contrasena\s+(?:del?\s+)?pdf\s+([^\s]+\.pdf)(?:\s+con\s+[\"']?(.+?)[\"']?)?$", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "pdf", "action": "remove_password", "params": {"path": m.group(1).strip(), "password": (m.group(2) or "").strip()}}]
+        # Editar metadata
+        m = re.search(r"(?:pon|edita|cambia)\s+(?:el\s+)?(?:titulo|autor|asunto)\s+(?:del?\s+)?pdf\s+([^\s]+\.pdf)", t, re.IGNORECASE)
+        if m:
+            path = m.group(1).strip()
+            params = {"path": path}
+            m_t = re.search(r"(?:titulo|title)\s+(?:a\s+)?[\"']?(.+?)[\"']?(?:\s+y|\s*$)", t, re.IGNORECASE)
+            m_a = re.search(r"(?:autor|author)\s+(?:a\s+)?[\"']?(.+?)[\"']?(?:\s+y|\s*$)", t, re.IGNORECASE)
+            if m_t:
+                params["title"] = m_t.group(1).strip()
+            if m_a:
+                params["author"] = m_a.group(1).strip()
+            return [{"skill": "pdf", "action": "metadata", "params": params}]
+        # Crear PDF desde imagenes
+        m = re.search(r"(?:crea|haz|convierte|junta)\s+(?:un\s+)?pdf\s+(?:con|de|desde)\s+(?:las?\s+)?imagenes?\s+(.+)$", t, re.IGNORECASE)
+        if m:
+            paths_str = m.group(1)
+            paths = [p.strip().strip('"').strip("'") for p in re.split(r"\s+y\s+|\s*,\s*", paths_str) if p.strip()]
+            return [{"skill": "pdf", "action": "merge_images", "params": {"paths": paths}}]
+        # Firmar PDF
+        m = re.search(r"(?:firma|f[\u00ed]rma)\s+(?:el\s+)?pdf\s+([^\s]+\.pdf)\s+(?:con|usando)\s+(?:la\s+)?(?:firma\s+|imagen\s+)?([^\s]+\.(?:png|jpg|jpeg))", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "pdf", "action": "sign", "params": {"path": m.group(1).strip(), "signature_path": m.group(2).strip(), "page": 1, "x": 350, "y": 50, "width": 200}}]
+        # Sellar PDF
+        m = re.search(r"(?:sella|pon\s+(?:un\s+)?sello)\s+(?:en\s+)?(?:el\s+)?pdf\s+([^\s]+\.pdf)\s+(?:con|usando)\s+([^\s]+\.(?:png|jpg|jpeg))", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "pdf", "action": "stamp", "params": {"path": m.group(1).strip(), "stamp_path": m.group(2).strip(), "page": 1, "x": 50, "y": 50, "width": 100}}]
+        # Paginas en blanco
+        m = re.search(r"(?:anade|agrega|pon)\s+(\d+)?\s*paginas?\s+en\s+blanco\s+(?:al?\s+)?(?:inicio|final|principio)\s+(?:del?\s+)?pdf\s+([^\s]+\.pdf)", t, re.IGNORECASE)
+        if m:
+            count = int(m.group(1)) if m.group(1) else 1
+            at = "start" if "inicio" in t.lower() or "principio" in t.lower() else "end"
+            return [{"skill": "pdf", "action": "blank_page", "params": {"path": m.group(2).strip(), "at": at, "count": count}}]
+        # Numeros de pagina
+        m = re.search(r"(?:numera|anade\s+numeros\s+de\s+pagina\s+a)\s+(?:el\s+)?pdf\s+([^\s]+\.pdf)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "pdf", "action": "page_numbers", "params": {"path": m.group(1).strip(), "position": "bottom-center", "start": 1}}]
+
+        # ═══════════════════════════════════════════════════════════════════
         # GIT: operaciones locales
         # ═══════════════════════════════════════════════════════════════════
         # Status
