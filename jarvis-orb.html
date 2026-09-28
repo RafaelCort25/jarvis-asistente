@@ -32,7 +32,15 @@
   /* ═══ PARALLAX MULTICAPA ═══ */
   :root { --mx: 0; --my: 0; }
 
-  #scene{position:fixed; inset:0; z-index:0; transition: opacity .6s ease;}
+  #scene{
+    position: fixed; inset: 0; z-index: 0;
+    transition: opacity .6s ease, transform 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: orbEnter 1.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes orbEnter {
+    0%   { opacity: 0; transform: scale(0.85); }
+    100% { opacity: 1; transform: scale(1); }
+  }
   body.conversation #scene{ opacity:0.35; }
 
   /* Orbe 3D: reacciona al raton con inercia */
@@ -434,16 +442,38 @@
     background: rgba(120,180,120,0.2); color: #a8d4a8;
   }
 
+  /* ═══ EFECTOS CINEMATOGRAFICOS ═══ */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                backdrop-filter 0.28s ease,
+                visibility 0s linear 0.28s;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
     background: rgba(10,9,8,0.85); backdrop-filter: blur(12px);
-    display: none; align-items: center; justify-content: center;
+    visibility: hidden; align-items: center; justify-content: center;
     padding: 40px 20px;
   }
-  .modal-overlay.active { display: flex; }
+  .modal-overlay.active {
+    display: flex;
+    visibility: visible;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                backdrop-filter 0.28s ease;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
 
   .modal {
     width: min(720px, 95vw); max-height: 90vh; overflow-y: auto;
+    transform: scale(0.94) translateY(15px);
+    opacity: 0;
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1);
     background: rgba(20,17,13,0.95);
     border: 1px solid rgba(201,166,104,0.25);
     border-radius: 16px; padding: 30px 34px;
@@ -474,6 +504,15 @@
   }
   .modal .close-x:hover { color: var(--gold); border-color: var(--gold); }
   .modal-relative { position: relative; }
+  .modal-overlay.active .modal {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  /* Glassmorphism mejorado en modales */
+  .modal-overlay.active .modal {
+    backdrop-filter: blur(8px) saturate(1.1);
+    -webkit-backdrop-filter: blur(8px) saturate(1.1);
+  }
 
   /* Sección de estado */
   .status-section {
@@ -518,6 +557,10 @@
 
   .modal-btn {
     display: inline-flex; align-items: center; gap: 6px;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 0.2s ease,
+                border-color 0.2s ease,
+                color 0.2s ease;
     padding: 10px 18px; border-radius: 999px;
     background: rgba(201,166,104,0.15);
     border: 1px solid rgba(201,166,104,0.35);
@@ -527,11 +570,17 @@
     font-family: 'Inter', sans-serif;
   }
   .modal-btn:hover {
+    transform: translateY(-1px) scale(1.02);
     background: rgba(201,166,104,0.28);
     border-color: var(--gold);
   }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201,166,104,0.35); }
+    50%      { box-shadow: 0 0 24px 4px rgba(201,166,104,0.25); }
+  }
   .modal-btn.primary {
     background: rgba(201,166,104,0.28);
+    animation: pulse-glow 3.2s ease-in-out infinite;
     border-color: var(--gold);
   }
   .modal-btn.danger {
