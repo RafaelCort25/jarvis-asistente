@@ -190,17 +190,14 @@ class MacroSkill(Skill):
                 "voice": "Cancelado.",
             }
 
-                # Capturar ventana activa antes de empezar a grabar
-        active_window = _get_active_window_info()
-
+                # La ventana activa se captura DESPUES del delay
         with self._record_lock:
             self._recording = True
             self._record_events = []
             self._record_start = time.time()
             self._record_name = slug
             self._last_move_t = 0.0
-            self._record_window = active_window
-
+            self._record_window = None
         # Delay para que el usuario cambie a la ventana objetivo
         print(f"[MACRO] Empezando en {RECORD_DELAY_SEC} segundos. Cambia a la ventana objetivo. Pulsa ESC para abortar.")
         abort_early = False
@@ -234,6 +231,18 @@ class MacroSkill(Skill):
                 "voice": "Cancelado.",
             }
 
+        # CRITICO: dar tiempo al SO para liberar el hook del early_listener
+        # antes de crear los nuevos listeners. Sin esto, el keyboard listener
+        # puede no registrarse correctamente en Windows.
+        time.sleep(0.5)
+
+
+        # AHORA capturamos la ventana activa (despues del delay)
+        active_window = _get_active_window_info()
+        with self._record_lock:
+            self._record_window = active_window
+
+        print(f"[MACRO] Ventana objetivo: {(active_window or {}).get('title', '?')} ({(active_window or {}).get('exe', '?')})")
         print(f"[MACRO] Grabando '{slug}'. Pulsa ESC para parar.")
 
         # Listener de teclado
