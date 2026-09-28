@@ -633,45 +633,46 @@ class FreeCadSkill(Skill):
         height = float(params.get("height", 3.0))
         thickness = float(params.get("thickness", 0.15))
         label = params.get("label", "Muro")
-
         if not confirmation.require("freecad", "add_wall_3d", f"Muro 3D ({x1},{y1})-({x2},{y2}) h={height}m"):
             return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
 
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import Part" + chr(34),
-             chr(34) + "import math" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "if os.path.exists(path):" + chr(34),
-             chr(34) + "    doc = FreeCAD.openDocument(path)" + chr(34),
-             chr(34) + "else:" + chr(34),
-             chr(34) + "    doc = FreeCAD.newDocument('NitroWorkspace')" + chr(34),
-             "f" + chr(34) + "p1 = FreeCAD.Vector(" + str(x1) + ", " + str(y1) + ", 0)" + chr(34),
-             "f" + chr(34) + "p2 = FreeCAD.Vector(" + str(x2) + ", " + str(y2) + ", 0)" + chr(34),
-             chr(34) + "dx = p2.x - p1.x" + chr(34),
-             chr(34) + "dy = p2.y - p1.y" + chr(34),
-             chr(34) + "L = math.sqrt(dx*dx + dy*dy)" + chr(34),
-             chr(34) + "if L < 0.001:" + chr(34),
-             chr(34) + "    print('ERR_WALL_LEN0')" + chr(34),
-             chr(34) + "    import sys; sys.exit(1)" + chr(34),
-             chr(34) + "ux = -dy / L" + chr(34),
-             chr(34) + "uy = dx / L" + chr(34),
-             "f" + chr(34) + "ht = " + str(thickness) + " / 2.0" + chr(34),
-             chr(34) + "c1 = FreeCAD.Vector(p1.x + ux*ht, p1.y + uy*ht, 0)" + chr(34),
-             chr(34) + "c2 = FreeCAD.Vector(p2.x + ux*ht, p2.y + uy*ht, 0)" + chr(34),
-             chr(34) + "c3 = FreeCAD.Vector(p2.x - ux*ht, p2.y - uy*ht, 0)" + chr(34),
-             chr(34) + "c4 = FreeCAD.Vector(p1.x - ux*ht, p1.y - uy*ht, 0)" + chr(34),
-             chr(34) + "w = Part.makePolygon([c1, c2, c3, c4, c1])" + chr(34),
-             chr(34) + "f = Part.Face(w)" + chr(34),
-             "f" + chr(34) + "solid = f.extrude(FreeCAD.Vector(0, 0, " + str(height) + "))" + chr(34),
-             chr(34) + "obj = doc.addObject('Part::Feature', 'Muro3D')" + chr(34),
-             chr(34) + "obj.Shape = solid" + chr(34),
-             "f" + chr(34) + "obj.Label = '" + label + "'" + chr(34),
-             chr(34) + "doc.recompute()" + chr(34),
-             chr(34) + "doc.saveAs(path)" + chr(34),
-             chr(34) + "print('OK_WALL3D')" + chr(34)]
-
-        return self._run_script_list(L, "Muro 3D", f"Altura: {height}m, Grosor: {thickness}m", "OK_WALL3D")
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import Part",
+            "import math",
+            "import os",
+            "path = r'" + ws + "'",
+            "if os.path.exists(path):",
+            "    doc = FreeCAD.openDocument(path)",
+            "else:",
+            "    doc = FreeCAD.newDocument('NitroWorkspace')",
+            "p1 = FreeCAD.Vector(" + str(x1) + ", " + str(y1) + ", 0)",
+            "p2 = FreeCAD.Vector(" + str(x2) + ", " + str(y2) + ", 0)",
+            "dx = p2.x - p1.x",
+            "dy = p2.y - p1.y",
+            "L = math.sqrt(dx*dx + dy*dy)",
+            "if L < 0.001:",
+            "    print('ERR_WALL_LEN0')",
+            "    import sys; sys.exit(1)",
+            "ux = -dy / L",
+            "uy = dx / L",
+            "ht = " + str(thickness) + " / 2.0",
+            "c1 = FreeCAD.Vector(p1.x + ux*ht, p1.y + uy*ht, 0)",
+            "c2 = FreeCAD.Vector(p2.x + ux*ht, p2.y + uy*ht, 0)",
+            "c3 = FreeCAD.Vector(p2.x - ux*ht, p2.y - uy*ht, 0)",
+            "c4 = FreeCAD.Vector(p1.x - ux*ht, p1.y - uy*ht, 0)",
+            "w = Part.makePolygon([c1, c2, c3, c4, c1])",
+            "f = Part.Face(w)",
+            "solid = f.extrude(FreeCAD.Vector(0, 0, " + str(height) + "))",
+            "obj = doc.addObject('Part::Feature', 'Muro3D')",
+            "obj.Shape = solid",
+            "obj.Label = '" + label + "'",
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_WALL3D')",
+        ]
+        return self._run_script_list(L, "Muro 3D", f"Altura {height}m, Grosor {thickness}m", "OK_WALL3D")
 
     def _create_room(self, params):
         vertices = params.get("vertices", [])
@@ -683,55 +684,57 @@ class FreeCadSkill(Skill):
         if not confirmation.require("freecad", "create_room", f"Habitacion {len(vertices)} vert, h={height}m"):
             return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
 
-        verts_str = ", ".join(f"({float(v[0])}, {float(v[1])})" for v in vertices)
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import Part" + chr(34),
-             chr(34) + "import math" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "if os.path.exists(path):" + chr(34),
-             chr(34) + "    doc = FreeCAD.openDocument(path)" + chr(34),
-             chr(34) + "else:" + chr(34),
-             chr(34) + "    doc = FreeCAD.newDocument('NitroWorkspace')" + chr(34),
-             "f" + chr(34) + "verts = [" + verts_str + "]" + chr(34),
-             "f" + chr(34) + "HEIGHT = " + str(height) + chr(34),
-             "f" + chr(34) + "THICK = " + str(thickness) + chr(34),
-             "f" + chr(34) + "CON_FLOOR = " + str(floor) + chr(34),
-             chr(34) + "if CON_FLOOR:" + chr(34),
-             chr(34) + "    pts3d = [FreeCAD.Vector(x, y, 0) for x, y in verts]" + chr(34),
-             chr(34) + "    pts3d.append(pts3d[0])" + chr(34),
-             chr(34) + "    wire = Part.makePolygon(pts3d)" + chr(34),
-             chr(34) + "    face = Part.Face(wire)" + chr(34),
-             chr(34) + "    suelo = doc.addObject('Part::Feature', 'Suelo')" + chr(34),
-             chr(34) + "    suelo.Shape = face" + chr(34),
-             chr(34) + "    suelo.Label = 'Suelo'" + chr(34),
-             chr(34) + "for i in range(len(verts)):" + chr(34),
-             chr(34) + "    j = (i + 1) % len(verts)" + chr(34),
-             chr(34) + "    x1, y1 = verts[i]" + chr(34),
-             chr(34) + "    x2, y2 = verts[j]" + chr(34),
-             chr(34) + "    dx = x2 - x1" + chr(34),
-             chr(34) + "    dy = y2 - y1" + chr(34),
-             chr(34) + "    L = math.sqrt(dx*dx + dy*dy)" + chr(34),
-             chr(34) + "    if L < 0.001:" + chr(34),
-             chr(34) + "        continue" + chr(34),
-             chr(34) + "    ux = -dy / L" + chr(34),
-             chr(34) + "    uy = dx / L" + chr(34),
-             chr(34) + "    ht = THICK / 2.0" + chr(34),
-             chr(34) + "    c1 = FreeCAD.Vector(x1 + ux*ht, y1 + uy*ht, 0)" + chr(34),
-             chr(34) + "    c2 = FreeCAD.Vector(x2 + ux*ht, y2 + uy*ht, 0)" + chr(34),
-             chr(34) + "    c3 = FreeCAD.Vector(x2 - ux*ht, y2 - uy*ht, 0)" + chr(34),
-             chr(34) + "    c4 = FreeCAD.Vector(x1 - ux*ht, y1 - uy*ht, 0)" + chr(34),
-             chr(34) + "    w = Part.makePolygon([c1, c2, c3, c4, c1])" + chr(34),
-             chr(34) + "    f = Part.Face(w)" + chr(34),
-             chr(34) + "    solid = f.extrude(FreeCAD.Vector(0, 0, HEIGHT))" + chr(34),
-             chr(34) + "    muro = doc.addObject('Part::Feature', 'Muro')" + chr(34),
-             chr(34) + "    muro.Shape = solid" + chr(34),
-             chr(34) + "    muro.Label = 'Muro_' + str(i+1)" + chr(34),
-             chr(34) + "doc.recompute()" + chr(34),
-             chr(34) + "doc.saveAs(path)" + chr(34),
-             chr(34) + "print('OK_ROOM')" + chr(34)]
-
-        return self._run_script_list(L, "Habitacion", f"Muros: {len(vertices)}, h={height}m", "OK_ROOM")
+        verts_str = ", ".join("(" + str(float(v[0])) + ", " + str(float(v[1])) + ")" for v in vertices)
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import Part",
+            "import math",
+            "import os",
+            "path = r'" + ws + "'",
+            "if os.path.exists(path):",
+            "    doc = FreeCAD.openDocument(path)",
+            "else:",
+            "    doc = FreeCAD.newDocument('NitroWorkspace')",
+            "verts = [" + verts_str + "]",
+            "HEIGHT = " + str(height),
+            "THICK = " + str(thickness),
+            "CON_FLOOR = " + str(floor),
+            "if CON_FLOOR:",
+            "    pts3d = [FreeCAD.Vector(x, y, 0) for x, y in verts]",
+            "    pts3d.append(pts3d[0])",
+            "    wire = Part.makePolygon(pts3d)",
+            "    face = Part.Face(wire)",
+            "    suelo = doc.addObject('Part::Feature', 'Suelo')",
+            "    suelo.Shape = face",
+            "    suelo.Label = 'Suelo'",
+            "for i in range(len(verts)):",
+            "    j = (i + 1) % len(verts)",
+            "    x1, y1 = verts[i]",
+            "    x2, y2 = verts[j]",
+            "    dx = x2 - x1",
+            "    dy = y2 - y1",
+            "    L = math.sqrt(dx*dx + dy*dy)",
+            "    if L < 0.001:",
+            "        continue",
+            "    ux = -dy / L",
+            "    uy = dx / L",
+            "    ht = THICK / 2.0",
+            "    c1 = FreeCAD.Vector(x1 + ux*ht, y1 + uy*ht, 0)",
+            "    c2 = FreeCAD.Vector(x2 + ux*ht, y2 + uy*ht, 0)",
+            "    c3 = FreeCAD.Vector(x2 - ux*ht, y2 - uy*ht, 0)",
+            "    c4 = FreeCAD.Vector(x1 - ux*ht, y1 - uy*ht, 0)",
+            "    w = Part.makePolygon([c1, c2, c3, c4, c1])",
+            "    f = Part.Face(w)",
+            "    solid = f.extrude(FreeCAD.Vector(0, 0, HEIGHT))",
+            "    muro = doc.addObject('Part::Feature', 'Muro')",
+            "    muro.Shape = solid",
+            "    muro.Label = 'Muro_' + str(i+1)",
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_ROOM')",
+        ]
+        return self._run_script_list(L, "Habitacion", f"{len(vertices)} muros, h={height}m", "OK_ROOM")
 
     def _add_door(self, params):
         wall_label = params.get("wall_label", "")
@@ -745,26 +748,28 @@ class FreeCadSkill(Skill):
         if not confirmation.require("freecad", "add_door", f"Puerta en {wall_label}"):
             return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
 
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import Part" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "if not os.path.exists(path):" + chr(34),
-             chr(34) + "    print('ERR_NO_WORKSPACE')" + chr(34),
-             chr(34) + "    import sys; sys.exit(1)" + chr(34),
-             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
-             "f" + chr(34) + "wall = doc.getObject('" + wall_label + "')" + chr(34),
-             chr(34) + "if not wall:" + chr(34),
-             chr(34) + "    print('ERR_WALL_NOT_FOUND')" + chr(34),
-             chr(34) + "    import sys; sys.exit(1)" + chr(34),
-             "f" + chr(34) + "box = Part.makeBox(" + str(width) + ", 0.5, " + str(height) + ", FreeCAD.Vector(" + str(x) + ", " + str(y) + ", " + str(z) + "))" + chr(34),
-             chr(34) + "cut = wall.Shape.cut(box)" + chr(34),
-             chr(34) + "wall.Shape = cut" + chr(34),
-             chr(34) + "doc.recompute()" + chr(34),
-             chr(34) + "doc.saveAs(path)" + chr(34),
-             chr(34) + "print('OK_DOOR')" + chr(34)]
-
-        return self._run_script_list(L, "Puerta", f"{width}x{height}m", "OK_DOOR")
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import Part",
+            "import os",
+            "path = r'" + ws + "'",
+            "if not os.path.exists(path):",
+            "    print('ERR_NO_WORKSPACE')",
+            "    import sys; sys.exit(1)",
+            "doc = FreeCAD.openDocument(path)",
+            "wall = doc.getObject('" + wall_label + "')",
+            "if not wall:",
+            "    print('ERR_WALL_NOT_FOUND')",
+            "    import sys; sys.exit(1)",
+            "box = Part.makeBox(" + str(width) + ", 0.5, " + str(height) + ", FreeCAD.Vector(" + str(x) + ", " + str(y) + ", " + str(z) + "))",
+            "cut = wall.Shape.cut(box)",
+            "wall.Shape = cut",
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_DOOR')",
+        ]
+        return self._run_script_list(L, "Puerta", f"{width}x{height}m en {wall_label}", "OK_DOOR")
 
     def _add_window(self, params):
         params.setdefault("width", 1.2)
@@ -777,27 +782,25 @@ class FreeCadSkill(Skill):
         x2 = float(params.get("x2", 1))
         y2 = float(params.get("y2", 1))
         label = params.get("label", "Cota")
-
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import Draft" + chr(34),
-             chr(34) + "import math" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "if os.path.exists(path):" + chr(34),
-             chr(34) + "    doc = FreeCAD.openDocument(path)" + chr(34),
-             chr(34) + "else:" + chr(34),
-             chr(34) + "    doc = FreeCAD.newDocument('NitroWorkspace')" + chr(34),
-             "f" + chr(34) + "p1 = FreeCAD.Vector(" + str(x1) + ", " + str(y1) + ", 0)" + chr(34),
-             "f" + chr(34) + "p2 = FreeCAD.Vector(" + str(x2) + ", " + str(y2) + ", 0)" + chr(34),
-             chr(34) + "dx = p2.x - p1.x" + chr(34),
-             chr(34) + "dy = p2.y - p1.y" + chr(34),
-             chr(34) + "dist = math.sqrt(dx*dx + dy*dy)" + chr(34),
-             chr(34) + "dim = Draft.make_dimension(p1, p2)" + chr(34),
-             "f" + chr(34) + "dim.Label = '" + label + " {:.2f}m'.format(dist)" + chr(34),
-             chr(34) + "doc.recompute()" + chr(34),
-             chr(34) + "doc.saveAs(path)" + chr(34),
-             chr(34) + "print('OK_DIM')" + chr(34)]
-
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import Draft",
+            "import math",
+            "import os",
+            "path = r'" + ws + "'",
+            "if os.path.exists(path):",
+            "    doc = FreeCAD.openDocument(path)",
+            "else:",
+            "    doc = FreeCAD.newDocument('NitroWorkspace')",
+            "p1 = FreeCAD.Vector(" + str(x1) + ", " + str(y1) + ", 0)",
+            "p2 = FreeCAD.Vector(" + str(x2) + ", " + str(y2) + ", 0)",
+            "dim = Draft.make_dimension(p1, p2)",
+            "dim.Label = '" + label + "'",
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_DIM')",
+        ]
         return self._run_script_list(L, "Cota", f"({x1},{y1})-({x2},{y2})", "OK_DIM")
 
     def _add_slab(self, params):
@@ -808,24 +811,25 @@ class FreeCadSkill(Skill):
         z = float(params.get("z", 0))
         thickness = float(params.get("thickness", 0.2))
         label = params.get("label", "Losa")
-
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import Part" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "if os.path.exists(path):" + chr(34),
-             chr(34) + "    doc = FreeCAD.openDocument(path)" + chr(34),
-             chr(34) + "else:" + chr(34),
-             chr(34) + "    doc = FreeCAD.newDocument('NitroWorkspace')" + chr(34),
-             "f" + chr(34) + "losa = Part.makeBox(" + str(x2-x1) + ", " + str(y2-y1) + ", " + str(thickness) + ", FreeCAD.Vector(" + str(x1) + ", " + str(y1) + ", " + str(z) + "))" + chr(34),
-             chr(34) + "obj = doc.addObject('Part::Feature', 'Losa')" + chr(34),
-             chr(34) + "obj.Shape = losa" + chr(34),
-             "f" + chr(34) + "obj.Label = '" + label + "'" + chr(34),
-             chr(34) + "doc.recompute()" + chr(34),
-             chr(34) + "doc.saveAs(path)" + chr(34),
-             chr(34) + "print('OK_SLAB')" + chr(34)]
-
-        return self._run_script_list(L, "Losa", f"{x2-x1}x{y2-y1}m espesor {thickness}m", "OK_SLAB")
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import Part",
+            "import os",
+            "path = r'" + ws + "'",
+            "if os.path.exists(path):",
+            "    doc = FreeCAD.openDocument(path)",
+            "else:",
+            "    doc = FreeCAD.newDocument('NitroWorkspace')",
+            "losa = Part.makeBox(" + str(x2-x1) + ", " + str(y2-y1) + ", " + str(thickness) + ", FreeCAD.Vector(" + str(x1) + ", " + str(y1) + ", " + str(z) + "))",
+            "obj = doc.addObject('Part::Feature', 'Losa')",
+            "obj.Shape = losa",
+            "obj.Label = '" + label + "'",
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_SLAB')",
+        ]
+        return self._run_script_list(L, "Losa", f"{x2-x1}x{y2-y1}m x {thickness}m", "OK_SLAB")
 
     def _add_column(self, params):
         x = float(params.get("x", 0))
@@ -834,28 +838,29 @@ class FreeCadSkill(Skill):
         radius = float(params.get("radius", 0.15))
         shape = params.get("shape", "circle")
         label = params.get("label", "Columna")
-
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import Part" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "if os.path.exists(path):" + chr(34),
-             chr(34) + "    doc = FreeCAD.openDocument(path)" + chr(34),
-             chr(34) + "else:" + chr(34),
-             chr(34) + "    doc = FreeCAD.newDocument('NitroWorkspace')" + chr(34)]
-
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import Part",
+            "import os",
+            "path = r'" + ws + "'",
+            "if os.path.exists(path):",
+            "    doc = FreeCAD.openDocument(path)",
+            "else:",
+            "    doc = FreeCAD.newDocument('NitroWorkspace')",
+        ]
         if shape == "circle":
-            L.append("f" + chr(34) + "col = Part.makeCylinder(" + str(radius) + ", " + str(height) + ", FreeCAD.Vector(" + str(x) + ", " + str(y) + ", 0))" + chr(34))
+            L.append("col = Part.makeCylinder(" + str(radius) + ", " + str(height) + ", FreeCAD.Vector(" + str(x) + ", " + str(y) + ", 0))")
         else:
-            L.append("f" + chr(34) + "col = Part.makeBox(" + str(radius*2) + ", " + str(radius*2) + ", " + str(height) + ", FreeCAD.Vector(" + str(x-radius) + ", " + str(y-radius) + ", 0))" + chr(34))
-
-        L.extend([chr(34) + "obj = doc.addObject('Part::Feature', 'Columna')" + chr(34),
-                  chr(34) + "obj.Shape = col" + chr(34),
-                  "f" + chr(34) + "obj.Label = '" + label + "'" + chr(34),
-                  chr(34) + "doc.recompute()" + chr(34),
-                  chr(34) + "doc.saveAs(path)" + chr(34),
-                  chr(34) + "print('OK_COLUMN')" + chr(34)])
-
+            L.append("col = Part.makeBox(" + str(radius*2) + ", " + str(radius*2) + ", " + str(height) + ", FreeCAD.Vector(" + str(x-radius) + ", " + str(y-radius) + ", 0))")
+        L.extend([
+            "obj = doc.addObject('Part::Feature', 'Columna')",
+            "obj.Shape = col",
+            "obj.Label = '" + label + "'",
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_COLUMN')",
+        ])
         return self._run_script_list(L, "Columna", f"{shape} h={height}m", "OK_COLUMN")
 
     # ═══════════════════════════════════════════════════════════════════
@@ -868,26 +873,26 @@ class FreeCadSkill(Skill):
         dy = float(params.get("dy", 0))
         dz = float(params.get("dz", 0))
         if not label:
-            return {"thought": "", "display": "Necesito el label del objeto.", "voice": "Falta label."}
-        if not confirmation.require("freecad", "move_object", f"Mover {label} en ({dx},{dy},{dz})"):
+            return {"thought": "", "display": "Necesito el label.", "voice": "Falta label."}
+        if not confirmation.require("freecad", "move_object", f"Mover {label}"):
             return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
-
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
-             "f" + chr(34) + "obj = doc.getObject('" + label + "')" + chr(34),
-             chr(34) + "if not obj:" + chr(34),
-             chr(34) + "    print('ERR_OBJ_NOT_FOUND')" + chr(34),
-             chr(34) + "    import sys; sys.exit(1)" + chr(34),
-             chr(34) + "import FreeCAD" + chr(34),
-             "f" + chr(34) + "obj.Placement.Base.x += " + str(dx) + chr(34),
-             "f" + chr(34) + "obj.Placement.Base.y += " + str(dy) + chr(34),
-             "f" + chr(34) + "obj.Placement.Base.z += " + str(dz) + chr(34),
-             chr(34) + "doc.recompute()" + chr(34),
-             chr(34) + "doc.saveAs(path)" + chr(34),
-             chr(34) + "print('OK_MOVE')" + chr(34)]
-
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import os",
+            "path = r'" + ws + "'",
+            "doc = FreeCAD.openDocument(path)",
+            "obj = doc.getObject('" + label + "')",
+            "if not obj:",
+            "    print('ERR_OBJ_NOT_FOUND')",
+            "    import sys; sys.exit(1)",
+            "obj.Placement.Base.x += " + str(dx),
+            "obj.Placement.Base.y += " + str(dy),
+            "obj.Placement.Base.z += " + str(dz),
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_MOVE')",
+        ]
         return self._run_script_list(L, f"Movido {label}", f"delta ({dx},{dy},{dz})", "OK_MOVE")
 
     def _rotate_object(self, params):
@@ -899,26 +904,26 @@ class FreeCadSkill(Skill):
         cz = float(params.get("cz", 0))
         if not label:
             return {"thought": "", "display": "Necesito el label.", "voice": "Falta label."}
-        if not confirmation.require("freecad", "rotate_object", f"Rotar {label} {angle} deg en eje {axis}"):
+        if not confirmation.require("freecad", "rotate_object", f"Rotar {label}"):
             return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
-
         axis_vec = {"x": "FreeCAD.Vector(1,0,0)", "y": "FreeCAD.Vector(0,1,0)", "z": "FreeCAD.Vector(0,0,1)"}.get(axis, "FreeCAD.Vector(0,0,1)")
-
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
-             "f" + chr(34) + "obj = doc.getObject('" + label + "')" + chr(34),
-             chr(34) + "if not obj:" + chr(34),
-             chr(34) + "    print('ERR_OBJ_NOT_FOUND')" + chr(34),
-             chr(34) + "    import sys; sys.exit(1)" + chr(34),
-             "f" + chr(34) + "rot = FreeCAD.Rotation(" + axis_vec + ", " + str(angle) + ")" + chr(34),
-             "f" + chr(34) + "centro = FreeCAD.Vector(" + str(cx) + ", " + str(cy) + ", " + str(cz) + ")" + chr(34),
-             chr(34) + "obj.Placement = FreeCAD.Placement(centro, rot, centro)" + chr(34),
-             chr(34) + "doc.recompute()" + chr(34),
-             chr(34) + "doc.saveAs(path)" + chr(34),
-             chr(34) + "print('OK_ROTATE')" + chr(34)]
-
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import os",
+            "path = r'" + ws + "'",
+            "doc = FreeCAD.openDocument(path)",
+            "obj = doc.getObject('" + label + "')",
+            "if not obj:",
+            "    print('ERR_OBJ_NOT_FOUND')",
+            "    import sys; sys.exit(1)",
+            "rot = FreeCAD.Rotation(" + axis_vec + ", " + str(angle) + ")",
+            "centro = FreeCAD.Vector(" + str(cx) + ", " + str(cy) + ", " + str(cz) + ")",
+            "obj.Placement = FreeCAD.Placement(centro, rot, centro)",
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_ROTATE')",
+        ]
         return self._run_script_list(L, f"Rotado {label}", f"{angle} deg eje {axis}", "OK_ROTATE")
 
     def _array_objects(self, params):
@@ -933,41 +938,41 @@ class FreeCadSkill(Skill):
             return {"thought": "", "display": "Necesito el label.", "voice": "Falta label."}
         total = nx * ny * nz
         if total > 200:
-            return {"thought": "", "display": f"Demasiadas copias ({total}). Max 200.", "voice": "Excede limite."}
-        if not confirmation.require("freecad", "array_objects", f"Array {nx}x{ny}x{nz} de {label} ({total} copias)"):
+            return {"thought": "", "display": "Demasiadas copias.", "voice": "Excede limite."}
+        if not confirmation.require("freecad", "array_objects", f"Array {nx}x{ny}x{nz} de {label}"):
             return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
-
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
-             "f" + chr(34) + "orig = doc.getObject('" + label + "')" + chr(34),
-             chr(34) + "if not orig:" + chr(34),
-             chr(34) + "    print('ERR_OBJ_NOT_FOUND')" + chr(34),
-             chr(34) + "    import sys; sys.exit(1)" + chr(34),
-             "f" + chr(34) + "NX = " + str(nx) + chr(34),
-             "f" + chr(34) + "NY = " + str(ny) + chr(34),
-             "f" + chr(34) + "NZ = " + str(nz) + chr(34),
-             "f" + chr(34) + "DX = " + str(dx) + chr(34),
-             "f" + chr(34) + "DY = " + str(dy) + chr(34),
-             "f" + chr(34) + "DZ = " + str(dz) + chr(34),
-             chr(34) + "count = 0" + chr(34),
-             chr(34) + "for i in range(NX):" + chr(34),
-             chr(34) + "    for j in range(NY):" + chr(34),
-             chr(34) + "        for k in range(NZ):" + chr(34),
-             chr(34) + "            if i == 0 and j == 0 and k == 0:" + chr(34),
-             chr(34) + "                continue" + chr(34),
-             chr(34) + "            copia = doc.addObject('Part::Feature', 'Copia')" + chr(34),
-             chr(34) + "            copia.Shape = orig.Shape.copy()" + chr(34),
-             chr(34) + "            copia.Label = orig.Label + '_' + str(count)" + chr(34),
-             "f" + chr(34) + "            copia.Placement.Base = FreeCAD.Vector(DX*i, DY*j, DZ*k)" + chr(34),
-             chr(34) + "            count += 1" + chr(34),
-             chr(34) + "doc.recompute()" + chr(34),
-             chr(34) + "doc.saveAs(path)" + chr(34),
-             chr(34) + "print('OK_ARRAY')" + chr(34),
-             "f" + chr(34) + "print('TOTAL=' + str(count))" + chr(34)]
-
-        return self._run_script_list(L, f"Array {label}", f"{total-1} copias generadas", "OK_ARRAY")
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import os",
+            "path = r'" + ws + "'",
+            "doc = FreeCAD.openDocument(path)",
+            "orig = doc.getObject('" + label + "')",
+            "if not orig:",
+            "    print('ERR_OBJ_NOT_FOUND')",
+            "    import sys; sys.exit(1)",
+            "NX = " + str(nx),
+            "NY = " + str(ny),
+            "NZ = " + str(nz),
+            "DX = " + str(dx),
+            "DY = " + str(dy),
+            "DZ = " + str(dz),
+            "count = 0",
+            "for i in range(NX):",
+            "    for j in range(NY):",
+            "        for k in range(NZ):",
+            "            if i == 0 and j == 0 and k == 0:",
+            "                continue",
+            "            copia = doc.addObject('Part::Feature', 'Copia')",
+            "            copia.Shape = orig.Shape.copy()",
+            "            copia.Label = orig.Label + '_' + str(count)",
+            "            copia.Placement.Base = FreeCAD.Vector(DX*i, DY*j, DZ*k)",
+            "            count += 1",
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_ARRAY')",
+        ]
+        return self._run_script_list(L, f"Array {label}", f"{total-1} copias", "OK_ARRAY")
 
     def _delete_object(self, params):
         label = params.get("label", "")
@@ -975,20 +980,21 @@ class FreeCadSkill(Skill):
             return {"thought": "", "display": "Necesito el label.", "voice": "Falta label."}
         if not confirmation.require("freecad", "delete_object", f"Borrar {label}"):
             return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
-
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
-             "f" + chr(34) + "obj = doc.getObject('" + label + "')" + chr(34),
-             chr(34) + "if not obj:" + chr(34),
-             chr(34) + "    print('ERR_OBJ_NOT_FOUND')" + chr(34),
-             chr(34) + "    import sys; sys.exit(1)" + chr(34),
-             chr(34) + "doc.removeObject(obj.Name)" + chr(34),
-             chr(34) + "doc.recompute()" + chr(34),
-             chr(34) + "doc.saveAs(path)" + chr(34),
-             chr(34) + "print('OK_DELETE')" + chr(34)]
-
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import os",
+            "path = r'" + ws + "'",
+            "doc = FreeCAD.openDocument(path)",
+            "obj = doc.getObject('" + label + "')",
+            "if not obj:",
+            "    print('ERR_OBJ_NOT_FOUND')",
+            "    import sys; sys.exit(1)",
+            "doc.removeObject(obj.Name)",
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_DELETE')",
+        ]
         return self._run_script_list(L, f"Borrado {label}", "", "OK_DELETE")
 
     def _boolean_op(self, params):
@@ -998,34 +1004,34 @@ class FreeCadSkill(Skill):
         if not label1 or not label2:
             return {"thought": "", "display": "Necesito 2 labels.", "voice": "Faltan labels."}
         if op not in ("cut", "union", "intersection"):
-            return {"thought": "", "display": "op debe ser cut, union o intersection.", "voice": "op invalido."}
+            return {"thought": "", "display": "op debe ser cut/union/intersection.", "voice": "op invalido."}
         if not confirmation.require("freecad", "boolean_op", f"{op} {label1} y {label2}"):
             return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
-
         op_str = {"cut": "shape1.cut(shape2)", "union": "shape1.fuse(shape2)", "intersection": "shape1.common(shape2)"}[op]
-
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import Part" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
-             "f" + chr(34) + "obj1 = doc.getObject('" + label1 + "')" + chr(34),
-             "f" + chr(34) + "obj2 = doc.getObject('" + label2 + "')" + chr(34),
-             chr(34) + "if not obj1 or not obj2:" + chr(34),
-             chr(34) + "    print('ERR_OBJ_NOT_FOUND')" + chr(34),
-             chr(34) + "    import sys; sys.exit(1)" + chr(34),
-             chr(34) + "shape1 = obj1.Shape" + chr(34),
-             chr(34) + "shape2 = obj2.Shape" + chr(34),
-             "f" + chr(34) + "resultado = " + op_str + chr(34),
-             "f" + chr(34) + "nuevo = doc.addObject('Part::Feature', '" + op + "_result')" + chr(34),
-             chr(34) + "nuevo.Shape = resultado" + chr(34),
-             "f" + chr(34) + "nuevo.Label = '" + label1 + "_" + op + "_" + label2 + "'" + chr(34),
-             chr(34) + "doc.removeObject(obj1.Name)" + chr(34),
-             chr(34) + "doc.removeObject(obj2.Name)" + chr(34),
-             chr(34) + "doc.recompute()" + chr(34),
-             chr(34) + "doc.saveAs(path)" + chr(34),
-             chr(34) + "print('OK_BOOLEAN')" + chr(34)]
-
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import Part",
+            "import os",
+            "path = r'" + ws + "'",
+            "doc = FreeCAD.openDocument(path)",
+            "obj1 = doc.getObject('" + label1 + "')",
+            "obj2 = doc.getObject('" + label2 + "')",
+            "if not obj1 or not obj2:",
+            "    print('ERR_OBJ_NOT_FOUND')",
+            "    import sys; sys.exit(1)",
+            "shape1 = obj1.Shape",
+            "shape2 = obj2.Shape",
+            "resultado = " + op_str,
+            "nuevo = doc.addObject('Part::Feature', 'BoolResult')",
+            "nuevo.Shape = resultado",
+            "nuevo.Label = '" + label1 + "_" + op + "_" + label2 + "'",
+            "doc.removeObject(obj1.Name)",
+            "doc.removeObject(obj2.Name)",
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_BOOLEAN')",
+        ]
         return self._run_script_list(L, f"Boolean {op}", f"{label1} + {label2}", "OK_BOOLEAN")
 
     def _set_color(self, params):
@@ -1035,104 +1041,106 @@ class FreeCadSkill(Skill):
         b = float(params.get("b", 0.5))
         if not label:
             return {"thought": "", "display": "Necesito el label.", "voice": "Falta label."}
-
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
-             "f" + chr(34) + "obj = doc.getObject('" + label + "')" + chr(34),
-             chr(34) + "if not obj:" + chr(34),
-             chr(34) + "    print('ERR_OBJ_NOT_FOUND')" + chr(34),
-             chr(34) + "    import sys; sys.exit(1)" + chr(34),
-             chr(34) + "if obj.ViewObject:" + chr(34),
-             "f" + chr(34) + "    obj.ViewObject.ShapeColor = (" + str(r) + ", " + str(g) + ", " + str(b) + ")" + chr(34),
-             chr(34) + "doc.saveAs(path)" + chr(34),
-             chr(34) + "print('OK_COLOR')" + chr(34)]
-
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import os",
+            "path = r'" + ws + "'",
+            "doc = FreeCAD.openDocument(path)",
+            "obj = doc.getObject('" + label + "')",
+            "if not obj:",
+            "    print('ERR_OBJ_NOT_FOUND')",
+            "    import sys; sys.exit(1)",
+            "if obj.ViewObject:",
+            "    obj.ViewObject.ShapeColor = (" + str(r) + ", " + str(g) + ", " + str(b) + ")",
+            "doc.saveAs(path)",
+            "print('OK_COLOR')",
+        ]
         return self._run_script_list(L, f"Color {label}", f"RGB({r},{g},{b})", "OK_COLOR")
 
     # ═══════════════════════════════════════════════════════════════════
-    # IMPORT/EXPORT (STEP, OBJ, STL)
+    # IMPORT/EXPORT
     # ═══════════════════════════════════════════════════════════════════
 
     def _export_step(self, out_path):
         if not out_path:
             out_path = str(SANDBOX / f"export_{uuid.uuid4().hex[:8]}.step")
         out_path = str(Path(out_path))
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import Part" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "if not os.path.exists(path):" + chr(34),
-             chr(34) + "    print('ERR_NO_WORKSPACE')" + chr(34),
-             chr(34) + "    import sys; sys.exit(1)" + chr(34),
-             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
-             "f" + chr(34) + "objs = [o for o in doc.Objects]" + chr(34),
-             "f" + chr(34) + "Part.export(objs, r'" + out_path.replace(chr(92), chr(47)) + "')" + chr(34),
-             chr(34) + "print('OK_EXPORT_STEP')" + chr(34)]
-
-        r = self._run_script_list(L, "STEP exportado", out_path, "OK_EXPORT_STEP")
-        if isinstance(r, dict) and "display" in r and "STEP" in r.get("display", ""):
-            r["display"] = "STEP exportado:\n  " + out_path + "\n\nAbre en FreeCAD, Fusion 360, SolidWorks, etc."
-        return r
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        op = out_path.replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import Part",
+            "import os",
+            "path = r'" + ws + "'",
+            "if not os.path.exists(path):",
+            "    print('ERR_NO_WORKSPACE')",
+            "    import sys; sys.exit(1)",
+            "doc = FreeCAD.openDocument(path)",
+            "objs = [o for o in doc.Objects]",
+            "Part.export(objs, r'" + op + "')",
+            "print('OK_EXPORT_STEP')",
+        ]
+        return self._run_script_list(L, "STEP exportado", out_path, "OK_EXPORT_STEP")
 
     def _export_obj(self, out_path):
         if not out_path:
             out_path = str(SANDBOX / f"export_{uuid.uuid4().hex[:8]}.obj")
         out_path = str(Path(out_path))
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import Mesh" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "if not os.path.exists(path):" + chr(34),
-             chr(34) + "    print('ERR_NO_WORKSPACE')" + chr(34),
-             chr(34) + "    import sys; sys.exit(1)" + chr(34),
-             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
-             "f" + chr(34) + "output = r'" + out_path.replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "import Part" + chr(34),
-             chr(34) + "for obj in doc.Objects:" + chr(34),
-             chr(34) + "    if hasattr(obj, 'Shape') and obj.Shape:" + chr(34),
-             chr(34) + "        try:" + chr(34),
-             chr(34) + "            mesh = Mesh.Mesh(obj.Shape.tessellate(0.1))" + chr(34),
-             chr(34) + "        except Exception:" + chr(34),
-             chr(34) + "            pass" + chr(34),
-             chr(34) + "        try:" + chr(34),
-             chr(34) + "            __import__('MeshPart').export([obj], output)" + chr(34),
-             chr(34) + "            break" + chr(34),
-             chr(34) + "        except Exception as e:" + chr(34),
-             chr(34) + "            print('WARN: ' + str(e))" + chr(34),
-             chr(34) + "print('OK_EXPORT_OBJ')" + chr(34)]
-
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        op = out_path.replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import Mesh",
+            "import MeshPart",
+            "import os",
+            "path = r'" + ws + "'",
+            "if not os.path.exists(path):",
+            "    print('ERR_NO_WORKSPACE')",
+            "    import sys; sys.exit(1)",
+            "doc = FreeCAD.openDocument(path)",
+            "output = r'" + op + "'",
+            "exported = False",
+            "for obj in doc.Objects:",
+            "    if hasattr(obj, 'Shape') and obj.Shape:",
+            "        try:",
+            "            m = MeshPart.meshFromShape(Shape=obj.Shape, LinearDeflection=0.1, AngularDeflection=0.5, Relative=False)",
+            "            m.write(output)",
+            "            exported = True",
+            "            break",
+            "        except Exception as e:",
+            "            print('WARN: ' + str(e))",
+            "print('OK_EXPORT_OBJ')",
+        ]
         return self._run_script_list(L, "OBJ exportado", out_path, "OK_EXPORT_OBJ")
 
     def _export_stl(self, out_path):
         if not out_path:
             out_path = str(SANDBOX / f"export_{uuid.uuid4().hex[:8]}.stl")
         out_path = str(Path(out_path))
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import Mesh" + chr(34),
-             chr(34) + "import MeshPart" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "if not os.path.exists(path):" + chr(34),
-             chr(34) + "    print('ERR_NO_WORKSPACE')" + chr(34),
-             chr(34) + "    import sys; sys.exit(1)" + chr(34),
-             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
-             "f" + chr(34) + "output = r'" + out_path.replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "exportado = False" + chr(34),
-             chr(34) + "for obj in doc.Objects:" + chr(34),
-             chr(34) + "    if hasattr(obj, 'Shape') and obj.Shape:" + chr(34),
-             chr(34) + "        try:" + chr(34),
-             chr(34) + "            mesh = doc.addObject('Mesh::Feature', 'STLExport')" + chr(34),
-             chr(34) + "            mesh.Mesh = MeshPart.meshFromShape(Shape=obj.Shape, LinearDeflection=0.1, AngularDeflection=0.5, Relative=False)" + chr(34),
-             chr(34) + "            mesh.Mesh.write(output)" + chr(34),
-             chr(34) + "            doc.removeObject(mesh.Name)" + chr(34),
-             chr(34) + "            exportado = True" + chr(34),
-             chr(34) + "            break" + chr(34),
-             chr(34) + "        except Exception as e:" + chr(34),
-             chr(34) + "            print('WARN: ' + str(e))" + chr(34),
-             chr(34) + "print('OK_EXPORT_STL')" + chr(34)]
-
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        op = out_path.replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import Mesh",
+            "import MeshPart",
+            "import os",
+            "path = r'" + ws + "'",
+            "if not os.path.exists(path):",
+            "    print('ERR_NO_WORKSPACE')",
+            "    import sys; sys.exit(1)",
+            "doc = FreeCAD.openDocument(path)",
+            "output = r'" + op + "'",
+            "for obj in doc.Objects:",
+            "    if hasattr(obj, 'Shape') and obj.Shape:",
+            "        try:",
+            "            m = MeshPart.meshFromShape(Shape=obj.Shape, LinearDeflection=0.1, AngularDeflection=0.5, Relative=False)",
+            "            m.write(output)",
+            "            break",
+            "        except Exception as e:",
+            "            print('WARN: ' + str(e))",
+            "print('OK_EXPORT_STL')",
+        ]
         return self._run_script_list(L, "STL exportado", out_path, "OK_EXPORT_STL")
 
     def _import_step(self, step_path):
@@ -1141,65 +1149,62 @@ class FreeCadSkill(Skill):
         step_path = str(Path(step_path))
         if not confirmation.require("freecad", "import_step", f"Importar {Path(step_path).name}"):
             return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
-
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import Part" + chr(34),
-             chr(34) + "import Import" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "if os.path.exists(path):" + chr(34),
-             chr(34) + "    doc = FreeCAD.openDocument(path)" + chr(34),
-             chr(34) + "else:" + chr(34),
-             chr(34) + "    doc = FreeCAD.newDocument('NitroWorkspace')" + chr(34),
-             "f" + chr(34) + "Import.insert(r'" + step_path.replace(chr(92), chr(47)) + "', doc.Name)" + chr(34),
-             chr(34) + "doc.recompute()" + chr(34),
-             chr(34) + "doc.saveAs(path)" + chr(34),
-             chr(34) + "print('OK_IMPORT_STEP')" + chr(34),
-             "f" + chr(34) + "print('NUM_OBJ=' + str(len(doc.Objects)))" + chr(34)]
-
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        sp = step_path.replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import Part",
+            "import Import",
+            "import os",
+            "path = r'" + ws + "'",
+            "if os.path.exists(path):",
+            "    doc = FreeCAD.openDocument(path)",
+            "else:",
+            "    doc = FreeCAD.newDocument('NitroWorkspace')",
+            "Import.insert(r'" + sp + "', doc.Name)",
+            "doc.recompute()",
+            "doc.saveAs(path)",
+            "print('OK_IMPORT_STEP')",
+        ]
         return self._run_script_list(L, "STEP importado", Path(step_path).name, "OK_IMPORT_STEP")
 
     def _export_pdf_techdraw(self, out_path):
-        """Exporta las vistas a PDF usando TechDraw (mas fiable que importPDF)."""
         if not out_path:
             out_path = str(SANDBOX / f"export_{uuid.uuid4().hex[:8]}.pdf")
         out_path = str(Path(out_path))
-        if not confirmation.require("freecad", "export_pdf_techdraw", f"Exportar a PDF: {Path(out_path).name}"):
+        if not confirmation.require("freecad", "export_pdf_techdraw", f"PDF: {Path(out_path).name}"):
             return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
-
-        L = [chr(34) + "import FreeCAD" + chr(34),
-             chr(34) + "import TechDraw" + chr(34),
-             chr(34) + "import os" + chr(34),
-             "f" + chr(34) + "path = r'" + str(WORKSPACE).replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "if not os.path.exists(path):" + chr(34),
-             chr(34) + "    print('ERR_NO_WORKSPACE')" + chr(34),
-             chr(34) + "    import sys; sys.exit(1)" + chr(34),
-             chr(34) + "doc = FreeCAD.openDocument(path)" + chr(34),
-             "f" + chr(34) + "output = r'" + out_path.replace(chr(92), chr(47)) + "'" + chr(34),
-             chr(34) + "try:" + chr(34),
-             chr(34) + "    page = doc.addObject('TechDraw::DrawPage', 'Page')" + chr(34),
-             chr(34) + "    template = doc.addObject('TechDraw::DrawSVGTemplate', 'Template')" + chr(34),
-             chr(34) + "    import TechDraw" + chr(34),
-             chr(34) + "    import os.path" + chr(34),
-             chr(34) + "    template.Template = os.path.join(TechDraw.getUserMacroDir(True), 'A4_LandscapeTD.svg')" + chr(34),
-             chr(34) + "    page.Template = template" + chr(34),
-             chr(34) + "    objs = [o for o in doc.Objects if hasattr(o, 'Shape') and o.Shape]" + chr(34),
-             chr(34) + "    for i, obj in enumerate(objs):" + chr(34),
-             chr(34) + "        view = doc.addObject('TechDraw::DrawViewPart', 'View' + str(i))" + chr(34),
-             chr(34) + "        view.Source = [obj]" + chr(34),
-             chr(34) + "        view.Direction = FreeCAD.Vector(1, 1, 1)" + chr(34),
-             chr(34) + "        view.Scale = 1.0" + chr(34),
-             chr(34) + "        page.addView(view)" + chr(34),
-             chr(34) + "    doc.recompute()" + chr(34),
-             chr(34) + "    TechDraw.writePageAsPdf(page, output)" + chr(34),
-             chr(34) + "    print('OK_PDF_TECHDRAW')" + chr(34),
-             chr(34) + "except Exception as e:" + chr(34),
-             chr(34) + "    print('ERR_PDF: ' + str(e))" + chr(34)]
-
-        r = self._run_script_list(L, "PDF exportado", out_path, "OK_PDF_TECHDRAW")
-        if isinstance(r, dict) and "display" in r and "PDF" in r.get("display", ""):
-            r["display"] = "PDF exportado (TechDraw):\n  " + out_path
-        return r
+        ws = str(WORKSPACE).replace(chr(92), "/")
+        op = out_path.replace(chr(92), "/")
+        L = [
+            "import FreeCAD",
+            "import TechDraw",
+            "import os",
+            "path = r'" + ws + "'",
+            "if not os.path.exists(path):",
+            "    print('ERR_NO_WORKSPACE')",
+            "    import sys; sys.exit(1)",
+            "doc = FreeCAD.openDocument(path)",
+            "output = r'" + op + "'",
+            "try:",
+            "    page = doc.addObject('TechDraw::DrawPage', 'Page')",
+            "    template = doc.addObject('TechDraw::DrawSVGTemplate', 'Template')",
+            "    template.Template = os.path.join(TechDraw.getUserMacroDir(True), 'A4_LandscapeTD.svg')",
+            "    page.Template = template",
+            "    objs = [o for o in doc.Objects if hasattr(o, 'Shape') and o.Shape]",
+            "    for i, obj in enumerate(objs):",
+            "        view = doc.addObject('TechDraw::DrawViewPart', 'View' + str(i))",
+            "        view.Source = [obj]",
+            "        view.Direction = FreeCAD.Vector(1, 1, 1)",
+            "        view.Scale = 1.0",
+            "        page.addView(view)",
+            "    doc.recompute()",
+            "    TechDraw.writePageAsPdf(page, output)",
+            "    print('OK_PDF_TECHDRAW')",
+            "except Exception as e:",
+            "    print('ERR_PDF: ' + str(e))",
+        ]
+        return self._run_script_list(L, "PDF exportado", out_path, "OK_PDF_TECHDRAW")
 
     def _run_script_list(self, lineas, nombre, info, marcador):
         """Helper: ejecuta un script de FreeCAD desde una lista de lineas."""
