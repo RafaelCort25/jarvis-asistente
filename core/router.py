@@ -3017,12 +3017,14 @@ class Router:
             return [{"skill": "dev", "action": "lint_code", "params": {"path": _m.group(1).strip()}}]
 
         # Correr tests
-        if any(p in t for p in ["corre los tests", "ejecuta los tests", "run tests", "pytest",
-                                 "corre pytest", "pruebas unitarias"]):
-            return [{"skill": "dev", "action": "run_tests", "params": {}}]
+        # Tests con path (mas especifico, va primero)
         _m = _re_dev.search(r"corre\s+(?:los\s+)?tests\s+(?:de\s+|en\s+)(\S+)", t, _re_dev.IGNORECASE)
         if _m:
             return [{"skill": "dev", "action": "run_tests", "params": {"path": _m.group(1).strip()}}]
+        # Tests genericos (sin path)
+        if any(p in t for p in ["corre los tests", "ejecuta los tests", "run tests", "pytest",
+                                 "corre pytest", "pruebas unitarias"]):
+            return [{"skill": "dev", "action": "run_tests", "params": {}}]
 
         # Contar lineas
         _m = _re_dev.search(r"(?:cuantas\s+lineas|lineas de codigo|loc)\s+(?:tiene|de|del?)\s+(?:el\s+|la\s+)?(?:proyecto|archivo|carpeta)?\s*(\S+)?", t, _re_dev.IGNORECASE)
