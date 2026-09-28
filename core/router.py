@@ -391,6 +391,34 @@ class Router:
 
         # ═══════════════════════════════════════════════════════════════════
         # ═══════════════════════════════════════════════════════════════════
+        # IMAGE: generate avanzado (negative), variaciones, historial
+        # ═══════════════════════════════════════════════════════════════════
+        # Generar con negative prompt
+        m = re.search(r"(?:genera|crea|haz|dibuja)\s+(?:una\s+)?imagen\s+(?:de\s+)?(.+?)\s+sin\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "image", "action": "generate_advanced",
+                     "params": {"prompt": m.group(1).strip(), "negative_prompt": m.group(2).strip()}}]
+        # Variaciones
+        m = re.search(r"(?:genera|crea|haz)\s+(\d+)\s+variaciones\s+(?:de\s+)?(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "image", "action": "variations",
+                     "params": {"count": int(m.group(1)), "prompt": m.group(2).strip()}}]
+        # Historial de imagenes
+        if any(p in t for p in ["historial de imagenes", "imagenes generadas recientemente",
+                                 "ultimas imagenes generadas", "que imagenes he generado"]):
+            return [{"skill": "image", "action": "history", "params": {"limit": 10}}]
+        # Buscar en historial
+        m = re.search(r"(?:busca|encuentra)\s+(?:imagenes|fotos)\s+(?:de|sobre|con)\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "image", "action": "search_history",
+                     "params": {"query": m.group(1).strip()}}]
+        # Regenerar
+        m = re.search(r"(?:regenera|vuelve\s+a\s+generar)\s+(?:la\s+)?imagen\s+(.+)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "image", "action": "regenerate",
+                     "params": {"name": m.group(1).strip()}}]
+
+        # ═══════════════════════════════════════════════════════════════════
         # DOCS / RAG: indexar carpetas, stats, listado detallado
         # ═══════════════════════════════════════════════════════════════════
         # Stats del indice

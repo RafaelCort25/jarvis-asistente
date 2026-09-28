@@ -22,6 +22,7 @@ from core.config_loader import CONFIG
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGES_DIR = ROOT / "sandbox" / "images"
+HISTORY_FILE = IMAGES_DIR / "_history.json"
 
 load_dotenv(ROOT / ".env")
 AGNES_API_KEY = os.getenv("AGNES_API_KEY")
@@ -53,6 +54,27 @@ class ImageSkill(Skill):
             )
         if action == "list":
             return self._list()
+        # ── Nuevas acciones ──
+        if action == "generate_advanced":
+            return self._generate(
+                params.get("prompt", ""),
+                params.get("width", DEFAULT_WIDTH),
+                params.get("height", DEFAULT_HEIGHT),
+                params.get("quality", "fast"),
+                negative_prompt=params.get("negative_prompt", ""),
+            )
+        if action == "variations":
+            return self._variations(
+                params.get("prompt", ""),
+                params.get("count", 3),
+                params.get("quality", "fast"),
+            )
+        if action == "history":
+            return self._history(int(params.get("limit", 10) or 10))
+        if action == "search_history":
+            return self._search_history(params.get("query", ""))
+        if action == "regenerate":
+            return self._regenerate(params.get("name", ""))
         return f"Accion desconocida en image: {action}"
 
     # ─── HELPERS ─────────────────────────────────────────────────────────
@@ -164,10 +186,17 @@ class ImageSkill(Skill):
 
     # ─── GENERATE (con enrutamiento por calidad) ─────────────────────────
 
-    def _generate(self, prompt, width, height, quality="fast"):
+    def _generate(self, prompt, width, height, quality="fast", negative_prompt=""):
         prompt = (prompt or "").strip()
+        negative_prompt = (negative_prompt or "").strip()
+
         if not prompt:
             return "Dime que imagen quieres que genere."
+
+        # Anadir negative prompt al prompt final (los modelos no tienen param aparte)
+        full_prompt = prompt
+        if negative_prompt:
+            full_prompt = f"{prompt}. Sin: {negative_prompt}."
 
         try:
             width = int(width)
@@ -181,25 +210,30 @@ class ImageSkill(Skill):
             quality = "fast"
 
         summary = f"Generar imagen ({quality}): {prompt[:80]} ({width}x{height})"
+        if negative_prompt:
+            summary += f" | sin: {negative_prompt[:40]}"
+
         if not confirmation.require("image", "generate", summary):
             return "Cancelado."
 
-        print(f"[IMAGE] Generando ({quality}) con '{prompt[:60]}'...")
+        print(f"[IMAGE] Generando ({quality}) con '{full_prompt[:60]}'...")
 
+        engine_used = quality
         try:
             t0 = time.time()
             if quality == "hq":
-                content, src_url = self._generate_agnes(prompt, width, height)
+                content, src_url = self._generate_agnes(full_prompt, width, height)
             else:
-                content, src_url = self._generate_cloudflare(prompt)
+                content, src_url = self._generate_cloudflare(full_prompt)
             elapsed = time.time() - t0
         except Exception as e:
             # Fallback: si hq falla, intentar fast
             if quality == "hq":
                 print(f"[IMAGE] Agnes fallo ({e}). Fallback a Cloudflare...")
                 try:
-                    content, src_url = self._generate_cloudflare(prompt)
+                    content, src_url = self._generate_cloudflare(full_prompt)
                     elapsed = time.time() - t0
+                    engine_used = "fast_fallback"
                 except Exception as e2:
                     return f"Error generando imagen: {e} / fallback: {e2}"
             else:
@@ -209,6 +243,21 @@ class ImageSkill(Skill):
         size_kb = len(content) // 1024
         print(f"[IMAGE] Guardada: {path} ({size_kb} KB en {elapsed:.1f}s)")
 
+        # Guardar en historial
+        self._append_history({
+            "path": str(path),
+            "name": path.name,
+            "prompt": prompt,
+            "negative_prompt": negative_prompt,
+            "width": width,
+            "height": height,
+            "quality": quality,
+            "engine": engine_used,
+            "size_kb": size_kb,
+            "elapsed_s": round(elapsed, 2),
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+        })
+
         return {
             "thought": f"Imagen generada ({quality}) en {elapsed:.1f}s",
             "display": (
@@ -216,9 +265,152 @@ class ImageSkill(Skill):
                 f"  {path}\n"
                 f"  {width}x{height}, {size_kb} KB, {elapsed:.1f}s\n\n"
                 f"Prompt: {prompt}"
+                + (f"\nSin: {negative_prompt}" if negative_prompt else "")
             ),
             "voice": f"Listo. Imagen guardada en {path.name}.",
         }
+
+    # ─── HISTORIAL ───────────────────────────────────────────────────────
+
+    def _load_history(self):
+        """Carga el historial desde disco."""
+        if not HISTORY_FILE.exists():
+            return []
+        try:
+            import json
+            return json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            return []
+
+    def _append_history(self, entry):
+        """Anade una entrada al historial."""
+        import json
+        history = self._load_history()
+        history.append(entry)
+        # Mantener solo las ultimas 500
+        history = history[-500:]
+        try:
+            HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+            HISTORY_FILE.write_text(json.dumps(history, indent=2, ensure_ascii=False), encoding="utf-8")
+        except Exception as e:
+            print(f"[IMAGE] No pude guardar historial: {e}")
+
+    def _history(self, limit=10):
+        """Muestra las ultimas imagenes del historial."""
+        history = self._load_history()
+        if not history:
+            return {
+                "thought": "",
+                "display": "No hay historial todavia.",
+                "voice": "Sin historial.",
+            }
+
+        ultimas = list(reversed(history))[:limit]
+        lineas = [f"Ultimas {len(ultimas)} imagenes:"]
+        for i, h in enumerate(ultimas, 1):
+            lineas.append(f"  {i}. {h.get('name', '?')}")
+            lineas.append(f"     Prompt: {h.get('prompt', '')[:70]}")
+            lineas.append(f"     {h.get('width')}x{h.get('height')} ({h.get('quality')}) - {h.get('timestamp', '')[:16]}")
+
+        return {
+            "thought": f"{len(history)} imagenes en historial",
+            "display": "\n".join(lineas),
+            "voice": f"Tienes {len(history)} imagenes en historial.",
+        }
+
+    def _search_history(self, query):
+        """Busca imagenes por palabra en el prompt."""
+        query = (query or "").strip().lower()
+        if not query:
+            return {"thought": "", "display": "Dime que buscar.", "voice": "Dime que buscar."}
+
+        history = self._load_history()
+        if not history:
+            return {"thought": "", "display": "No hay historial.", "voice": "Sin historial."}
+
+        matches = [
+            h for h in history
+            if query in h.get("prompt", "").lower() or query in h.get("negative_prompt", "").lower()
+        ]
+
+        if not matches:
+            return {
+                "thought": "",
+                "display": f"No hay imagenes con '{query}' en el prompt.",
+                "voice": f"Sin resultados.",
+            }
+
+        ultimas = list(reversed(matches))[:10]
+        lineas = [f"Encontradas {len(matches)} imagenes con '{query}':"]
+        for i, h in enumerate(ultimas, 1):
+            lineas.append(f"  {i}. {h.get('name', '?')}")
+            lineas.append(f"     Prompt: {h.get('prompt', '')[:70]}")
+            lineas.append(f"     {h.get('timestamp', '')[:16]}")
+
+        return {
+            "thought": f"{len(matches)} coincidencias",
+            "display": "\n".join(lineas),
+            "voice": f"Encontre {len(matches)} imagenes.",
+        }
+
+    def _variations(self, prompt, count, quality="fast"):
+        """Genera N variaciones del mismo prompt."""
+        prompt = (prompt or "").strip()
+        if not prompt:
+            return "Dime el prompt para las variaciones."
+
+        try:
+            count = int(count)
+        except (ValueError, TypeError):
+            count = 3
+        count = max(2, min(count, 8))
+
+        print(f"[IMAGE] Generando {count} variaciones de '{prompt[:50]}'...")
+
+        generadas = []
+        for i in range(1, count + 1):
+            variant_prompt = f"{prompt} -- variacion {i}"
+            result = self._generate(variant_prompt, DEFAULT_WIDTH, DEFAULT_HEIGHT, quality=quality)
+            if isinstance(result, dict):
+                display = result.get("display", "")
+                m = re.search(r'([A-Za-z]:\\[^\n]+\.jpg)', display)
+                if m:
+                    generadas.append(m.group(1))
+            print(f"[IMAGE] Variacion {i}/{count} lista")
+
+        if not generadas:
+            return "No pude generar ninguna variacion."
+
+        lineas = [f"Generadas {len(generadas)} variaciones:"]
+        for i, g in enumerate(generadas, 1):
+            lineas.append(f"  {i}. {Path(g).name}")
+
+        return {
+            "thought": f"{len(generadas)} variaciones generadas",
+            "display": "\n".join(lineas),
+            "voice": f"Listo. {len(generadas)} variaciones creadas.",
+        }
+
+    def _regenerate(self, name):
+        """Regenera con el mismo prompt de una imagen del historial."""
+        if not name:
+            return "Dime el nombre de la imagen a regenerar."
+
+        history = self._load_history()
+        matches = [h for h in history if name.lower() in h.get("name", "").lower()]
+        if not matches:
+            return f"No encontre '{name}' en el historial."
+
+        h = matches[-1]
+        print(f"[IMAGE] Regenerando: {h.get('prompt')[:60]}...")
+
+        return self._generate(
+            h.get("prompt", ""),
+            h.get("width", DEFAULT_WIDTH),
+            h.get("height", DEFAULT_HEIGHT),
+            h.get("quality", "fast"),
+            negative_prompt=h.get("negative_prompt", ""),
+        )
 
     # ─── COMBO: IMAGEN → WORD ────────────────────────────────────────────
 
