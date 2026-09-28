@@ -413,7 +413,7 @@ class Router:
             nums = [int(x) for x in re.findall(r"\d+", m.group(2))]
             return [{"skill": "pdf", "action": "reorder", "params": {"path": m.group(1).strip(), "order": nums}}]
         # Anadir contrasena
-        m = re.search(r"(?:protege|pon\s+contrasena|cifra)\s+(?:el\s+)?pdf\s+([^\s]+\.pdf)\s+(?:con\s+)?[\"']?(.+?)[\"']?$", t, re.IGNORECASE)
+        m = re.search(r"(?:protege|pon\s+contrasena|cifra)\s+(?:el\s+)?pdf\s+([^\s]+\.pdf)\s+(?:con\s+)?(?:la\s+)?(?:contrasena\s+|clave\s+|password\s+)?[\"']?(.+?)[\"']?$", t, re.IGNORECASE)
         if m:
             return [{"skill": "pdf", "action": "set_password", "params": {"path": m.group(1).strip(), "password": m.group(2).strip()}}]
         # Quitar contrasena
@@ -421,16 +421,20 @@ class Router:
         if m:
             return [{"skill": "pdf", "action": "remove_password", "params": {"path": m.group(1).strip(), "password": (m.group(2) or "").strip()}}]
         # Editar metadata
-        m = re.search(r"(?:pon|edita|cambia)\s+(?:el\s+)?(?:titulo|autor|asunto)\s+(?:del?\s+)?pdf\s+([^\s]+\.pdf)", t, re.IGNORECASE)
+        m = re.search(r"(?:pon|edita|cambia|anade)\s+(?:el\s+|la\s+)?(?:titulo|autor|asunto|subject)\s+(?:del?\s+)?pdf\s+([^\s]+\.pdf)", t, re.IGNORECASE)
         if m:
             path = m.group(1).strip()
             params = {"path": path}
-            m_t = re.search(r"(?:titulo|title)\s+(?:a\s+)?[\"']?(.+?)[\"']?(?:\s+y|\s*$)", t, re.IGNORECASE)
-            m_a = re.search(r"(?:autor|author)\s+(?:a\s+)?[\"']?(.+?)[\"']?(?:\s+y|\s*$)", t, re.IGNORECASE)
+            # Buscar valor: "pon el titulo X al pdf Y" -> X va ANTES de "al pdf"
+            m_t = re.search(r"(?:titulo|title)\s+[\"']?(.+?)[\"']?\s+(?:al?|en\s+el)\s+pdf", t, re.IGNORECASE)
+            m_a = re.search(r"(?:autor|author)\s+[\"']?(.+?)[\"']?\s+(?:al?|en\s+el)\s+pdf", t, re.IGNORECASE)
+            m_s = re.search(r"(?:asunto|subject)\s+[\"']?(.+?)[\"']?\s+(?:al?|en\s+el)\s+pdf", t, re.IGNORECASE)
             if m_t:
                 params["title"] = m_t.group(1).strip()
             if m_a:
                 params["author"] = m_a.group(1).strip()
+            if m_s:
+                params["subject"] = m_s.group(1).strip()
             return [{"skill": "pdf", "action": "metadata", "params": params}]
         # Crear PDF desde imagenes
         m = re.search(r"(?:crea|haz|convierte|junta)\s+(?:un\s+)?pdf\s+(?:con|de|desde)\s+(?:las?\s+)?imagenes?\s+(.+)$", t, re.IGNORECASE)
