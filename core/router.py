@@ -399,28 +399,32 @@ class Router:
         m = re.search(r"(?:info|detalles|cuanto\s+dura)\s+(?:de|del?)\s+(?:el\s+)?(?:audio|archivo)\s+(\S+)", t, re.IGNORECASE)
         if m:
             return [{"skill": "audio", "action": "info", "params": {"path": m.group(1).strip()}}]
-        # Transcribir a SRT (subtitulos)
-        m = re.search(r"(?:transcribe|pasa|convierte)\s+(?:el\s+)?(?:audio\s+)?(\S+)\s+(?:a\s+)?(?:subtitulos?|srt)", t, re.IGNORECASE)
-        if m:
-            return [{"skill": "audio", "action": "transcribe_srt", "params": {"path": m.group(1).strip()}}]
-        m = re.search(r"(?:genera|crea|haz)\s+(?:los\s+)?(?:subtitulos?|srt)\s+(?:de|del?)\s+(?:el\s+)?(?:audio\s+)?(\S+)", t, re.IGNORECASE)
-        if m:
-            return [{"skill": "audio", "action": "transcribe_srt", "params": {"path": m.group(1).strip()}}]
-        # Transcribir a Word
-        m = re.search(r"(?:transcribe|pasa|convierte)\s+(?:el\s+)?(?:audio\s+)?(\S+)\s+(?:a\s+)?(?:word|documento|docx)", t, re.IGNORECASE)
-        if m:
-            return [{"skill": "audio", "action": "to_word", "params": {"path": m.group(1).strip()}}]
-        # Transcribir a texto (generico)
-        m = re.search(r"(?:transcribe|pasa|convierte)\s+(?:el\s+)?(?:audio\s+)?(\S+)\s+(?:a\s+)?(?:texto|txt)", t, re.IGNORECASE)
-        if m:
-            return [{"skill": "audio", "action": "transcribe", "params": {"path": m.group(1).strip()}}]
-        m = re.search(r"(?:transcribe|pasa\s+a\s+texto)\s+(?:el\s+)?(?:audio\s+)?(\S+)", t, re.IGNORECASE)
-        if m and "audio" in t.lower():
-            return [{"skill": "audio", "action": "transcribe", "params": {"path": m.group(1).strip()}}]
-        # Transcribir carpeta entera
+        # Transcribir carpeta entera (VA PRIMERO, es mas especifico)
         m = re.search(r"(?:transcribe|pasa\s+a\s+texto)\s+(?:la\s+)?carpeta\s+(.+)", t, re.IGNORECASE)
         if m:
             return [{"skill": "audio", "action": "batch", "params": {"path": m.group(1).strip()}}]
+        # Transcribir a SRT (subtitulos)
+        m = re.search(r"(?:transcribe|pasa|convierte)\s+(?:el\s+)?(?:audio\s+)?([^\s]+\.[a-z0-9]{2,4})\s+(?:a\s+)?(?:subtitulos?|srt)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "audio", "action": "transcribe_srt", "params": {"path": m.group(1).strip()}}]
+        m = re.search(r"(?:genera|crea|haz)\s+(?:los\s+)?(?:subtitulos?|srt)\s+(?:de|del?)\s+(?:el\s+)?(?:audio\s+)?([^\s]+\.[a-z0-9]{2,4})", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "audio", "action": "transcribe_srt", "params": {"path": m.group(1).strip()}}]
+        # Transcribir a Word
+        m = re.search(r"(?:transcribe|pasa|convierte)\s+(?:el\s+)?(?:audio\s+)?([^\s]+\.[a-z0-9]{2,4})\s+(?:a\s+)?(?:word|documento|docx)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "audio", "action": "to_word", "params": {"path": m.group(1).strip()}}]
+        # Transcribir a texto (con formato explicito)
+        m = re.search(r"(?:transcribe|pasa|convierte)\s+(?:el\s+)?(?:audio\s+)?([^\s]+\.[a-z0-9]{2,4})\s+(?:a\s+)?(?:texto|txt)", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "audio", "action": "transcribe", "params": {"path": m.group(1).strip()}}]
+        m = re.search(r"(?:pasa\s+a\s+texto)\s+(?:el\s+)?(?:audio\s+)?([^\s]+\.[a-z0-9]{2,4})", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "audio", "action": "transcribe", "params": {"path": m.group(1).strip()}}]
+        # Transcribir a texto (generico, sin formato)
+        m = re.search(r"(?:transcribe)\s+(?:el\s+)?(?:audio\s+)?([^\s]+\.[a-z0-9]{2,4})", t, re.IGNORECASE)
+        if m:
+            return [{"skill": "audio", "action": "transcribe", "params": {"path": m.group(1).strip()}}]
         # Listar transcripciones
         if any(p in t for p in ["lista transcripciones", "que transcripciones tengo",
                                  "transcripciones hechas", "muestra las transcripciones",
