@@ -1344,11 +1344,18 @@ class Router:
             q = m.group(1).strip(" .,!?¡¿")
             q = re.sub(r'\b(en\s+youtube|en\s+yt|en\s+brave|en\s+chrome|en\s+spotify)\b', '', q).strip()
             exclude = [
+
                 "volumen", "brillo", "pantalla", "musica al", "silencio", "mute",
                 "alarma", "alarmas", "temporizador", "timer", "recordatorio",
-                "recordar", "recuerda", "recuerdame", "recuérdame", "aviso",
-                "avisame", "avísame", "minuto", "minutos", "segundo", "segundos",
+                "recordar", "recuerda", "recuerdame", "aviso",
+                "avisame", "minuto", "minutos", "segundo", "segundos",
                 "hora", "horas",
+                # PDF / documentos / watermark
+                "marca de agua", "marca al", "watermark",
+                "pdf", "docx", "word", "documento",
+                # Imagenes / edicion
+                "imagen", "imagenes", "png", "jpg", "jpeg", "webp",
+                "foto", "fotos", "recorta", "rota la imagen",
             ]
             if q and not any(e in q for e in exclude):
                 return [{"skill": "browser", "action": "search_youtube", "params": {"query": q}}]
