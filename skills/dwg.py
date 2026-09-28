@@ -183,6 +183,15 @@ class DwgSkill(Skill):
             return self.extract_walls_3d(params.get("path", ""), params.get("output", ""), float(params.get("height", 3.0)))
         if action == "extract_all_layers_3d":
             return self.extract_all_layers_3d(params.get("path", ""), params.get("output", ""))
+        # ── Nuevas acciones ──
+        if action == "export_pdf":
+            return self._export_pdf(params.get("path", ""), params.get("output", ""))
+        if action == "add_dimensions":
+            return self._add_dimensions(params.get("path", ""), params.get("output", ""))
+        if action == "merge_dxf":
+            return self._merge_dxf(params.get("paths", []), params.get("output", ""))
+        if action == "search_text":
+            return self._search_text(params.get("path", ""), params.get("query", ""))
         return f"Accion desconocida en dwg: {action}"
 
     def _convert(self, path, output_format):
@@ -802,6 +811,311 @@ class DwgSkill(Skill):
                 f" Guardado en: {output}"
             ),
             "voice": f"{n_hatch} muros rellenados con hatch.",
+        }
+
+    def _export_pdf(self, path, output=""):
+        """Convierte un DWG/DXF a PDF usando LibreOffice o FreeCAD."""
+        if not path:
+            return {"thought": "", "display": "Falta la ruta.", "voice": "Falta la ruta."}
+        path = Path(path)
+        if not path.exists():
+            return {"thought": "", "display": "No existe: " + str(path), "voice": "No existe."}
+
+        if not confirmation.require("dwg", "export_pdf", "Exportar " + path.name + " a PDF"):
+            return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
+
+        # Convertir a DXF si es DWG
+        dxf_path = path
+        if path.suffix.lower() == ".dwg":
+            dxf_result, err = _convertir_con_oda(path, "DXF")
+            if err:
+                return {"thought": "Error", "display": "Error convirtiendo a DXF: " + err, "voice": "Error."}
+            dxf_path = Path(dxf_result)
+
+        if not output:
+            output = str(SANDBOX / (path.stem + "_" + uuid.uuid4().hex[:6] + ".pdf"))
+
+        # Usar FreeCAD para exportar a PDF
+        from core.paths import FREECAD_CMD
+        script = (
+            "import FreeCAD\n"
+            "import importDXF\n"
+            "import os\n"
+            "path = r'" + str(dxf_path).replace(chr(92), "/") + "'\n"
+            "output = r'" + output.replace(chr(92), "/") + "'\n"
+            "doc = FreeCAD.newDocument('DWGExport')\n"
+            "importDXF.insert(path, doc.Name)\n"
+            "doc.recompute()\n"
+            "# Exportar cada objeto como SVG y combinar\n"
+            "try:\n"
+            "    import TechDraw\n"
+            "    page = doc.addObject('TechDraw::DrawPage', 'Page')\n"
+            "    template = doc.addObject('TechDraw::DrawSVGTemplate', 'Template')\n"
+            "    template.Template = os.path.join(TechDraw.getUserMacroDir(True), 'A4_LandscapeTD.svg')\n"
+            "    page.Template = template\n"
+            "    objs = [o for o in doc.Objects if hasattr(o, 'Shape') and o.Shape]\n"
+            "    for i, obj in enumerate(objs[:50]):\n"
+            "        try:\n"
+            "            view = doc.addObject('TechDraw::DrawViewPart', 'View' + str(i))\n"
+            "            view.Source = [obj]\n"
+            "            view.Direction = FreeCAD.Vector(0, 0, 1)\n"
+            "            view.Scale = 1.0\n"
+            "            page.addView(view)\n"
+            "        except Exception:\n"
+            "            pass\n"
+            "    doc.recompute()\n"
+            "    TechDraw.writePageAsPdf(page, output)\n"
+            "    print('OK_PDF')\n"
+            "except Exception as e:\n"
+            "    print('ERR_PDF: ' + str(e))\n"
+        )
+
+        try:
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8") as f:
+                f.write(script)
+                script_path = f.name
+            result = subprocess.run(
+                [FREECAD_CMD, script_path],
+                capture_output=True, text=True, timeout=300,
+                encoding="utf-8", errors="replace",
+            )
+            os.unlink(script_path)
+        except Exception as e:
+            return {"thought": "Error", "display": "Error: " + str(e), "voice": "Error."}
+
+        if "OK_PDF" not in (result.stdout or ""):
+            return {
+                "thought": "Error PDF",
+                "display": "No pude generar PDF.\nSTDOUT: " + (result.stdout or "")[:400] + "\nSTDERR: " + (result.stderr or "")[:200],
+                "voice": "Error generando PDF.",
+            }
+
+        return {
+            "thought": "PDF generado: " + output,
+            "display": "PDF generado.\n  " + output,
+            "voice": "PDF generado.",
+        }
+
+    def _add_dimensions(self, path, output=""):
+        """Anade cotas automaticas a un DXF basado en los segmentos lineales."""
+        if not path:
+            return {"thought": "", "display": "Falta la ruta.", "voice": "Falta la ruta."}
+        path = Path(path)
+        if not path.exists():
+            return {"thought": "", "display": "No existe: " + str(path), "voice": "No existe."}
+
+        if not confirmation.require("dwg", "add_dimensions", "Anadir cotas a " + path.name):
+            return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
+
+        # Convertir a DXF si es DWG
+        dxf_path = path
+        if path.suffix.lower() == ".dwg":
+            dxf_result, err = _convertir_con_oda(path, "DXF")
+            if err:
+                return {"thought": "Error", "display": "Error: " + err, "voice": "Error."}
+            dxf_path = Path(dxf_result)
+
+        try:
+            doc = ezdxf.readfile(str(dxf_path))
+        except Exception as e:
+            return {"thought": "Error", "display": "Error leyendo DXF: " + str(e), "voice": "Error."}
+
+        msp = doc.modelspace()
+
+        # Anadir layer de cotas si no existe
+        if "COTAS" not in doc.layers:
+            doc.layers.add("COTAS", color=1)  # rojo
+
+        # Anadir estilo de cota si no existe
+        try:
+            dimstyle = doc.dimstyles.get("NITRO_DIM")
+        except Exception:
+            dimstyle = None
+        if not dimstyle:
+            try:
+                doc.dimstyles.add("NITRO_DIM")
+            except Exception:
+                pass
+
+        # Detectar lineas horizontales/verticales y anadir cotas
+        count = 0
+        offset = 5.0
+        for entidad in msp:
+            if count >= 30:  # max 30 cotas
+                break
+            try:
+                if entidad.dxftype() != 'LINE':
+                    continue
+                s = entidad.dxf.start
+                e = entidad.dxf.end
+                dx = e.x - s.x
+                dy = e.y - s.y
+                dist = (dx*dx + dy*dy) ** 0.5
+                if dist < 0.5:
+                    continue
+
+                # Solo lineas horizontales y verticales
+                if abs(dy) < 0.01:  # horizontal
+                    msp.add_aligned_dim(
+                        p1=(s.x, s.y),
+                        p2=(e.x, e.y),
+                        distance=offset,
+                        dimstyle="NITRO_DIM",
+                    )
+                    count += 1
+                elif abs(dx) < 0.01:  # vertical
+                    msp.add_aligned_dim(
+                        p1=(s.x, s.y),
+                        p2=(e.x, e.y),
+                        distance=offset,
+                        dimstyle="NITRO_DIM",
+                    )
+                    count += 1
+            except Exception:
+                continue
+
+        if not output:
+            output = str(SANDBOX / (path.stem + "_cotas_" + uuid.uuid4().hex[:6] + ".dxf"))
+
+        try:
+            doc.saveas(output)
+        except Exception as e:
+            return {"thought": "Error", "display": "Error guardando: " + str(e), "voice": "Error."}
+
+        return {
+            "thought": "Cotas anadidas: " + str(count),
+            "display": "Cotas anadidas: " + str(count) + "\n  Archivo: " + output,
+            "voice": str(count) + " cotas anadidas.",
+        }
+
+    def _merge_dxf(self, paths, output=""):
+        """Une multiples archivos DXF en uno solo."""
+        if not paths or len(paths) < 2:
+            return {"thought": "", "display": "Necesito al menos 2 archivos DXF.", "voice": "Faltan archivos."}
+
+        if not confirmation.require("dwg", "merge_dxf", "Unir " + str(len(paths)) + " archivos DXF"):
+            return {"thought": "Cancelado", "display": "Cancelado.", "voice": "Cancelado."}
+
+        # Crear documento destino
+        doc_final = ezdxf.new("R2010")
+        msp_final = doc_final.modelspace()
+
+        # Copiar layers y entidades
+        importados = 0
+        for dxf_p in paths:
+            dxf_p = Path(dxf_p)
+            if not dxf_p.exists():
+                continue
+            if dxf_p.suffix.lower() == ".dwg":
+                dxf_tmp, err = _convertir_con_oda(dxf_p, "DXF")
+                if err:
+                    continue
+                dxf_p = Path(dxf_tmp)
+
+            try:
+                doc_src = ezdxf.readfile(str(dxf_p))
+                msp_src = doc_src.modelspace()
+
+                # Copiar layers
+                for layer in doc_src.layers:
+                    if layer.dxf.name not in doc_final.layers:
+                        try:
+                            doc_final.layers.add(layer.dxf.name)
+                        except Exception:
+                            pass
+
+                # Copiar entidades
+                for entidad in msp_src:
+                    try:
+                        nueva = entidad.copy()
+                        msp_final.add_entity(nueva)
+                        importados += 1
+                    except Exception:
+                        continue
+            except Exception as e:
+                print("[DWG] Error importando " + str(dxf_p) + ": " + str(e))
+                continue
+
+        if not output:
+            output = str(SANDBOX / ("merged_" + uuid.uuid4().hex[:6] + ".dxf"))
+
+        try:
+            doc_final.saveas(output)
+        except Exception as e:
+            return {"thought": "Error", "display": "Error guardando: " + str(e), "voice": "Error."}
+
+        return {
+            "thought": "DXF fusionados: " + str(importados) + " entidades",
+            "display": (
+                "Merge completado.\n"
+                "  Archivos: " + str(len(paths)) + "\n"
+                "  Entidades: " + str(importados) + "\n"
+                "  Archivo: " + output
+            ),
+            "voice": "DXF unidos.",
+        }
+
+    def _search_text(self, path, query):
+        """Busca un texto especifico en un DXF y devuelve sus posiciones."""
+        if not path:
+            return {"thought": "", "display": "Falta la ruta.", "voice": "Falta la ruta."}
+        if not query:
+            return {"thought": "", "display": "Dime que buscar.", "voice": "Falta la busqueda."}
+
+        path = Path(path)
+        if not path.exists():
+            return {"thought": "", "display": "No existe: " + str(path), "voice": "No existe."}
+
+        # Convertir a DXF si es DWG
+        dxf_path = path
+        if path.suffix.lower() == ".dwg":
+            dxf_result, err = _convertir_con_oda(path, "DXF")
+            if err:
+                return {"thought": "Error", "display": "Error: " + err, "voice": "Error."}
+            dxf_path = Path(dxf_result)
+
+        try:
+            doc = ezdxf.readfile(str(dxf_path))
+        except Exception as e:
+            return {"thought": "Error", "display": "Error leyendo DXF: " + str(e), "voice": "Error."}
+
+        msp = doc.modelspace()
+        q = query.lower().strip()
+        encontrados = []
+
+        for entidad in msp:
+            try:
+                if entidad.dxftype() in ("TEXT", "MTEXT"):
+                    texto = entidad.dxf.text if entidad.dxftype() == "TEXT" else entidad.text
+                    texto_limpio = _limpiar_texto(texto)
+                    if q in texto_limpio.lower():
+                        pos = entidad.dxf.insert if entidad.dxftype() == "TEXT" else entidad.dxf.insert
+                        encontrados.append({
+                            "texto": texto_limpio,
+                            "x": round(pos.x, 2),
+                            "y": round(pos.y, 2),
+                            "tipo": entidad.dxftype(),
+                        })
+            except Exception:
+                continue
+
+        if not encontrados:
+            return {
+                "thought": "",
+                "display": "No encontre '" + query + "' en el plano.",
+                "voice": "Sin resultados.",
+            }
+
+        lineas = ["Encontrados " + str(len(encontrados)) + " textos con '" + query + "':"]
+        for e in encontrados[:20]:
+            linea = "  - " + e["texto"] + " en (" + str(e["x"]) + ", " + str(e["y"]) + ")"
+            lineas.append(linea)
+
+        return {
+            "thought": str(len(encontrados)) + " resultados",
+            "display": "\n".join(lineas),
+            "voice": "Encontre " + str(len(encontrados)) + " textos.",
         }
 
     def _exportar_step(self, segmentos, output_path, altura, grosor, prefijo):

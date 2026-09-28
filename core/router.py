@@ -2880,6 +2880,99 @@ class Router:
         if _m:
             return [{"skill": "maps", "action": "get_coordinates", "params": {"query": _m.group(1).strip()}}]
 
+        # ═══════════════════════════════════════════════════════════════════
+        # DWG: quick_matches completos
+        # ═══════════════════════════════════════════════════════════════════
+        import re as _re_dwg
+
+        # Convertir a DXF
+        _m = _re_dwg.search(r"convierte\s+(?:el\s+)?(?:dwg|archivo)\s+(\S+)\s+a\s+dxf", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "convert_to_dxf", "params": {"path": _m.group(1).strip()}}]
+
+        # Convertir a DWG
+        _m = _re_dwg.search(r"convierte\s+(?:el\s+)?(?:dxf|archivo)\s+(\S+)\s+a\s+dwg", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "convert_to_dwg", "params": {"path": _m.group(1).strip()}}]
+
+        # Analizar plano
+        _m = _re_dwg.search(r"(?:analiza|analizar|que hay en)\s+(?:el\s+)?(?:plano|dwg|dxf)\s+(\S+)", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "analyze", "params": {"path": _m.group(1).strip()}}]
+
+        # Info del plano
+        _m = _re_dwg.search(r"(?:info|informacion|detalles)\s+(?:del?\s+)?(?:plano|dwg|dxf)\s+(\S+)", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "info", "params": {"path": _m.group(1).strip()}}]
+
+        # Listar capas
+        _m = _re_dwg.search(r"(?:lista|muestra|que)\s+(?:las?\s+)?(?:capas|layers)\s+(?:de|del?)\s+(\S+\.(?:dwg|dxf))", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "list_layers", "params": {"path": _m.group(1).strip()}}]
+
+        # Listar textos
+        _m = _re_dwg.search(r"(?:lista|muestra)\s+(?:los?\s+)?textos\s+(?:de|del?)\s+(\S+\.(?:dwg|dxf))", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "list_texts", "params": {"path": _m.group(1).strip()}}]
+
+        # Listar bloques
+        _m = _re_dwg.search(r"(?:lista|muestra)\s+(?:los?\s+)?bloques\s+(?:de|del?)\s+(\S+\.(?:dwg|dxf))", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "list_blocks", "params": {"path": _m.group(1).strip()}}]
+
+        # Listar habitaciones
+        _m = _re_dwg.search(r"(?:lista|muestra|que)\s+(?:las?\s+)?(?:habitaciones|ambientes|cuartos|rooms)\s+(?:de|del?)\s+(\S+\.(?:dwg|dxf))", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "list_rooms", "params": {"path": _m.group(1).strip()}}]
+
+        # Extraer capa especifica
+        _m = _re_dwg.search(r"extrae\s+(?:la\s+)?capa\s+(\S+)\s+(?:de|del?)\s+(\S+\.(?:dwg|dxf))", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "extract_layer", "params": {"layer_name": _m.group(1).strip(), "path": _m.group(2).strip()}}]
+
+        # Anotar plano
+        _m = _re_dwg.search(r"(?:anota|anotar|pon cotas)\s+(?:el\s+)?(?:plano|dwg|dxf)\s+(\S+)", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "annotate", "params": {"path": _m.group(1).strip()}}]
+
+        # Add hatch
+        _m = _re_dwg.search(r"(?:anade|agrega)\s+(?:un\s+)?(?:hatch|sombreado|pattern)\s+(?:al?\s+)?(?:plano|dwg|dxf)\s+(\S+)", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "add_hatch", "params": {"path": _m.group(1).strip()}}]
+
+        # Muros 3D
+        _m = _re_dwg.search(r"extrae\s+(?:los?\s+)?muros\s+3d\s+(?:de|del?)\s+(\S+\.(?:dwg|dxf))", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "extract_walls_3d", "params": {"path": _m.group(1).strip()}}]
+
+        # Todas las capas 3D
+        _m = _re_dwg.search(r"extrae\s+todas\s+(?:las?\s+)?capas\s+3d\s+(?:de|del?)\s+(\S+\.(?:dwg|dxf))", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "extract_all_layers_3d", "params": {"path": _m.group(1).strip()}}]
+
+        # Export PDF
+        _m = _re_dwg.search(r"(?:exporta|convierte)\s+(?:el\s+)?(?:plano|dwg|dxf)\s+(\S+)\s+a\s+pdf", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "export_pdf", "params": {"path": _m.group(1).strip()}}]
+
+        # Add dimensions
+        _m = _re_dwg.search(r"(?:anade|agrega|pon)\s+cotas\s+(?:al?\s+)?(?:plano|dwg|dxf)\s+(\S+)", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "add_dimensions", "params": {"path": _m.group(1).strip()}}]
+
+        # Merge DXF
+        _m = _re_dwg.search(r"(?:une|junta|combina)\s+(?:los?\s+)?(?:planos?|dxf|dwg)\s+(.+)$", t, _re_dwg.IGNORECASE)
+        if _m:
+            paths_str = _m.group(1)
+            paths = [p.strip().strip(chr(34)).strip(chr(39)) for p in _re_dwg.split(r"\s+y\s+|\s*,\s*", paths_str) if p.strip()]
+            return [{"skill": "dwg", "action": "merge_dxf", "params": {"paths": paths}}]
+
+        # Buscar texto
+        _m = _re_dwg.search(r"busca\s+(?:el\s+)?texto\s+[\x22]([^\x22]+)[\x22]?\s+en\s+(?:el\s+)?(?:plano|dwg|dxf)\s+(\S+)", t, _re_dwg.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "search_text", "params": {"query": _m.group(1).strip(), "path": _m.group(2).strip()}}]
+
+
         return None
 
     def _normalize(self, result):
