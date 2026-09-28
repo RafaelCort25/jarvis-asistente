@@ -1525,6 +1525,101 @@ class Router:
         if _m:
             return [{"skill": "gmail", "action": "list_recent", "params": {"limit": 5}}]
 
+        # ═══ LISTADOS Y QUERIES (comandos de consulta instantaneos) ═══
+        # SYSTEM - info del sistema
+        _m = _re_office_prio.search(r"(?:cuanta|cuánta|cómo va|como va|que)\s+(?:ram|memoria)(?:\s+(?:libre|usada|disponible))?", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "system", "action": "info_ram", "params": {}}]
+        _m = _re_office_prio.search(r"(?:cuanta|cuánta|que)\s+(?:cpu|procesador|disco|almacenamiento)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "system", "action": "info_hardware", "params": {}}]
+
+        # TRANSLATE - ampliar patron
+        _m = _re_office_prio.search(r"traduce\s+(.+?)\s+(?:al|a\s+el|a)\s+(ingles|inglés|english|frances|francés|french|aleman|alemán|german|italiano|portugues|portugués|japones|japonés|chino|ruso)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "translate", "action": "text", "params": {"text": _m.group(1).strip(), "to": _m.group(2).lower()}}]
+
+        # NOTION
+        _m = _re_office_prio.search(r"(?:lista|muestra|ver)\s+(?:mis\s+)?(?:paginas|páginas)\s+(?:de\s+)?notion", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "notion", "action": "list_pages", "params": {}}]
+        _m = _re_office_prio.search(r"busca\s+en\s+notion\s+(.+)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "notion", "action": "search", "params": {"query": _m.group(1).strip()}}]
+
+        # PRODUCTIVITY (antes que scheduler para evitar conflicto con "tareas")
+        _m = _re_office_prio.search(r"(?:que|qué)\s+(?:tareas|notas)\s+(?:tengo\s+)?(?:pendientes|rapidas|rápidas)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "productivity", "action": "list", "params": {}}]
+
+        # SCHEDULER
+        _m = _re_office_prio.search(r"(?:que|qué)\s+(?:tareas|recordatorios)\s+(?:tengo\s+)?(?:programad[ao]s?|pendientes)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "scheduler", "action": "list", "params": {}}]
+
+        # PRODUCTIVITY
+        _m = _re_office_prio.search(r"(?:que|qué)\s+(?:tareas|notas)\s+(?:tengo\s+)?(?:pendientes|rapidas|rápidas)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "productivity", "action": "list", "params": {}}]
+
+        # DEV - contar lineas
+        _m = _re_office_prio.search(r"(?:cuenta|cuantas|cuántas)\s+(?:las\s+)?(?:lineas|líneas)\s+(?:de\s+)?(\S+)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "dev", "action": "count_lines", "params": {"path": _m.group(1).strip()}}]
+
+        # IMAGE - historial
+        _m = _re_office_prio.search(r"(?:que|qué|cuantas|cuántas)\s+(?:imagenes|imágenes)\s+(?:he\s+generado|tengo|hay)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "image", "action": "history", "params": {}}]
+
+        # AUDIO
+        _m = _re_office_prio.search(r"(?:que|qué)\s+(?:archivos\s+de\s+)?audio\s+(?:tengo|hay)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "audio", "action": "list", "params": {}}]
+
+        # VIDEO
+        _m = _re_office_prio.search(r"(?:que|qué)\s+videos?\s+(?:tengo|hay)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "video", "action": "list", "params": {}}]
+
+        # RETOUCH
+        _m = _re_office_prio.search(r"(?:que|qué)\s+(?:imagenes|imágenes)\s+puedo\s+procesar", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "retouch", "action": "list", "params": {}}]
+
+        # DWG
+        _m = _re_office_prio.search(r"(?:que|qué)\s+planos?\s+(?:dwg|dxf)?\s*(?:tengo|hay)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "dwg", "action": "list", "params": {}}]
+
+        # FREECAD
+        _m = _re_office_prio.search(r"(?:que|qué)\s+(?:documentos?|modelos?)\s+freecad\s+(?:tengo|hay)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "freecad", "action": "list", "params": {}}]
+
+        # BLENDER
+        _m = _re_office_prio.search(r"(?:que|qué)\s+(?:modelos?|renders?)\s+blender\s+(?:tengo|hay)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "blender", "action": "list", "params": {}}]
+
+        # TELEGRAM
+        _m = _re_office_prio.search(r"(?:env[ií]a(?:me)?|manda(?:me)?|mándame|notifica(?:me)?)\s+(?:un\s+)?(?:mensaje|notificacion|notificación|aviso)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "telegram", "action": "send_test", "params": {}}]
+        _m = _re_office_prio.search(r"\btelegram\b", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "telegram", "action": "send_test", "params": {}}]
+
+        # ENTERTAINMENT
+        _m = _re_office_prio.search(r"(?:que|qué)\s+m[uú]sica\s+(?:tengo|hay|disponible)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "entertainment", "action": "list", "params": {}}]
+
+        # ALARM
+        _m = _re_office_prio.search(r"(?:que|qué)\s+alarmas?\s+(?:tengo|hay|estan|están)", t, _re_office_prio.IGNORECASE)
+        if _m:
+            return [{"skill": "alarm", "action": "list", "params": {}}]
+
         # ═══ BROWSER: abrir apps/sitios directamente ═══
         _m = _re_office_prio.search(r"(?:abre|abrir|abre\s+la|abre\s+el)\s+(youtube|google|wikipedia|gmail|github|stackoverflow|chatgpt|spotify\s+web)", t, _re_office_prio.IGNORECASE)
         if _m:
