@@ -2695,15 +2695,18 @@ class Router:
         # ═══════════════════════════════════════════════════════════════════
         # BLENDER: vistas y renders avanzados
         # ═══════════════════════════════════════════════════════════════════
-        from core.paths import SANDBOX_BLENDER
+        from core.paths import SANDBOX_BLENDER, SANDBOX_DWG
         import re as _re
         import os as _os
 
         def _ultimo_step():
-            if not SANDBOX_BLENDER.exists():
-                return None
-            steps = sorted(SANDBOX_BLENDER.glob("*.step"), key=lambda x: x.stat().st_mtime, reverse=True)
-            return str(steps[0]) if steps else None
+            for base in (SANDBOX_DWG, SANDBOX_BLENDER):
+                if not base.exists():
+                    continue
+                steps = sorted(base.glob("*.step"), key=lambda x: x.stat().st_mtime, reverse=True)
+                if steps:
+                    return str(steps[0])
+            return None
 
         # Interior
         if any(p in t for p in ["render interior", "vista interior", "renderiza el interior",
